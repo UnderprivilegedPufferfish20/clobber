@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import React from 'react'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from './ui/breadcrumb'
-import { MobileSidebar } from '@/components/Sidebar'
+import { MobileSidebar } from '@/app/(pages)/proj/_components/Sidebar'
 
 const BreadcrumbHeader = () => {
   const pathname = usePathname()

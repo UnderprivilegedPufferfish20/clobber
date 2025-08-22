@@ -1,5 +1,5 @@
 import BreadcrumbHeader from '@/components/BreadcrumbHeader'
-import Sidebar from '@/components/Sidebar'
+import Sidebar from './_components/Sidebar'
 import { ModeToggle } from '@/components/ThemeModeToggle'
 import { Separator } from '@/components/ui/separator'
 import UserButton from '@/components/UserButton'

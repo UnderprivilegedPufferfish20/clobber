@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { SquareDashedMousePointer } from 'lucide-react'
+import { SparklesIcon } from 'lucide-react'
 import Link from 'next/link'
 import React from 'react'
 
@@ -14,17 +14,12 @@ const Logo = ({
     <Link
       href='/'
       className={cn(
-        'text-2xl font-extrabold flex items-center gap-2',
+        "flex items-center space-x-2",
         fontSize
       )}
     >
-      <div className='rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 p-2'>
-        <SquareDashedMousePointer size={iconSize} className='stroke-white'/>
-      </div>
-      <div>
-        <span className="bg-gradient-to-r from-emerald-500 to-emerald-600 bg-clip-text text-transparent">Flow</span>
-        <span className="text-stone-700 dark:text-stone-300">Scrape</span>
-      </div>
+      <SparklesIcon size={iconSize} className="text-indigo-400" />
+      <span className="text-2xl font-bold">ClobberDB</span>
     </Link>
   )
 }

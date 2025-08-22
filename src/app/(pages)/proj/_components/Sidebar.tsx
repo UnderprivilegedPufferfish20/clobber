@@ -2,11 +2,11 @@
 
 import { CoinsIcon, HomeIcon, Layers2Icon, MenuIcon, ShieldCheckIcon } from 'lucide-react'
 import React, { useState } from 'react'
-import Logo from './Logo'
+import Logo from '@/components/Logo'
 import Link from 'next/link'
-import { Button, buttonVariants } from './ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
-import { Sheet, SheetContent, SheetTrigger } from './ui/sheet'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 const routes = [
   {

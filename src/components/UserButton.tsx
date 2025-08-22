@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from './providers/AuthProvider'
 import { Settings, User, LogOut, Loader2Icon } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import Loader from './Loader'
 
 const UserButton = () => {
   const { user, loading, signOut } = useAuth()
@@ -22,8 +23,8 @@ const UserButton = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  if (loading) return <Loader2Icon className='animate-spin' size={32}/>;
-  if (!user) redirect('/');
+  if (loading) return <Loader />
+  if (!user) return null;
 
   const handleMenuClick = (action: string) => {
     setIsOpen(false)

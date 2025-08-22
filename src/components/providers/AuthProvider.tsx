@@ -1,21 +1,10 @@
 'use client';
 
+import { AuthContextType, User } from '@/lib/types/auth';
 import { redirect } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  picture?: string;
-}
 
-interface AuthContextType {
-  user: User | null;
-  signIn: () => Promise<void>;
-  signOut: () => void;
-  loading: boolean;
-}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
