@@ -7,9 +7,9 @@ export default function SignInButton() {
 
   return (
     <button
-      onClick={signIn} 
-      className="px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
-        Sign In
-      </button>
+      onClick={signIn}
+      className="px-4 py-2 bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors h-full">
+      Sign In
+    </button>
   )
 }

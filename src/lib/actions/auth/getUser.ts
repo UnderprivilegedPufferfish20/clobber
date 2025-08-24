@@ -1,15 +1,34 @@
 'use server'
 
+import prisma from "@/lib/db";
 import { User } from "@/lib/types/auth";
 import { cookies } from "next/headers"
 
-export async function getUser() {
-  const cookieStore = await cookies()
+export async function getUser(): Promise<User | null> {
+  try {
+    const cookieStore = await cookies();
+    
+    if (!cookieStore) {
+      console.error('getUser - cannot access cookies');
+      return null;
+    }
 
-  if (!cookieStore) throw new Error('getUser - cannot access cookies');
+    const userCookie = cookieStore.get('user');
+    
+    if (!userCookie || !userCookie.value) {
+      console.log('getUser - no user cookie found');
+      return null;
+    }
 
-  const user = cookieStore.get('user')
+    const user = JSON.parse(userCookie.value) as User;
+    console.log('getUser - found user:', user.email); // Debug log
+    return user;
+  } catch (error) {
+    console.error('getUser - error parsing user cookie:', error);
+    return null;
+  }
+}
 
-  if (!user) return;
-  return JSON.parse(user.value) as User
+export async function getUserById(id: string) {
+  return await prisma.user.findUnique({where: {id}, include: { projects: true }})
 }

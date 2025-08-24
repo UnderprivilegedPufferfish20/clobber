@@ -16,7 +16,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check if user is already signed in
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('http://localhost:3000/api/auth/me');
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);

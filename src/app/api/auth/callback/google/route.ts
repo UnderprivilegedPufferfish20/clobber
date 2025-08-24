@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
+import prisma from '@/lib/db';
 import { cookies } from 'next/headers';
 
 const client = new OAuth2Client(
@@ -11,6 +12,8 @@ const client = new OAuth2Client(
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
+
+  const cookieStore = await cookies()
 
   if (!code) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=no_code`);
@@ -27,8 +30,8 @@ export async function GET(request: NextRequest) {
     });
 
     const payload = ticket.getPayload();
-    if (!payload) {
-      throw new Error('No payload');
+    if (!payload || !payload.sub || !payload.email || !payload.name || !payload.picture) {
+      throw new Error('No payload or payload missing values');
     }
 
     const user = {
@@ -38,16 +41,42 @@ export async function GET(request: NextRequest) {
       picture: payload.picture,
     };
 
-    // Store user session (you might want to use a database here)
-    const cookieStore = await cookies();
-    cookieStore.set('user', JSON.stringify(user), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-    });
+    const existingUser = await prisma.user.findUnique({ where: {id: user.id}, include: { projects: true } })
 
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/h`);
+    let response: NextResponse;
+
+    if (existingUser) {
+      const firstProject = existingUser.projects.sort((a, b) => b.createdAt.getDate() - a.createdAt.getDate())
+
+      response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/proj/${firstProject[0].id}`);
+    } else {
+
+      const newUser = await prisma.user.create({ data: {
+        email: user.email,
+        name: user.name,
+        pfpUrl: user.picture,
+        id: user.id
+      } })
+
+      const newUserFirstProject = await prisma.project.create({
+        data: {
+          name: newUser.name.split(' ')[0] + '’s Project',
+          ownerId: newUser.id
+        }
+      })
+
+      response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/proj/${newUserFirstProject.id}`);
+    }
+
+    response.cookies.set('user', JSON.stringify(user), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax', // Change to 'lax' for better compatibility
+          maxAge: 60 * 60 * 24 * 7,
+          path: '/',
+        });
+
+    return response;
   } catch (error) {
     console.error('OAuth callback error:', error);
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=oauth_error`);
