@@ -22,7 +22,7 @@ const page = async ({ params }: Props) => {
 
   const usersProjects = (await getUserById(user.id))?.projects
 
-  if (!usersProjects?.includes(project)) {
+  if (!usersProjects?.some(p => p.id === project.id)) {
     console.log("User did not own project")
     redirect('/')
   }

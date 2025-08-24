@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '@/lib/db';
-import { cookies } from 'next/headers';
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -12,8 +11,6 @@ const client = new OAuth2Client(
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-
-  const cookieStore = await cookies()
 
   if (!code) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=no_code`);
@@ -43,14 +40,12 @@ export async function GET(request: NextRequest) {
 
     const existingUser = await prisma.user.findUnique({ where: {id: user.id}, include: { projects: true } })
 
-    let response: NextResponse;
+    let redirectUrl: string;
 
     if (existingUser) {
       const firstProject = existingUser.projects.sort((a, b) => b.createdAt.getDate() - a.createdAt.getDate())
-
-      response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/proj/${firstProject[0].id}`);
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/proj/${firstProject[0].id}`;
     } else {
-
       const newUser = await prisma.user.create({ data: {
         email: user.email,
         name: user.name,
@@ -65,16 +60,18 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/proj/${newUserFirstProject.id}`);
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/proj/${newUserFirstProject.id}`;
     }
 
+    const response = NextResponse.redirect(redirectUrl);
+
     response.cookies.set('user', JSON.stringify(user), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax', // Change to 'lax' for better compatibility
-          maxAge: 60 * 60 * 24 * 7,
-          path: '/',
-        });
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    });
 
     return response;
   } catch (error) {
