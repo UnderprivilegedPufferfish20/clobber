@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {Manrope } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Clobber",
@@ -23,6 +24,7 @@ export default function RootLayout({
         <AppProviders>
           {children}
         </AppProviders>
+        <Toaster richColors />
       </body>
     </html>
   );

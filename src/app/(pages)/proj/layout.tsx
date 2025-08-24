@@ -3,9 +3,15 @@ import Sidebar from './_components/Sidebar'
 import { ModeToggle } from '@/components/ThemeModeToggle'
 import { Separator } from '@/components/ui/separator'
 import UserButton from '@/components/UserButton'
-import React, { PropsWithChildren } from 'react'
+import React from 'react'
+import { getUser, getUserById } from '@/lib/actions/auth/getUser'
 
-function layout({ children }: PropsWithChildren) {
+async function layout({ children }: { children: React.ReactNode }) {
+
+  const u = await getUser()
+  if (!u) throw new Error('');
+  const projects = (await getUserById(u.id))!.projects
+
   return (
     <div
       className='flex h-screen'
@@ -13,7 +19,7 @@ function layout({ children }: PropsWithChildren) {
       <Sidebar />
       <div className='flex flex-col flex-1 min-h-screen'>
         <header className='flex items-center justify-between px-6 py-4 h-[50px] container'>
-          <BreadcrumbHeader />
+          <BreadcrumbHeader projects={projects} />
           <div className='gap-2 flex items-center'> 
             <ModeToggle />
             <UserButton />
