@@ -1,70 +1,69 @@
 'use client'
 
-import { CoinsIcon, HomeIcon, Layers2Icon, MenuIcon, ShieldCheckIcon } from 'lucide-react'
+import { MenuIcon } from 'lucide-react'
 import React, { useState } from 'react'
 import Logo from '@/components/Logo'
-import Link from 'next/link'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { routes } from '@/lib/constants/sidebar'
 
-const routes = [
-  {
-    href: "/",
-    label: "Home",
-    icon: HomeIcon,
-  },
-  {
-    href: "/workflows",
-    label: "Workflows",
-    icon: Layers2Icon,
-  },
-  {
-    href: "/credentials",
-    label: "Credentials",
-    icon: ShieldCheckIcon,
-  },
-  {
-    href: "/billing",
-    label: "Billing",
-    icon: CoinsIcon,
-  },
-]
+// Helper function to get the base path (first 3 segments)
+const getBasePath = (pathname: string) => {
+  const segments = pathname.split('/').filter(Boolean)
+  return '/' + segments.slice(0, 2).join('/')
+}
 
 // Helper function to determine if a route is active
 const isRouteActive = (routeHref: string, pathname: string) => {
-  // Handle root route specifically
-  if (routeHref === '/') {
-    return pathname === '/'
+  // Handle empty/root route specifically
+  if (routeHref === "") {
+    const basePath = getBasePath(pathname)
+    const remainingPath = pathname.replace(basePath, '')
+    return remainingPath === '' || remainingPath === '/'
   }
   
-  // For other routes, check if pathname starts with the route href
-  return pathname.startsWith(routeHref)
+  // For other routes, check if pathname ends with the route href
+  return pathname.endsWith(routeHref)
+}
+
+// Helper function to construct the full path
+const constructPath = (basePath: string, routeHref: string) => {
+  if (routeHref === "") {
+    return basePath
+  }
+  return basePath + routeHref
 }
 
 const Sidebar = () => {
   const pathname = usePathname()
-  const activeRoute = routes.find((r) => isRouteActive(r.href, pathname)) || routes[0]
+  const router = useRouter()
+  const basePath = getBasePath(pathname)
 
   return (
     <div className='hidden relative md:block min-w-[280px] max-w-[280px] h-screen overflow-hidden w-full bg-primary/5 dark:bg-secondary/30 dark:text-foreground text-muted-foreground border-r-2 border-separate'>
       <div className="flex items-center justify-center gap-2 border-b-[1px] border-separate p-4">
         <Logo />
       </div>
-      <div className='flex flex-col p-2'>
-        {routes.map((route) => (
-          <Link 
-            key={route.href} 
-            href={route.href}
-            className={buttonVariants({
-              variant: isRouteActive(route.href, pathname)
-                ? 'sidebarActiveItem' : 'sidebarItem'
-            })}
-          >
-            <route.icon size={20} />
-            {route.label}
-          </Link>
-        ))}
+      <div className='flex flex-col p-2 gap-2'>
+        {routes.map((route) => {
+          const isActive = isRouteActive(route.href, pathname)
+          const targetPath = constructPath(basePath, route.href)
+          
+          return (
+            <button 
+              key={route.href}
+              onClick={() => {
+                router.push(targetPath)
+              }} 
+              className={`flex p-2 rounded-md justify-start gap-2 bg-transparent text-black hover:bg-indigo-200 ${isActive && '!bg-indigo-500 !text-white'}`}
+            >
+              <route.icon size={20} />
+              {route.label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -74,9 +73,9 @@ export default Sidebar;
 
 export function MobileSidebar() {
   const [isOpen, setIsOpen] = useState(false)
-
   const pathname = usePathname()
-  const activeRoute = routes.find((r) => isRouteActive(r.href, pathname)) || routes[0]
+  const basePath = getBasePath(pathname)
+  const router = useRouter()
 
   return (
     <div className="block border-separate bg-background md:hidden">
@@ -91,20 +90,23 @@ export function MobileSidebar() {
             <div className="flex flex-col h-full">
               <Logo />
               <div className="flex flex-col gap-1 p-2">
-                {routes.map((route) => (
-                  <Link 
-                    key={route.href} 
-                    href={route.href}
-                    className={buttonVariants({
-                      variant: isRouteActive(route.href, pathname)
-                        ? 'sidebarActiveItem' : 'sidebarItem'
-                    })}
-                    onClick={() => setIsOpen(p => !p)}
-                  >
-                    <route.icon size={20} />
-                    {route.label}
-                  </Link>
-                ))}
+                {routes.map((route) => {
+                  const isActive = isRouteActive(route.href, pathname)
+                  const targetPath = constructPath(basePath, route.href)
+                  
+                  return (
+                    <button 
+                      key={route.href}
+                      onClick={() => {
+                        router.push(targetPath)
+                      }} 
+                      className={`flex p-2 rounded-md justify-start gap-2 bg-transparent text-black hover:bg-indigo-200 ${isActive && '!bg-indigo-500 !text-white'}`}
+                    >
+                      <route.icon size={20} />
+                      {route.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </SheetContent>

@@ -1,8 +1,8 @@
-import BreadcrumbHeader from '@/components/BreadcrumbHeader'
+import BreadcrumbHeader from '@/app/(pages)/proj/_components/BreadcrumbHeader'
 import Sidebar from './_components/Sidebar'
-import { ModeToggle } from '@/components/ThemeModeToggle'
+import { ModeToggle } from '@/app/(pages)/proj/_components/ThemeModeToggle'
 import { Separator } from '@/components/ui/separator'
-import UserButton from '@/components/UserButton'
+import UserButton from './_components/UserButton'
 import React from 'react'
 import { getUser, getUserById } from '@/lib/actions/auth/getUser'
 
@@ -27,7 +27,7 @@ async function layout({ children }: { children: React.ReactNode }) {
         </header>
         <Separator />
         <div className='overflow-auto'>
-          <div className='flex-1 container p-4 text-accent-foreground'>
+          <div className='flex-1 container text-accent-foreground'>
             {children}
           </div>
         </div>

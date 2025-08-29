@@ -11,9 +11,9 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from './ui/separator';
+import { Separator } from '../../../../components/ui/separator';
 import CreateProjectDialog from '@/app/(pages)/proj/_components/CreateProjectDialog';
-import Loader from './Loader';
+import Loader from '../../../../components/Loader';
 
 type Props = { projects: Project[] };
 

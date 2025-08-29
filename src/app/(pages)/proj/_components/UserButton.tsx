@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useAuth } from './providers/AuthProvider'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Settings, User, LogOut, Loader2Icon } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import Loader from './Loader'
+import Loader from '@/components/Loader'
 
 const UserButton = () => {
   const { user, loading, signOut } = useAuth()
