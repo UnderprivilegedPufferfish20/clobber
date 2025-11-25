@@ -75,7 +75,6 @@ export default function BreadcrumbHeader({ projects }: Props) {
 
             <CommandGroup>
               <CommandItem>
-                <Plus size={12} className="mr-2" />
                 <CreateProjectDialog triggerText="New Project" />
               </CommandItem>
             </CommandGroup>

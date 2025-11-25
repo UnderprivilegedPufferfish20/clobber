@@ -31,7 +31,7 @@ export default function PageHeader({ content }: { content: { title: string, desc
         <NavigationMenu viewport={false} className="sticky top-4 left-4">
           <NavigationMenuList>
             {content.map(o => (
-              <Tooltip>
+              <Tooltip key={o.desc}>
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild className={`${navigationMenuTriggerStyle()} ${searchParams.get('tab') === sanitizeUrlComponent(o.title) ? 'bg-accent' : ''}`}>
                     <TooltipTrigger asChild>

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:migr": "npx prisma migrate dev --schema ./src/lib/db/schema.prisma"
+    "db:migr": "npx prisma migrate dev --schema ./src/lib/db/schema.prisma",
+    "db:gen": "npx prisma generate --schema ./src/lib/db/schema.prisma"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",

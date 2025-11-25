@@ -1,13 +1,13 @@
 "use client"
 
-import { Icon, LucideIcon } from 'lucide-react'
+import { LucideIcon } from 'lucide-react'
 import React from 'react'
 import { DialogHeader } from './ui/dialog'
 import { DialogTitle } from '@radix-ui/react-dialog'
 import { cn } from '@/lib/utils'
 import { Separator } from './ui/separator'
 
-interface Props {
+interface CustomDialogHeaderProps {
   icon?: LucideIcon, 
   title?:string, 
   subTitle?: string,
@@ -16,7 +16,8 @@ interface Props {
   subtitleClassName?: string
 }
 
-const CustomDialogHeader = (props: Props) => {
+
+const CustomDialogHeader = (props: CustomDialogHeaderProps) => {
   return (
     <DialogHeader className='py-6'>
       <DialogTitle asChild>

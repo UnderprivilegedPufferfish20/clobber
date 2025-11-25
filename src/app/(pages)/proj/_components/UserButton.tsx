@@ -5,6 +5,7 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { Settings, User, LogOut, Loader2Icon } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import Loader from '@/components/Loader'
+import Image from 'next/image'
 
 const UserButton = () => {
   const { user, loading, signOut } = useAuth()
@@ -46,7 +47,7 @@ const UserButton = () => {
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative mt-1.5" ref={dropdownRef}>
       {/* Profile Picture Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -58,8 +59,10 @@ const UserButton = () => {
           focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2
         "
       >
-        <img
-          src={user.picture || '/default-avatar.png'}
+        <Image
+          src={user.picture || ""}
+          width={24}
+          height={24}
           alt={user.name}
           className="w-full h-full object-cover"
         />

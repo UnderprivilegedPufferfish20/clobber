@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { createProjectSchema } from '@/lib/types/schemas/createProjectSchema';
 import { Dialog } from '@/components/ui/dialog';
 import { DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { KeyRoundIcon, Loader2, ServerIcon } from 'lucide-react';
+import { Loader2, Plus, ServerIcon } from 'lucide-react';
 import React, { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form';
 import {z} from 'zod'
@@ -60,8 +60,11 @@ const CreateProjectDialog = ({ triggerText }: {triggerText?: string }) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <p>{triggerText}</p>
+      <DialogTrigger asChild className='w-full'>
+        <div className='flex items-center justify-start'>
+          <Plus size={12} className="mr-2" />
+          <p>{triggerText}</p>
+        </div>
       </DialogTrigger>
       <DialogContent className='px-0'>
         <CustomDialogHeader 

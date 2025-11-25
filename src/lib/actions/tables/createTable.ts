@@ -24,7 +24,8 @@ export default async function createTable(
   const result = await prisma.table.create({
     data: {
       name: data.name,
-      databaseId
+      databaseId,
+      data: JSON.stringify(null)
     }
   })
 

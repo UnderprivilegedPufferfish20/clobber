@@ -64,8 +64,10 @@ const CreateTableDialog = ({
           id: tempId,
           name: newTable.name,
           databaseId: databaseId,
-          createdAt: new Date()
-          // Add any other required fields from your Table type
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          data: JSON.stringify(null)
+
         };
 
         return {

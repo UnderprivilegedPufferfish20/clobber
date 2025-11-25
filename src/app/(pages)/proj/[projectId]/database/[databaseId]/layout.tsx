@@ -27,14 +27,14 @@ const DatabaseLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="w-full min-h-screen flex flex-col bg-background">
       {/* Header Section */}
-      <div className="flex-shrink-0 p-4 pb-0">
-        <div className="flex flex-col gap-4">
+      <div className="flex-shrink-0 p-4 pb-0 w-full">
+        <div className="flex items-center gap-4 w-full">
           {isPending ? (
             <div className="px-4">
               <Skeleton className="h-10 w-36" />
             </div>
           ) : (
-            data && <h1 className="text-4xl px-4 font-semibold">{data.name}</h1>
+            data && <h1 className="text-4xl px-4 font-semibold w-fit text-nowrap">{data.name}</h1>
           )}
           <PageHeader content={databaseTopbar} />
         </div>
