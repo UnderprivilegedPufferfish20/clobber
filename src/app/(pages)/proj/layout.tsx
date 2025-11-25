@@ -10,7 +10,9 @@ async function layout({ children }: { children: React.ReactNode }) {
 
   const u = await getUser()
   if (!u) throw new Error('');
-  const projects = (await getUserById(u.id))!.projects
+  const user = await getUserById(u.id)
+  if (!user) throw new Error("");
+
 
   return (
     <div
@@ -19,7 +21,7 @@ async function layout({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className='flex flex-col flex-1'>
         <header className='flex items-center justify-between px-6 py-4 h-[65px] container w-full min-w-full max-w-full'>
-          <BreadcrumbHeader projects={projects} />
+          <BreadcrumbHeader projects={user.projects} sharedProjects={user.SharedProjects}/>
           <div className='gap-2 flex items-center'> 
             <ModeToggle />
             <UserButton />

@@ -25,39 +25,23 @@ const DatabaseLayout = ({ children }: { children: React.ReactNode }) => {
   const tables = data?.tables ?? [];
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-background">
-      {/* Header Section */}
-      <div className="flex-shrink-0 p-4 pb-0 w-full">
-        <div className="flex items-center gap-4 w-full">
-          {isPending ? (
-            <div className="px-4">
-              <Skeleton className="h-10 w-36" />
-            </div>
-          ) : (
-            data && <h1 className="text-4xl px-4 font-semibold w-fit text-nowrap">{data.name}</h1>
-          )}
-          <PageHeader content={databaseTopbar} />
-        </div>
-        <Separator className="mt-4" />
-      </div>
-
-      {/* Content Area - increased bottom padding for tab navigation */}
+    <div className="w-full min-h-full flex flex-col bg-background">
       <div
         className={cn(
-          'flex-1 px-4 pb-20 transition-all duration-300 ease-out',
+          'px-4 pb-20 transition-all duration-300 ease-out',
         )}
       >
 
-        <div className={'transition-all duration-300 ease-out h-full'}>
+        <div className="h-full flex justify-center items-center">
           {children}
+          <DatabasePageFooter 
+            databaseId={databaseId}
+            isPending={isPending}
+            tables={tables}
+          />
         </div>
       </div>
 
-      <DatabasePageFooter 
-        databaseId={databaseId}
-        isPending={isPending}
-        tables={tables}
-      />
 
     </div>
   );

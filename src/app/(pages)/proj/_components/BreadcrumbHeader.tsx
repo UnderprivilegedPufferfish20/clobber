@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MobileSidebar } from '@/app/(pages)/proj/_components/Sidebar';
@@ -9,7 +9,7 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, 
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from '../../../../components/ui/separator';
@@ -19,20 +19,20 @@ import { getProjectById } from '@/lib/actions/projects/getProjectById';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type Props = { projects: Project[] };
+type Props = { projects: Project[], sharedProjects: Project[] };
 
-export default function BreadcrumbHeader({ projects }: Props) {
+export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
   const pathname = usePathname();
   const router = useRouter();
 
   // Derive IDs from the URL
-  const curId = React.useMemo(() => pathname.split('/')[2] ?? '', [pathname]);
-  const dbId = React.useMemo(() => pathname.split('/')[4] ?? '', [pathname]);
+  const curId = useMemo(() => pathname.split('/')[2] ?? '', [pathname]);
+  const dbId = useMemo(() => pathname.split('/')[4] ?? '', [pathname]);
 
   // Find the current project
-  const currentProject = React.useMemo(
-    () => projects.find(p => p.id === curId) ?? null,
-    [projects, curId]
+  const currentProject = useMemo(
+    () => [...projects, ...sharedProjects].find(p => p.id === curId) ?? null,
+    [projects, sharedProjects, curId]
   );
 
   // Fetch project details with databases using React Query
@@ -47,13 +47,14 @@ export default function BreadcrumbHeader({ projects }: Props) {
   });
 
   // Find the current database
-  const currentDatabase = React.useMemo(() => {
+  const currentDatabase = useMemo(() => {
     if (!projectWithDatabases?.databases || !dbId) return null;
     return projectWithDatabases.databases.find(db => db.id === dbId) ?? null;
   }, [projectWithDatabases, dbId]);
 
-  const [openProject, setOpenProject] = React.useState(false);
-  const [openDatabase, setOpenDatabase] = React.useState(false);
+  const [openProject, setOpenProject] = useState(false);
+  const [openDatabase, setOpenDatabase] = useState(false);
+  const [view, setView] = useState<'my' | 'shared'>('my');
 
   return (
     <div className="flex items-center gap-2">
@@ -81,10 +82,34 @@ export default function BreadcrumbHeader({ projects }: Props) {
             <Command>
               <CommandInput placeholder="Search project..." className="h-9" />
               <CommandList>
+                
+                
+                {/* Toggle Button for Views */}
+                <div className="flex justify-center p-1 bg-muted">
+                  <button
+                    onClick={() => setView('my')}
+                    className={cn(
+                      'flex-1 text-sm p-1 rounded-sm transition-colors',
+                      view === 'my' ? 'bg-white shadow-sm font-medium' : 'text-muted-foreground'
+                    )}
+                  >
+                    My Projects
+                  </button>
+                  <button
+                    onClick={() => setView('shared')}
+                    className={cn(
+                      'flex-1 text-sm p-1 rounded-sm transition-colors',
+                      view === 'shared' ? 'bg-white shadow-sm font-medium' : 'text-muted-foreground'
+                    )}
+                  >
+                    Shared with me
+                  </button>
+                </div>
+
                 <CommandEmpty>No projects found.</CommandEmpty>
 
                 <CommandGroup>
-                  {projects.map((project) => {
+                  {(view === 'my' ? projects : sharedProjects).map((project) => {
                     const selected = project.id === curId;
                     return (
                       <CommandItem
@@ -104,12 +129,13 @@ export default function BreadcrumbHeader({ projects }: Props) {
               </CommandList>
 
               <Separator />
-
-              <CommandGroup>
-                <CommandItem>
-                  <CreateProjectDialog triggerText="New Project" />
-                </CommandItem>
-              </CommandGroup>
+              {view === "my" && (
+                <CommandGroup>
+                  <CommandItem>
+                    <CreateProjectDialog triggerText="New Project" />
+                  </CommandItem>
+                </CommandGroup>
+              )}
             </Command>
           </PopoverContent>
         </Popover>
