@@ -120,3 +120,24 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+@layer components {
+  /* Utility classes for the main page header container */
+  .page-container {
+    /* min-w-full h-full flex flex-col justify-start items-start gap-4 p-4 */
+    @apply min-w-full h-full flex flex-col justify-start items-start gap-4 p-4;
+  }
+
+  /* Utility classes for the header inner flex container */
+  .page-header {
+    /* w-full flex items-center justify-between */
+    @apply w-full flex items-center justify-between;
+  }
+
+  /* Utility classes for the main heading */
+  .page-header-heading {
+    /* font-semibold text-4xl */
+    @apply font-semibold text-4xl;
+  }
+}

@@ -1,5 +1,3 @@
-'use client'
-
 import FloatingElement from "./FloatingElement";
 
 const AnimatedBackground = () => {

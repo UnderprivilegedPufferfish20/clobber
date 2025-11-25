@@ -14,11 +14,11 @@ async function layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className='flex h-screen'
+      className='flex max-h-full h-full min-h-full'
     >
       <Sidebar />
-      <div className='flex flex-col flex-1 min-h-screen'>
-        <header className='flex items-center justify-between px-6 py-4 h-[65px] container'>
+      <div className='flex flex-col flex-1'>
+        <header className='flex items-center justify-between px-6 py-4 h-[65px] container w-full min-w-full max-w-full'>
           <BreadcrumbHeader projects={projects} />
           <div className='gap-2 flex items-center'> 
             <ModeToggle />
@@ -26,8 +26,8 @@ async function layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <Separator />
-        <div className='overflow-auto'>
-          <div className='flex-1 container text-accent-foreground'>
+        <div className='min-w-full max-w-full w-full'>
+          <div className='container text-accent-foreground min-w-full max-w-full w-full'>
             {children}
           </div>
         </div>

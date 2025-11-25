@@ -11,7 +11,7 @@ const page = async ({params, searchParams}: { params: { projectId: string, datab
 
   if (!sp.table) {
     return (
-      <div className='w-full h-screen flex items-center justify-center'>
+      <div className='w-full h-max min-h-max max-h-max flex items-center justify-center'>
         <div className='flex flex-col items-center gap-2'>
           <Table2Icon size={106}/>
           <p className='text-muted-foreground text-2xl'>No table selected</p>

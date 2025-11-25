@@ -5,8 +5,10 @@ import React from 'react'
 
 const Logo = ({
   fontSize = '2xl',
+  text = true,
   iconSize = 20,
 }: {
+  text?: boolean
   fontSize?: string,
   iconSize?: number
 }) => {
@@ -19,7 +21,9 @@ const Logo = ({
       )}
     >
       <SparklesIcon size={iconSize} className="text-indigo-400" />
-      <span className="text-2xl font-bold">ClobberDB</span>
+      {text && (
+        <span className="text-2xl font-bold">ClobberDB</span>
+      )}
     </Link>
   )
 }

@@ -1,5 +1,3 @@
-'use client'
-
 import React from 'react'
 import { Loader2Icon } from 'lucide-react'
 

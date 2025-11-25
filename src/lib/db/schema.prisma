@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -13,6 +12,8 @@ model User {
   email String @unique
   name String
   pfpUrl String
+
+  SharedProjects Project[] @relation("Invited To")
 
   projects Project[]
 }
@@ -26,6 +27,8 @@ model Project {
   updatedAt DateTime @updatedAt
 
   databases Database[]
+
+  collaborators User[] @relation("Invited To")
 
   owner User @relation(fields: [ownerId], references: [id])
 }

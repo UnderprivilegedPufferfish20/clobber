@@ -29,9 +29,9 @@ export default async function Page({ params }: { params: { projectId:string } })
   })
   
   return (
-    <div className="min-w-full h-full flex flex-col justify-start items-start gap-4 p-4">
-      <div className="w-full flex items-center justify-between">
-        <h1 className="font-semibold text-4xl">Databases</h1>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-header-heading">Databases</h1>
         <CreateDatabaseDialog triggerText="New Database" projectId={projectId}/>
       </div>
       <Separator />

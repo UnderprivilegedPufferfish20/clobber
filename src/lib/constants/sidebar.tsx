@@ -25,5 +25,5 @@ export const routes = [
     href: "/billing",
     label: "Billing",
     icon: CoinsIcon,
-  },
+  }
 ]

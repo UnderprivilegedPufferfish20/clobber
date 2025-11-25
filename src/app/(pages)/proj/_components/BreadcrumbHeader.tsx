@@ -17,6 +17,7 @@ import CreateProjectDialog from '@/app/(pages)/proj/_components/CreateProjectDia
 import Loader from '../../../../components/Loader';
 import { getProjectById } from '@/lib/actions/projects/getProjectById';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Props = { projects: Project[] };
 
@@ -57,7 +58,7 @@ export default function BreadcrumbHeader({ projects }: Props) {
   return (
     <div className="flex items-center gap-2">
       <MobileSidebar />
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-1'>
         <Link
           href={`/proj/${curId}`}
           className='text-xl text-black'
@@ -65,14 +66,14 @@ export default function BreadcrumbHeader({ projects }: Props) {
           {currentProject ? currentProject.name : <Loader />}
         </Link>
         <Popover open={openProject} onOpenChange={setOpenProject}>
-          <PopoverTrigger asChild className='px-2'>
+          <PopoverTrigger asChild>
             <Button 
               variant="outline" 
               role="combobox" 
               aria-expanded={openProject} 
-              className="w-fit justify-between items-center border-none shadow-none text-2xl"
+              className="w-fit justify-between items-center border-none shadow-none text-2xl !p-0 !px-0"
             >
-              <ChevronsUpDown className="opacity-50" />
+              <ChevronsUpDown className="opacity-50 p-0" />
             </Button>
           </PopoverTrigger>
 
@@ -118,14 +119,18 @@ export default function BreadcrumbHeader({ projects }: Props) {
       {/* Database Selector - Only show if dbId exists */}
       {dbId && (
         <>
-          <span className="text-2xl text-muted-foreground">/</span>
+          <span className="text-2xl text-muted-foreground mx-4">/</span>
 
           <div className='flex items-center gap-2'>
             <Link
               href={`/proj/${curId}/database/${dbId}`}
               className='text-xl text-black'
             >
-              {currentDatabase ? currentDatabase.name : <Loader sz={16}/>}
+              {currentDatabase ? currentDatabase.name : (
+                <div className="px-0">
+                  <Skeleton className="h-8 w-32" />
+                </div>
+              )}
             </Link>
             <Popover open={openDatabase} onOpenChange={setOpenDatabase}>
               <PopoverTrigger asChild>
@@ -133,7 +138,7 @@ export default function BreadcrumbHeader({ projects }: Props) {
                   variant="outline" 
                   role="combobox" 
                   aria-expanded={openDatabase} 
-                  className="w-fit justify-between items-center border-none shadow-none text-2xl"
+                  className="w-fit justify-between items-center border-none shadow-none text-2xl !p-0 !px-0"
                 >
                   <ChevronsUpDown className="opacity-50" />
                 </Button>
