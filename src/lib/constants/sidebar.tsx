@@ -1,4 +1,4 @@
-import { HomeIcon, DatabaseIcon, ShapesIcon, CoinsIcon } from "lucide-react";
+import { HomeIcon, DatabaseIcon, ShapesIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon } from "lucide-react";
 
 export const routes = [
   {
@@ -12,9 +12,14 @@ export const routes = [
     icon: DatabaseIcon,
   },
   {
+    href: "/buckets",
+    label: "Buckets",
+    icon: ShoppingBasketIcon,
+  },
+  {
     href: "/functions",
     label: "Functions",
-    icon: ShapesIcon,
+    icon: GitCompareArrows,
   },
   {
     href: "/billing",

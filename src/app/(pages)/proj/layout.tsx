@@ -18,7 +18,7 @@ async function layout({ children }: { children: React.ReactNode }) {
     >
       <Sidebar />
       <div className='flex flex-col flex-1 min-h-screen'>
-        <header className='flex items-center justify-between px-6 py-4 h-[50px] container'>
+        <header className='flex items-center justify-between px-6 py-4 h-[65px] container'>
           <BreadcrumbHeader projects={projects} />
           <div className='gap-2 flex items-center'> 
             <ModeToggle />

@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Clobber",
-  description: "Teching, but with AI",
+  description: "Upgrade your database",
 };
 
 const font = Manrope({subsets: ['latin']})

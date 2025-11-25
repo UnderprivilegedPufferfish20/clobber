@@ -4,6 +4,7 @@ import CreateDatabaseDialog from "./_components/CreateDatabaseDialog";
 import { Separator } from "@/components/ui/separator";
 import * as React from "react";
 import { DATA_TYPES } from "@/lib/types";
+import DatabaseTable from "./_components/DatabaseTable";
 
 
 export default async function Page({ params }: { params: { projectId:string } }) {
@@ -13,12 +14,17 @@ export default async function Page({ params }: { params: { projectId:string } })
 
   if (!project) throw new Error("Couldn't find project");
 
-  const data: Record<string, any[]> = {"id": [], "Created At": [], 'Name': [], 'Size (GB)': []}
+  const data: {
+    "Name": string[];
+    "ID": string[];
+    "Created At": string[];
+    "Size (GB)": string[];
+  } = {"ID": [], "Created At": [], 'Name': [], 'Size (GB)': []}
 
   project.databases.forEach(db => {
-    data['Size (GB)'].push(0.25)
-    data['id'].push(db.id)
-    data["Created At"].push(db.createdAt)
+    data['Size (GB)'].push(String(0.25))
+    data['ID'].push(db.id)
+    data["Created At"].push(db.createdAt.toLocaleDateString())
     data['Name'].push(db.name)
   })
   
@@ -29,11 +35,9 @@ export default async function Page({ params }: { params: { projectId:string } })
         <CreateDatabaseDialog triggerText="New Database" projectId={projectId}/>
       </div>
       <Separator />
-      <CustomDataTable
-        className="w-full h-full"
-        columns={{ 'Name': DATA_TYPES.STRING, "Created At": DATA_TYPES.DateTime, "id": DATA_TYPES.STRING, 'Size (GB)': DATA_TYPES.FLOAT, }}
+      <DatabaseTable
         data={data}
-        redirectOnClick
+        projectId={projectId}
       />
     </div>
   );

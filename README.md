@@ -1,1 +1,3 @@
-An AI google classroom app that allows students to get automatic feedback from teachers and teachers to auto-grade students' work
+## ClobberDB
+
+BaaS leverging AI for quick workflows and faster developments
