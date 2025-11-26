@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache' // Optional: use for Next.js cache i
 type FormDataType = z.infer<typeof inviteUsersSchema>
 
 // The main server action function
-export default async function addCollaborator(projectId: string, form: FormDataType) {
+export default async function addCollaborator(form: FormDataType, projectId: string) {
     const user = await getUser()
     
     if (!user) {
