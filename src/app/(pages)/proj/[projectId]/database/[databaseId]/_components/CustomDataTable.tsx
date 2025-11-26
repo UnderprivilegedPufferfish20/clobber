@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import { DATA_TYPES } from "@/lib/types";
 import { useRouter, usePathname } from "next/navigation";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../../../../../components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SqlFilter, FilterCondition } from "@/app/(pages)/proj/[projectId]/database/[databaseId]/_components/SQLFilter";
 import { isValidForType, coerceToDate } from "@/lib/utils";
 import { ColumnSchema, ColumnarData } from "@/lib/types/table";
@@ -70,7 +70,7 @@ export type CustomDataTableProps = {
   /** Optional message for when schema or data are falsy */
   noDataMessage?: string;
   /** Optional title of the table */
-  title?: string
+  title?: string;
 };
 
 /** Validate columnar data matches schema; returns row objects if valid or throws detailed Error */
@@ -136,7 +136,7 @@ function applyFilters(rows: Array<Record<string, unknown>>, filters: FilterCondi
       const columnValue = row[filter.column];
       const columnType = schema[filter.column];
 
-      let conditionMet: any;
+      let conditionMet = false;
 
       switch (filter.operator) {
         case "EQUALS":
@@ -187,7 +187,7 @@ function applyFilters(rows: Array<Record<string, unknown>>, filters: FilterCondi
           if (columnType === DATA_TYPES.DateTime) {
             const rowDate = coerceToDate(columnValue);
             const filterDate = coerceToDate(filter.value);
-            conditionMet = rowDate && filterDate && rowDate.getTime() > filterDate.getTime();
+            conditionMet = !!(rowDate && filterDate && rowDate.getTime() > filterDate.getTime());
           } else {
             const numValue = Number(columnValue);
             const filterNum = Number(filter.value);
@@ -199,7 +199,7 @@ function applyFilters(rows: Array<Record<string, unknown>>, filters: FilterCondi
           if (columnType === DATA_TYPES.DateTime) {
             const rowDate = coerceToDate(columnValue);
             const filterDate = coerceToDate(filter.value);
-            conditionMet = rowDate && filterDate && rowDate.getTime() < filterDate.getTime();
+            conditionMet = !!(rowDate && filterDate && rowDate.getTime() < filterDate.getTime());
           } else {
             const numValue = Number(columnValue);
             const filterNum = Number(filter.value);
@@ -211,7 +211,7 @@ function applyFilters(rows: Array<Record<string, unknown>>, filters: FilterCondi
           if (columnType === DATA_TYPES.DateTime) {
             const rowDate = coerceToDate(columnValue);
             const filterDate = coerceToDate(filter.value);
-            conditionMet = rowDate && filterDate && rowDate.getTime() >= filterDate.getTime();
+            conditionMet = !!(rowDate && filterDate && rowDate.getTime() >= filterDate.getTime());
           } else {
             const numValue = Number(columnValue);
             const filterNum = Number(filter.value);
@@ -223,7 +223,7 @@ function applyFilters(rows: Array<Record<string, unknown>>, filters: FilterCondi
           if (columnType === DATA_TYPES.DateTime) {
             const rowDate = coerceToDate(columnValue);
             const filterDate = coerceToDate(filter.value);
-            conditionMet = rowDate && filterDate && rowDate.getTime() <= filterDate.getTime();
+            conditionMet = !!(rowDate && filterDate && rowDate.getTime() <= filterDate.getTime());
           } else {
             const numValue = Number(columnValue);
             const filterNum = Number(filter.value);
@@ -300,7 +300,7 @@ export default function CustomDataTable({
   className,
   redirectOnClick,
   noDataMessage = "No data. Adjust filters or add rows.",
-  title
+  title,
 }: CustomDataTableProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -376,17 +376,21 @@ export default function CustomDataTable({
       columnVisibility: Object.fromEntries(allColumns.map((k) => [k, visibleCols.includes(k)])),
     },
     onSortingChange: setSorting,
-    // Use only what's available on the row/table to avoid outer closures
-    globalFilterFn: (row, _columnId, filterValue) => {
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: (row, columnId, filterValue) => {
       if (!filterValue) return true;
       const f = String(filterValue).toLowerCase();
-      const tbl = row.table;
-      const vis = tbl.getState().columnVisibility as Record<string, boolean>;
-      for (const c of tbl.getAllLeafColumns()) {
-        if (!vis[c.id]) continue;
-        const v = row.getValue(c.id);
+      
+      // Check all visible columns
+      for (const col of columns) {
+        const colId = col.id || (col as any).accessorKey;
+        if (!colId || !visibleCols.includes(colId)) continue;
+        
+        const v = row.getValue(colId);
         if (v == null) continue;
-        const isDate = (c.columnDef.meta as any)?.type === DATA_TYPES.DateTime;
+        
+        const colType = (col.meta as any)?.type;
+        const isDate = colType === DATA_TYPES.DateTime;
         const s = isDate ? coerceToDate(v)?.toISOString() : String(v);
         if ((s ?? "").toLowerCase().includes(f)) return true;
       }
@@ -421,7 +425,6 @@ export default function CustomDataTable({
 
   return (
     <div className={className}>
-
       {hasSchema && (
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <div className="flex items-center gap-4">
@@ -471,7 +474,9 @@ export default function CustomDataTable({
                         {{
                           asc: <ArrowUpNarrowWideIcon size={20} className="inline ml-2" />,
                           desc: <ArrowDownWideNarrowIcon size={20} className="inline ml-2" />,
-                        }[header.column.getIsSorted() as string] ?? <ChevronsUpDownIcon size={20} className="inline ml-2" />}
+                        }[header.column.getIsSorted() as string] ?? (
+                          header.column.getCanSort() ? <ChevronsUpDownIcon size={20} className="inline ml-2" /> : null
+                        )}
                       </div>
                     )}
                   </TableHead>
@@ -525,12 +530,13 @@ export default function CustomDataTable({
           <AddToTable />
           <div className="text-sm text-muted-foreground">
             {hasSchema && sqlFilters.length > 0 ? (
-              <div className="text-sm text-muted-foreground">Showing {filteredRows.length} of {baseRows.length} rows after filtering</div>
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredRows.length} of {baseRows.length} rows after filtering
+              </div>
             ) : (
               <>{table.getRowCount()} Rows</>
             )}
           </div>
-
         </div>
 
         <div className="flex items-center gap-1">
@@ -538,9 +544,9 @@ export default function CustomDataTable({
             variant="outline"
             size="icon"
             onClick={() => {
-              setOffset((p) => p - pageSize);
+              setOffset((p) => Math.max(0, p - pageSize));
             }}
-            disabled={pageSize > offset}
+            disabled={offset === 0}
             aria-label="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -571,7 +577,7 @@ export default function CustomDataTable({
                   onChange={(e) => setOffset(Number(e.target.value))}
                   onBlur={(e) => {
                     const num = Number(e.target.value);
-                    setOffset(!e.target.value ? 0 : isNaN(num) ? 0 : Math.max(0, Math.min(500, num)));
+                    setOffset(!e.target.value ? 0 : isNaN(num) ? 0 : Math.max(0, num));
                   }}
                   className="w-[52px] text-center"
                 />
@@ -588,6 +594,7 @@ export default function CustomDataTable({
             onClick={() => {
               setOffset((p) => p + pageSize);
             }}
+            disabled={offset + pageSize >= filteredRows.length}
             aria-label="Next page"
           >
             <ChevronRight className="h-4 w-4" />
