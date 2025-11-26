@@ -5,9 +5,13 @@ import { generateSchema } from '@/lib/utils'
 import { Table2Icon } from 'lucide-react'
 import React from 'react'
 
-const page = async ({params, searchParams}: { params: { projectId: string, databaseId: string }, searchParams:{ table: string }  }) => {
-  const p = await params
+const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database/[databaseId]">) => {
+
+  const p = await params;
   const sp = await searchParams
+
+  console.log("@@ params: ", p)
+  console.log("@@ search params: ", sp)
 
   if (!sp.table) {
     return (
@@ -20,7 +24,7 @@ const page = async ({params, searchParams}: { params: { projectId: string, datab
     )
   }
 
-  const table = await getTableById(sp.table)
+  const table = await getTableById(sp.table[0])
   if (!table) throw new Error("Couldn't find table");
 
   const schema = generateSchema(table)

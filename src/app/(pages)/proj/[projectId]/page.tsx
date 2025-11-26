@@ -7,12 +7,15 @@ import React from 'react'
 import InviteUsersDialog from './_components/InviteDialog'
 import { Separator } from '@/components/ui/separator'
 
-type Props = {
-  params: { projectId: string }
-}
 
-const page = async ({ params }: Props) => {
-  const projectId = (await params).projectId
+
+const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
+
+  const p = await params;
+
+  console.log("@@PARAMS: ", p)
+
+  const projectId = p.projectId
   const project = await getProjectById(projectId)
 
   if (!project) throw new Error("Project not found");

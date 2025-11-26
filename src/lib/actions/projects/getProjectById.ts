@@ -8,5 +8,14 @@ export async function getProjectById(id: string) {
     
   if (!user) throw new Error("No active user");
 
-  return await prisma.project.findUnique({where: { id }, include: { owner: true, databases: true, collaborators: true }})
+  return await prisma.project.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      collaborators: true,
+      owner: true,
+      databases: true
+    }
+  })
 }

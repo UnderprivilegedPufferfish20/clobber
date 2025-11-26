@@ -7,7 +7,7 @@ import { DATA_TYPES } from "@/lib/types";
 import DatabaseTable from "./_components/DatabaseTable";
 
 
-export default async function Page({ params }: { params: { projectId:string } }) {
+export default async function Page({ params }: PageProps<"/proj/[projectId]/database">) {
   const projectId = (await params).projectId
 
   const project = await getProjectById(projectId)

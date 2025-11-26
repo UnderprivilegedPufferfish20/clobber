@@ -83,7 +83,7 @@ const Sidebar = () => {
             
             return (
               <Tooltip key={route.href}>
-                <TooltipTrigger asChild>
+                <TooltipTrigger asChild className='w-12 h-12'>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -97,7 +97,7 @@ const Sidebar = () => {
                       }
                     `}
                   >
-                    <route.icon size={20} />
+                    <route.icon scale={5} />
                   </Button> 
                 </TooltipTrigger>
                 <TooltipContent side="right" className='text-md'>
