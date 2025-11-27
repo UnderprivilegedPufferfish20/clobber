@@ -5,7 +5,7 @@ import prisma from '@/lib/db';
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/google`
+  `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
 );
 
 export async function GET(request: NextRequest) {
