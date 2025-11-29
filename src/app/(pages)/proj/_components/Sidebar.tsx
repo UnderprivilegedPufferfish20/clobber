@@ -1,6 +1,6 @@
 'use client'
 
-import { MenuIcon } from 'lucide-react'
+import { MenuIcon, ChevronLeft, ChevronRight, LogInIcon, ArrowLeftToLine, ArrowRightFromLine } from 'lucide-react'
 import React, { useState } from 'react'
 import Logo from '@/components/Logo'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import path from 'path'
 
 
 /**
@@ -26,15 +25,16 @@ import path from 'path'
  * URL: /proj/P_ID/database/D_ID/...
  */
 const isInDatabaseView = (pathname: string): boolean => {
-    const segments = pathname.split('/').filter(Boolean);
-    // Check if the 3rd segment exists and is exactly 'database'
-    return segments.length >= 4 && segments[2] === 'database';
+  const segments = pathname.split('/').filter(Boolean);
+  // Check if the 3rd segment exists and is exactly 'database'
+  return segments.length >= 4 && segments[2] === 'database';
 };
 
 
 const Sidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const [isExpanded, setIsExpanded] = useState(false);
   
   // 1. Decide which routes and base path to use dynamically
   const inDbView = isInDatabaseView(pathname);
@@ -51,11 +51,6 @@ const Sidebar = () => {
   // Helper functions adapted for this dynamic setup
   const isRouteActive = (routeHref: string, currentPathname: string, basePath: string) => {
     const targetPath = routeHref === "" ? basePath : `${basePath}${routeHref}`;
-    
-    // Check for exact match for the home route, otherwise use startsWith for sub-routes
-    
-    // For all other routes, check if the current path starts with the target path
-    // and handle the trailing slash case to prevent partial matches like /dashboard matching /dashboards
     return currentPathname == targetPath;
   }
 
@@ -64,40 +59,50 @@ const Sidebar = () => {
     return `${basePath}${routeHref.startsWith('/') ? '' : '/'}${routeHref}`;
   }
 
-  // --- Render the narrow, icon-only sidebar ---
+  // --- Render the sidebar with expand toggle at the bottom ---
   return (
     <TooltipProvider>
-      {/* Set a consistent narrow width (e.g., 70px) */}
-      <div className='hidden relative md:block w-[70px] h-screen overflow-hidden bg-primary/5 dark:bg-secondary/30 dark:text-foreground text-muted-foreground border-r-2 border-separate'>
-        
-        {/* Logo Area */}
-        <div className="flex items-center justify-center border-b border-separate p-4 h-[66px] min-h-[66px] max-h-[66px]">
-          <Logo text={false}/> {/* Assumes your Logo component takes a text prop */}
-        </div>
+      <div 
+        className={`bg-gray-50 dark:bg-gray-950 dark:text-white hidden mt-[65px] md:flex flex-col justify-between overflow-y-clip text-muted-foreground border-r-2 border-separate transition-all duration-300 sticky top-0
+        ${isExpanded ? 'w-60 items-stretch' : 'w-[70px] items-center'}`}
+      >
 
-        {/* Navigation Links (Icons only + Tooltips) */}
-        <div className='flex flex-col p-2 gap-2 items-center'>
+        {/* Navigation Links */}
+        <div className='bg-gray-50 dark:bg-gray-950 dark:text-white relative flex flex-col p-2 gap-2 items-start pt-4 w-full'>
           {currentRoutes.map((route) => {
             const isActive = isRouteActive(route.href, pathname, basePath)
             const targetPath = constructPath(basePath, route.href)
             
-            return (
+            return isExpanded ? (
+              // Expanded view with labels
+              <Button
+                key={route.href}
+                variant="ghost"
+                onClick={() => router.push(targetPath)} 
+                className={`w-full justify-start gap-3 h-12 py-2! ${
+                  isActive
+                    ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white' 
+                    : 'text-black hover:bg-indigo-200 dark:text-white dark:hover:bg-secondary/50'
+                }`}
+              >
+                <route.icon size={32} />
+                <span className='font-semibold text-lg'>{route.label}</span>
+              </Button>
+            ) : (
+              // Collapsed view with tooltips
               <Tooltip key={route.href}>
                 <TooltipTrigger asChild className='w-12 h-12'>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => {
-                      router.push(targetPath)
-                    }} 
-                    className={`
-                      ${isActive
+                    onClick={() => router.push(targetPath)} 
+                    className={`${
+                      isActive
                         ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white' 
                         : 'text-black hover:bg-indigo-200 dark:text-white dark:hover:bg-secondary/50'
-                      }
-                    `}
+                    }`}
                   >
-                    <route.icon scale={5} />
+                    <route.icon size={20} />
                   </Button> 
                 </TooltipTrigger>
                 <TooltipContent side="right" className='text-md'>
@@ -107,6 +112,38 @@ const Sidebar = () => {
             )
           })}
         </div>
+
+        {/* Bottom expand / collapse control */}
+        <div className="w-full p-2 pb-4 flex">
+          {isExpanded ? (
+            <Button
+                variant="ghost"
+                onClick={() => setIsExpanded(false)} 
+                className={`w-full justify-start gap-3 h-12 hover:bg-indigo-200`}
+              >
+                <ArrowLeftToLine className="h-4 w-4" />
+                <span>Collapse sidebar</span>
+              </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsExpanded(true)} 
+                  className={`w-full justify-center gap-3 h-12 hover:bg-indigo-200`}
+                >
+                  <ArrowRightFromLine className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+
+              <TooltipContent side="right" className='text-md'>
+                Expand Sidebar
+              </TooltipContent>
+            </Tooltip>
+
+          )}
+        </div>
+
       </div>
     </TooltipProvider>
   )
@@ -140,40 +177,38 @@ export function MobileSidebar() {
 
   return (
     <div className="block border-separate bg-background md:hidden">
-      <nav className='container flex items-center justify-between p-8'>
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button variant={'ghost'} size={'icon'}>
-              <MenuIcon />
-            </Button>
-          </SheetTrigger>
-          <SheetContent className='w-[400px] sm:w-[540px]' side='left'>
-            <div className="flex flex-col h-full">
-              <Logo />
-              <div className="flex flex-col gap-1 p-2">
-                {currentRoutes.map((route) => {
-                  const isActive = isRouteActive(route.href, pathname, basePath)
-                  const targetPath = constructPath(basePath, route.href)
-                  
-                  return (
-                    // This uses the full-width mobile button style (text + icon)
-                    <button 
-                      key={route.href}
-                      onClick={() => {
-                        router.push(targetPath)
-                      }} 
-                      className={`flex p-2 rounded-md justify-start gap-2 bg-transparent text-black hover:bg-indigo-200 ${isActive && '!bg-indigo-500 !text-white'}`}
-                    >
-                      <route.icon size={20} />
-                      {route.label}
-                    </button>
-                  )
-                })}
-              </div>
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetTrigger asChild>
+          <Button variant={'ghost'} size={'icon'}>
+            <MenuIcon />
+          </Button>
+        </SheetTrigger>
+        <SheetContent className='w-[400px] sm:w-[540px]' side='left'>
+          <div className="flex flex-col h-full">
+            <Logo />
+            <div className="flex flex-col gap-1 p-2 mt-4">
+              {currentRoutes.map((route) => {
+                const isActive = isRouteActive(route.href, pathname, basePath)
+                const targetPath = constructPath(basePath, route.href)
+                
+                return (
+                  <button 
+                    key={route.href}
+                    onClick={() => {
+                      router.push(targetPath)
+                      setIsOpen(false)
+                    }} 
+                    className={`flex p-2 rounded-md justify-start gap-2 bg-transparent text-black hover:bg-indigo-200 ${isActive && '!bg-indigo-500 !text-white'}`}
+                  >
+                    <route.icon size={20} />
+                    {route.label}
+                  </button>
+                )
+              })}
             </div>
-          </SheetContent>
-        </Sheet>
-      </nav>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

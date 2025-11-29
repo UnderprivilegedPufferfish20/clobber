@@ -15,28 +15,35 @@ async function layout({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <div
-      className='flex max-h-full h-full min-h-full'
-    >
+    <div className="flex h-screen">
       <Sidebar />
-      <div className='flex flex-col flex-1'>
-        <header className='flex items-center justify-between px-6 py-4 h-[65px] container w-full min-w-full max-w-full'>
-          <BreadcrumbHeader projects={user.projects} sharedProjects={user.SharedProjects}/>
-          <div className='gap-2 flex items-center'> 
-            <ModeToggle />
-            <UserButton />
+      <div className="flex flex-col flex-1">
+        <header className="fixed top-0 left-0 right-0 z-100 bg-gray-50 border-b dark:bg-gray-950 dark:text-white">
+          <div className="flex items-center justify-between py-3 px-5 h-[65px]">
+            <BreadcrumbHeader
+              projects={user.projects}
+              sharedProjects={user.SharedProjects}
+            />
+            <div className="gap-2 flex items-center">
+              <ModeToggle />
+              <UserButton />
+            </div>
           </div>
         </header>
-        <Separator />
-        <div className='min-w-full max-w-full w-full'>
-          <div className='container text-accent-foreground min-w-full max-w-full w-full'>
-            {children}
+
+        {/* push content below header */}
+        <div className="pt-[65px]">
+          <div className="min-w-full max-w-full w-full">
+            <div className="container text-accent-foreground min-w-full max-w-full w-full">
+              {children}
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   )
+
+
 }
 
 export default layout

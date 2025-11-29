@@ -18,6 +18,7 @@ import Loader from '../../../../components/Loader';
 import { getProjectById } from '@/lib/actions/projects/getProjectById';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import Logo from '@/components/Logo';
 
 type Props = { projects: Project[], sharedProjects: Project[] };
 
@@ -57,12 +58,22 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
   const [view, setView] = useState<'my' | 'shared'>('my');
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3 w-full z-0">
+      {/* Logo on the far left - hidden on mobile since MobileSidebar has it */}
+      <div className="hidden md:block">
+        <Logo text={false} iconSize={32}/>
+      </div>
+      
+      {/* Mobile Sidebar - only shows on mobile */}
       <MobileSidebar />
-      <div className='flex items-center gap-1'>
+      
+      {/* Separator after logo */}
+      <div className="hidden md:block h-8 w-px ml-2 bg-black/10 rotate-12 dark:bg-white/20" />
+      
+      <div className='flex items-center gap-0'>
         <Link
           href={`/proj/${curId}`}
-          className='text-xl text-black'
+          className='text-xl text-muted-foreground rounded-lg dark:hover:bg-gray-900 hover:bg-gray-100 transition-colors duration-200 p-2'
         >
           {currentProject ? currentProject.name : <Loader />}
         </Link>
@@ -72,13 +83,13 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
               variant="outline" 
               role="combobox" 
               aria-expanded={openProject} 
-              className="w-fit justify-between items-center border-none shadow-none text-2xl !p-0 !px-0"
+              className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-2xl !px-2 text-muted-foreground hover:text-foreground"
             >
               <ChevronsUpDown className="opacity-50 p-0" />
             </Button>
           </PopoverTrigger>
 
-          <PopoverContent className="w-[260px] p-0">
+          <PopoverContent className="w-[260px] p-0 z-100">
             <Command>
               <CommandInput placeholder="Search project..." className="h-9" />
               <CommandList>
@@ -145,16 +156,16 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
       {/* Database Selector - Only show if dbId exists */}
       {dbId && (
         <>
-          <span className="text-2xl text-muted-foreground mx-4">/</span>
+          <div className="hidden md:block h-8 w-px m-0 bg-black/10 rotate-12 dark:bg-white/20" />
 
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-0'>
             <Link
               href={`/proj/${curId}/database/${dbId}`}
-              className='text-xl text-black'
+              className='text-xl text-muted-foreground rounded-lg dark:hover:bg-gray-900 hover:bg-gray-100  transition-colors duration-200 p-2'
             >
               {currentDatabase ? currentDatabase.name : (
                 <div className="px-0">
-                  <Skeleton className="h-8 w-32" />
+                  <Skeleton className="h-8 w-32 bg-gray-200" />
                 </div>
               )}
             </Link>
@@ -164,13 +175,13 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
                   variant="outline" 
                   role="combobox" 
                   aria-expanded={openDatabase} 
-                  className="w-fit justify-between items-center border-none shadow-none text-2xl !p-0 !px-0"
+                  className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-2xl !px-2 text-muted-foreground hover:text-foreground"
                 >
                   <ChevronsUpDown className="opacity-50" />
                 </Button>
               </PopoverTrigger>
 
-              <PopoverContent className="w-[260px] p-0">
+              <PopoverContent className="w-[260px] p-0 z-100">
                 <Command>
                   <CommandInput placeholder="Search database..." className="h-9" />
                   <CommandList>

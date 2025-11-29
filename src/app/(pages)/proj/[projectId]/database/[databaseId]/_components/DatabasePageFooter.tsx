@@ -43,7 +43,7 @@ const DatabasePageFooter = ({
   const isTemporaryTable = (tableId: string) => tableId.startsWith('temp-');
 
   return (
-    <div className={'fixed bottom-0 left-[70px] right-0 border-t bg-white backdrop-blur z-50 h-16'}>
+    <div className={'hidden fixed bottom-0 left-[70px] right-0 border-t bg-white backdrop-blur z-50 h-16'}>
       <CreateTableDialog 
         databaseId={databaseId}
         triggerText='Create your first table'
