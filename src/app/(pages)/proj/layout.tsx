@@ -15,10 +15,10 @@ async function layout({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen ">
       <Sidebar />
       <div className="flex flex-col flex-1">
-        <header className="fixed top-0 left-0 right-0 z-100 bg-gray-50 border-b dark:bg-gray-950 dark:text-white">
+        <header className="fixed top-0 left-0 right-0 z-100 bg-gray-50 border-b dark:bg-black/5 dark:text-white">
           <div className="flex items-center justify-between py-3 px-5 h-[65px]">
             <BreadcrumbHeader
               projects={user.projects}
@@ -34,7 +34,7 @@ async function layout({ children }: { children: React.ReactNode }) {
         {/* push content below header */}
         <div className="pt-[65px]">
           <div className="min-w-full max-w-full w-full">
-            <div className="container text-accent-foreground min-w-full max-w-full w-full">
+            <div className="container text-accent-foreground min-w-full max-w-full w-full ">
               {children}
             </div>
           </div>

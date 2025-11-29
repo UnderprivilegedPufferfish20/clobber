@@ -63,12 +63,12 @@ const Sidebar = () => {
   return (
     <TooltipProvider>
       <div 
-        className={`bg-gray-50 dark:bg-gray-950 dark:text-white hidden mt-[65px] md:flex flex-col justify-between overflow-y-clip text-muted-foreground border-r-2 border-separate transition-all duration-300 sticky top-0
+        className={`bg-gray-50 dark:bg-black/5 dark:text-white hidden mt-[65px] md:flex flex-col justify-between overflow-y-clip text-muted-foreground border-r-2 border-separate transition-all duration-300 sticky top-0
         ${isExpanded ? 'w-60 items-stretch' : 'w-[70px] items-center'}`}
       >
 
         {/* Navigation Links */}
-        <div className='bg-gray-50 dark:bg-gray-950 dark:text-white relative flex flex-col p-2 gap-2 items-start pt-4 w-full'>
+        <div className='bg-gray-50 dark:bg-black/5 dark:text-white relative flex flex-col p-2 gap-2 items-start pt-4 w-full'>
           {currentRoutes.map((route) => {
             const isActive = isRouteActive(route.href, pathname, basePath)
             const targetPath = constructPath(basePath, route.href)
@@ -81,11 +81,11 @@ const Sidebar = () => {
                 onClick={() => router.push(targetPath)} 
                 className={`w-full justify-start gap-3 h-12 py-2! ${
                   isActive
-                    ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white' 
-                    : 'text-black hover:bg-indigo-200 dark:text-white dark:hover:bg-secondary/50'
+                    ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
+                    : 'text-black hover:bg-indigo-200! dark:text-white dark:hover:text-black!'
                 }`}
               >
-                <route.icon size={32} />
+                <route.icon size={32} className='dark:hover:fill-black'/>
                 <span className='font-semibold text-lg'>{route.label}</span>
               </Button>
             ) : (
@@ -98,8 +98,8 @@ const Sidebar = () => {
                     onClick={() => router.push(targetPath)} 
                     className={`${
                       isActive
-                        ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white' 
-                        : 'text-black hover:bg-indigo-200 dark:text-white dark:hover:bg-secondary/50'
+                        ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
+                        : 'text-black hover:bg-indigo-200! dark:text-white dark:hover:text-black!'
                     }`}
                   >
                     <route.icon size={20} />
