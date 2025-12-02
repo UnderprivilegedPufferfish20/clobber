@@ -85,3 +85,15 @@ export function generateSchema(tbl: Table): ColumnSchema | undefined{
 
   return schema;
 }
+
+
+export function generateProjectPassword() {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let suffix = '';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        suffix += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+
+    return "cdb_" + suffix
+}

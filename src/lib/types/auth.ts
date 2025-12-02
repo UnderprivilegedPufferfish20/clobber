@@ -11,3 +11,12 @@ export interface AuthContextType {
   signOut: () => void;
   loading: boolean;
 }
+
+
+export interface UserCookie {
+  id: string,
+  tokens: {
+    access: string,
+    refresh: string
+  }
+}

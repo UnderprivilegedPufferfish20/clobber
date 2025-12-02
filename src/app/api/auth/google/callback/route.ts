@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '@/lib/db';
+import B_URL from '@/lib/constants';
+import { UserCookie } from '@/lib/types/auth';
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -65,7 +67,31 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(redirectUrl);
 
-    response.cookies.set('user', JSON.stringify(user), {
+    const backend_auth_res = await fetch(`${B_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email
+      })
+    })
+
+    if (!backend_auth_res.ok) {
+      throw new Error(`Auth Error: backend login failed: ${backend_auth_res.statusText}`)
+    }
+
+    const data = await backend_auth_res.json()
+
+    const cookie_val: UserCookie = {
+      id: user.id,
+      tokens: {
+        access: data.access_token,
+        refresh: data.refresh_token
+      }
+    }
+
+    response.cookies.set('user', JSON.stringify(cookie_val), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
