@@ -13,8 +13,6 @@ const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
 
   const p = await params;
 
-  console.log("@@PARAMS: ", p)
-
   const projectId = p.projectId
   const project = await getProjectById(projectId)
 

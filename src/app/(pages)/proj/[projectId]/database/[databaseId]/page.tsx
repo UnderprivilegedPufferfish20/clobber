@@ -1,7 +1,6 @@
 import CustomDataTable from '@/app/(pages)/proj/[projectId]/database/[databaseId]/_components/CustomDataTable'
 import { getTableById } from '@/lib/actions/tables/getTableById'
 import { ColumnarData } from '@/lib/types/table'
-import { generateSchema } from '@/lib/utils'
 import { Table2Icon } from 'lucide-react'
 import React from 'react'
 
@@ -9,9 +8,6 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
 
   const p = await params;
   const sp = await searchParams
-
-  console.log("@@ params: ", p)
-  console.log("@@ search params: ", sp)
 
   if (!sp.table) {
     return (

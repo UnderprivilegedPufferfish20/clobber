@@ -24,6 +24,8 @@ export default async function authFetch(
     if (first_res.ok) {
         return await first_res.json()
     } else if (first_res.status === 401) {
+        console.log("Token expired; refreshing...")
+
         const ref_response = await fetch(`${B_URL}/auth/refresh`, {
             method: "POST",
             body: JSON.stringify({

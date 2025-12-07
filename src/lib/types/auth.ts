@@ -1,9 +1,4 @@
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  picture?: string;
-}
+import { User } from "../db/generated";
 
 export interface AuthContextType {
   user: User | null;

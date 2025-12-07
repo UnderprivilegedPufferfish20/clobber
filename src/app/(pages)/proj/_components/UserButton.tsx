@@ -12,6 +12,7 @@ const UserButton = () => {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -24,7 +25,7 @@ const UserButton = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  if (loading) return <Loader />
+  if (loading) return <Loader sz={40}/>
   if (!user) return null;
 
   const handleMenuClick = (action: string) => {
@@ -33,11 +34,11 @@ const UserButton = () => {
     switch(action) {
       case 'settings':
         // Handle settings navigation
-        console.log('Navigate to settings')
+
         break
       case 'account':
         // Handle account navigation
-        console.log('Navigate to account')
+
         break
       case 'logout':
         // Handle logout
@@ -60,7 +61,7 @@ const UserButton = () => {
         "
       >
         <Image
-          src={user.picture || ""}
+          src={user.pfpUrl || ""}
           width={24}
           height={24}
           alt={user.name}

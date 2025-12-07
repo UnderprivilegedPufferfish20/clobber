@@ -1,7 +1,8 @@
 'use server'
 
 import prisma from "@/lib/db";
-import { User, UserCookie } from "@/lib/types/auth";
+import { User } from "@/lib/db/generated";
+import { UserCookie } from "@/lib/types/auth";
 import { cookies } from "next/headers"
 
 export async function getUser(): Promise<User | null> {
@@ -30,7 +31,6 @@ export async function getUser(): Promise<User | null> {
 
     if (!full_user) throw new Error("GetUser - user in cookie not found");
 
-    console.log('getUser - found user:', full_user.email); // Debug log
     return full_user;
   } catch (error) {
     console.error('getUser - error parsing user cookie:', error);
