@@ -14,7 +14,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from '../../../../components/ui/separator';
 import CreateProjectDialog from '@/app/(pages)/proj/_components/CreateProjectDialog';
-import Loader from '../../../../components/Loader';
 import { getProjectById } from '@/lib/actions/projects/getProjectById';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -67,26 +66,20 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
       {/* Mobile Sidebar - only shows on mobile */}
       <MobileSidebar />
       
-      {/* Separator after logo */}
-      <div className="hidden md:block h-8 w-px ml-2 bg-black/10 rotate-12 dark:bg-white/20" />
+      <HeaderSeperator />
       
       <div className='flex items-center gap-0'>
-        <Link
-          href={`/proj/${curId}`}
-          className='text-xl text-muted-foreground rounded-lg dark:hover:bg-gray-900 hover:bg-gray-100 transition-colors duration-200 p-2'
-        >
-          {currentProject ? currentProject.name : <Loader />}
-        </Link>
+        
+        <HeaderRouteName 
+          route={`/proj/${curId}`}
+          current={currentProject}
+        />
+
         <Popover open={openProject} onOpenChange={setOpenProject}>
           <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              role="combobox" 
-              aria-expanded={openProject} 
-              className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-2xl !px-2 text-muted-foreground hover:text-foreground"
-            >
-              <ChevronsUpDown className="opacity-50 p-0" />
-            </Button>
+            <ComboboxButton 
+                expanded={openProject}
+              />
           </PopoverTrigger>
 
           <PopoverContent className="w-[260px] p-0 z-100">
@@ -156,29 +149,20 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
       {/* Database Selector - Only show if dbId exists */}
       {dbId && (
         <>
-          <div className="hidden md:block h-8 w-px m-0 bg-black/10 rotate-12 dark:bg-white/20" />
+          <HeaderSeperator />
 
           <div className='flex items-center gap-0'>
-            <Link
-              href={`/proj/${curId}/database/${dbId}`}
-              className='text-xl text-muted-foreground rounded-lg dark:hover:bg-gray-900 hover:bg-gray-100  transition-colors duration-200 p-2'
-            >
-              {currentDatabase ? currentDatabase.name : (
-                <div className="px-0">
-                  <Skeleton className="h-8 w-32 bg-gray-200" />
-                </div>
-              )}
-            </Link>
+            
+            <HeaderRouteName 
+              route={`/proj/${curId}/database/${dbId}`}
+              current={currentDatabase}
+            />
+            
             <Popover open={openDatabase} onOpenChange={setOpenDatabase}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  role="combobox" 
-                  aria-expanded={openDatabase} 
-                  className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-2xl !px-2 text-muted-foreground hover:text-foreground"
-                >
-                  <ChevronsUpDown className="opacity-50" />
-                </Button>
+                <ComboboxButton 
+                  expanded={openDatabase}
+                />
               </PopoverTrigger>
 
               <PopoverContent className="w-[260px] p-0 z-100">
@@ -216,4 +200,49 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
       )}
     </div>
   );
+}
+
+function ComboboxButton(
+  { expanded }: { expanded: boolean }
+) {
+  return (
+    <Button 
+      variant="outline" 
+      role="combobox" 
+      aria-expanded={expanded} 
+      className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-2xl !px-2 text-muted-foreground hover:text-foreground"
+    >
+      <ChevronsUpDown className="opacity-50 p-0" />
+    </Button>
+
+  )
+}
+
+interface HasName {
+  name: string
+}
+
+function HeaderRouteName<T extends HasName | null>(
+  {route, current}: {
+    route: string, current: T
+  }
+) {
+  return (
+    <Link
+      href={route}
+      className='text-xl text-muted-foreground rounded-lg dark:hover:bg-gray-900 hover:bg-gray-100  transition-colors duration-200 p-2'
+    >
+      {current ? current.name : (
+        <div className="px-0">
+          <Skeleton className="h-8 w-32 bg-gray-200" />
+        </div>
+      )}
+    </Link>
+  )
+}
+
+function HeaderSeperator() {
+  return (
+    <div className="hidden md:block h-8 w-0.5 ml-2 bg-black/10 rotate-12 dark:bg-white/20" />
+  )
 }
