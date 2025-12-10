@@ -210,7 +210,7 @@ function ComboboxButton(
       variant="outline" 
       role="combobox" 
       aria-expanded={expanded} 
-      className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-2xl !px-2 text-muted-foreground hover:text-foreground"
+      className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-2xl px-2! text-muted-foreground hover:text-foreground"
     >
       <ChevronsUpDown className="opacity-50 p-0" />
     </Button>

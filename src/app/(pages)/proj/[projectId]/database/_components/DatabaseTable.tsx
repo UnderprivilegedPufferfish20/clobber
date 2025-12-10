@@ -30,23 +30,28 @@ import {
   InboxIcon,
   CopyIcon,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import CreateDatabaseDialog from "./CreateDatabaseDialog";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export type CustomDataTableProps = {
   data: {
-    "Name": string[];
-    "ID": string[];
+    Name: string[];
+    ID: string[];
     "Created At": string[];
     "Size (GB)": string[];
   };
-  projectId: string
+  projectId: string;
 };
 
 type RowData = {
-  "Name": string;
-  "ID": string;
+  Name: string;
+  ID: string;
   "Created At": string;
   "Size (GB)": string;
 };
@@ -54,25 +59,30 @@ type RowData = {
 /** Convert columnar data to row objects */
 function materializeRows(columnar: CustomDataTableProps["data"]): RowData[] {
   const keys = ["Name", "ID", "Created At", "Size (GB)"] as const;
-  
+
   // Check that all arrays exist and have the same length
   const lengths = keys.map((k) => {
     const arr = columnar[k];
-    if (!Array.isArray(arr)) throw new Error(`Data for column "${k}" must be an array`);
+    if (!Array.isArray(arr))
+      throw new Error(`Data for column "${k}" must be an array`);
     return arr.length;
   });
-  
+
   const uniqueLens = new Set(lengths);
   if (uniqueLens.size > 1) {
-    throw new Error(`All data arrays must have the same length. Got lengths: ${keys.map((k, i) => `${k}=${lengths[i]}`).join(", ")}`);
+    throw new Error(
+      `All data arrays must have the same length. Got lengths: ${keys
+        .map((k, i) => `${k}=${lengths[i]}`)
+        .join(", ")}`
+    );
   }
 
   const rowCount = lengths[0] ?? 0;
-  
+
   // Turn into row objects
   return Array.from({ length: rowCount }, (_, r) => ({
-    "Name": columnar["Name"][r] ?? "",
-    "ID": columnar["ID"][r] ?? "",
+    Name: columnar["Name"][r] ?? "",
+    ID: columnar["ID"][r] ?? "",
     "Created At": columnar["Created At"][r] ?? "",
     "Size (GB)": columnar["Size (GB)"][r] ?? "",
   }));
@@ -80,11 +90,17 @@ function materializeRows(columnar: CustomDataTableProps["data"]): RowData[] {
 
 // Cell renderer for text values
 function CellRenderer({ value }: { value: unknown }) {
-  if (value == null) return <span className="text-muted-foreground">—</span>;
+  if (value == null)
+    return <span className="text-muted-foreground">—</span>;
   return <span>{String(value)}</span>;
 }
 
-export default function CustomDataTable({ data: columnar, projectId }: CustomDataTableProps) {
+export default function CustomDataTable({
+  data: columnar,
+  projectId,
+}: CustomDataTableProps) {
+  const router = useRouter();
+
   const columnKeys = ["Name", "ID", "Created At", "Size (GB)"] as const;
 
   // Build tanstack columns
@@ -105,14 +121,14 @@ export default function CustomDataTable({ data: columnar, projectId }: CustomDat
     try {
       return materializeRows(columnar);
     } catch (e) {
-      if (process.env.NODE_ENV !== "production") console.error("CustomDataTable validation error:", e);
+      if (process.env.NODE_ENV !== "production")
+        console.error("CustomDataTable validation error:", e);
       return [] as RowData[];
     }
   }, [columnar]);
-  
+
   const [searchValue, setSearchValue] = useState<string>("");
   const [searchBy, setSearchBy] = useState<"Name" | "ID">("Name");
-  // Filter rows based on search
 
   const filteredRows = useMemo(() => {
     if (!searchValue.trim()) return baseRows;
@@ -125,14 +141,15 @@ export default function CustomDataTable({ data: columnar, projectId }: CustomDat
 
   // Offset (pre-pagination)
   const [offset, setOffset] = useState<number>(0);
-  const offsetRows = useMemo(() => filteredRows.slice(offset), [filteredRows, offset]);
+  const offsetRows = useMemo(
+    () => filteredRows.slice(offset),
+    [filteredRows, offset]
+  );
 
   const [pageSize, setPageSize] = useState<number>(5);
 
   // Sorting
   const [sorting, setSorting] = useState<SortingState>([]);
-  
-  // Search state
 
   const table = useReactTable({
     data: offsetRows,
@@ -162,135 +179,167 @@ export default function CustomDataTable({ data: columnar, projectId }: CustomDat
 
   const hasRows = table.getRowModel().rows.length > 0;
 
-  const fullLength = baseRows.length
+  const fullLength = baseRows.length;
 
   return (
     <div className="min-w-full w-full max-w-full">
-        <div className="flex items-center gap-3 mb-4 justify-between">
-          <div className="relative w-full max-w-sm">
-            <Input
-              placeholder={`Search by ${searchBy}...`}
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              className="w-[440px] p-6"
-            />
+      <div className="flex items-center gap-3 mb-4 justify-between">
+        <div className="relative w-full max-w-sm">
+          <Input
+            placeholder={`Search by ${searchBy}...`}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className="w-[440px] p-6"
+          />
 
-            <div className="absolute -right-10 top-0 h-full flex items-center gap-2">
-              <Button
-                variant={searchBy === "Name" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSearchBy("Name")}
-              >
-                Name
-              </Button>
-              <Button
-                variant={searchBy === "ID" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSearchBy("ID")}
-              >
-                ID
-              </Button>
+          <div className="absolute -right-10 top-0 h-full flex items-center gap-2">
+            <Button
+              variant={searchBy === "Name" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSearchBy("Name")}
+            >
+              Name
+            </Button>
+            <Button
+              variant={searchBy === "ID" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSearchBy("ID")}
+            >
+              ID
+            </Button>
+          </div>
+          {searchValue && (
+            <div className="absolute top-1/4 -right-42 text-md text-muted-foreground">
+              {table.getRowCount()} Results of {fullLength}
             </div>
-            {searchValue && (
-              <div className="absolute top-1/4 -right-42 text-md text-muted-foreground">
-                {table.getRowCount()} Results of {fullLength}
-              </div>
-            )}
-
-          </div>
-
-          <div className="flex">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                setOffset((p) => Math.max(0, p - pageSize));
-              }}
-              disabled={offset === 0}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Input
-                    value={pageSize}
-                    onChange={(e) => setPageSize(Number(e.target.value))}
-                    onBlur={(e) => {
-                      const num = Number(e.target.value);
-                      setPageSize(!e.target.value ? 1 : isNaN(num) ? 1 : Math.max(1, Math.min(500, num)));
-                    }}
-                    className="w-[52px] text-center"
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Page Size</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Input
-                    value={offset}
-                    onChange={(e) => setOffset(Number(e.target.value))}
-                    onBlur={(e) => {
-                      const num = Number(e.target.value);
-                      setOffset(!e.target.value ? 0 : isNaN(num) ? 0 : Math.max(0, num));
-                    }}
-                    className="w-[52px] text-center"
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Offset</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                setOffset((p) => p + pageSize);
-              }}
-              disabled={offset + pageSize >= filteredRows.length}
-              aria-label="Next page"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          )}
         </div>
+
+        <div className="flex">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              setOffset((p) => Math.max(0, p - pageSize));
+            }}
+            disabled={offset === 0}
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Input
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  onBlur={(e) => {
+                    const num = Number(e.target.value);
+                    setPageSize(
+                      !e.target.value
+                        ? 1
+                        : isNaN(num)
+                        ? 1
+                        : Math.max(1, Math.min(500, num))
+                    );
+                  }}
+                  className="w-16 max-w-16 min-w-16 text-center"
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Page Size</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Input
+                  value={offset}
+                  onChange={(e) => setOffset(Number(e.target.value))}
+                  onBlur={(e) => {
+                    const num = Number(e.target.value);
+                    setOffset(
+                      !e.target.value
+                        ? 0
+                        : isNaN(num)
+                        ? 0
+                        : Math.max(0, num)
+                    );
+                  }}
+                  className="w-16 max-w-16 min-w-16 text-center"
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Offset</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              setOffset((p) => p + pageSize);
+            }}
+            disabled={offset + pageSize >= filteredRows.length}
+            aria-label="Next page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
       {/* Table */}
       <div className="rounded-md border">
-        <ShadTable>
-          <TableHeader className="flex-none">
+        <ShadTable className="w-full table-fixed">
+          <TableHeader>
             {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id} className="flex-none relative">
-                {hg.headers.map((header) => (
-                  <TableHead key={header.id} className="whitespace-nowrap bg-accent flex-none pl-8">
-                    {header.isPlaceholder ? null : (
-                      <div
-                        className={`${header.column.getCanSort() ? "cursor-pointer select-none" : undefined} flex items-center`}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <span className="flex-none">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
+              <TableRow key={hg.id} className="relative">
+                {hg.headers.map((header, index) => {
+                  const isLast = index === hg.headers.length - 1;
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className="whitespace-nowrap bg-accent pl-8 relative"
+                      style={{ width: header.getSize() }}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={`${
+                            header.column.getCanSort()
+                              ? "cursor-pointer select-none"
+                              : ""
+                          } flex items-center`}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <span className="flex-none">
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                          </span>
+                          {/* Fixed-width icon container to prevent shifting */}
+                          <span className="inline-flex ml-2 w-5 justify-center">
+                            {{
+                              asc: <ArrowUpNarrowWide size={20} />,
+                              desc: <ArrowDownWideNarrow size={20} />,
+                            }[
+                              header.column.getIsSorted() as string
+                            ] ?? <ChevronsUpDown size={20} />}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Put row count inside the LAST header cell, not directly in <tr> */}
+                      {isLast && (
+                        <span className="text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 text-sm">
+                          {fullLength} Rows
                         </span>
-                        <span className="inline-flex ml-2 w-5">
-                          {{
-                            asc: <ArrowUpNarrowWide size={20} />,
-                            desc: <ArrowDownWideNarrow size={20} />,
-                          }[header.column.getIsSorted() as string] ?? <ChevronsUpDown size={20} />}
-                        </span>
-                      </div>
-                    )}
-                  </TableHead>
-                ))}
-                <div className="text-muted-foreground absolute right-2 text-md top-1/4">
-                  {fullLength} Rows
-                </div>
+                      )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -301,18 +350,19 @@ export default function CustomDataTable({ data: columnar, projectId }: CustomDat
                 <TableCell colSpan={4}>
                   <div>
                     {!searchValue ? (
-
-                    <div className="flex flex-col gap-2 items-center justify-center m-4">
-                      <InboxIcon size={106}/>
-                      <h1 className="text-xl">No databases here yet.</h1>
-                      <CreateDatabaseDialog
-                        projectId={projectId}
-                        triggerText="Start the First"
-                      />
-                    </div>
+                      <div className="flex flex-col gap-2 items-center justify-center m-4 p-8">
+                        <InboxIcon size={106} />
+                        <h1 className="text-xl">No databases here yet.</h1>
+                        <CreateDatabaseDialog
+                          projectId={projectId}
+                          triggerText="Start the First"
+                        />
+                      </div>
                     ) : (
                       <div className="text-xl flex flex-col gap-2 items-center justify-center m-4">
-                        <h1 className="text-muted-foreground text-center mb-3">No results for "{searchValue}"</h1>
+                        <h1 className="text-muted-foreground text-center mb-3">
+                          No results for "{searchValue}"
+                        </h1>
                         <Button
                           onClick={() => setSearchValue("")}
                           className="m-1/2"
@@ -327,26 +377,42 @@ export default function CustomDataTable({ data: columnar, projectId }: CustomDat
             ) : (
               table.getRowModel().rows.map((row) => (
                 <TableRow
-                  className="hover:cursor-pointer" 
-                  key={row.id} 
-                  onClick={() => redirect(`/proj/${projectId}/database/${row.getValue("ID")!}`)}
+                  className="hover:cursor-pointer"
+                  key={row.id}
+                  onClick={() =>
+                    router.push(
+                      `/proj/${projectId}/database/${row.getValue("ID")!}`
+                    )
+                  }
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="relative group pl-8">
+                    <TableCell
+                      key={cell.id}
+                      className="relative group pl-8"
+                      style={{ width: cell.column.getSize() }}
+                    >
                       <div className="flex items-center justify-between">
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
+                            e.stopPropagation();
                             const text = cell.getValue() as string;
-                            navigator.clipboard.writeText(text?.toString() || '');
+                            navigator.clipboard.writeText(
+                              text?.toString() || ""
+                            );
                           }}
                           className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 p-1 hover:bg-accent rounded absolute -left-1"
                           aria-label="Copy to clipboard"
                         >
-                          <CopyIcon size={14} className="text-muted-foreground" />
+                          <CopyIcon
+                            size={14}
+                            className="text-muted-foreground"
+                          />
                         </button>
                         <span className="flex-1">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
                         </span>
                       </div>
                     </TableCell>

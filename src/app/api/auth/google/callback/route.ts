@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '@/lib/db';
-import B_URL from '@/lib/constants';
+import {B_URL} from '@/lib/constants';
 import { UserCookie } from '@/lib/types/auth';
 import { generateProjectPassword } from '@/lib/utils';
 

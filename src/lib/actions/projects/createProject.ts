@@ -6,7 +6,7 @@ import { getUser } from "../auth/getUser";
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import B_URL from "@/lib/constants";
+import {B_URL} from "@/lib/constants";
 import authFetch from "../auth/authFetch";
 import { generateProjectPassword } from "@/lib/utils";
 

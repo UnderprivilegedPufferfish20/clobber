@@ -7,7 +7,7 @@ import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import authFetch from "../auth/authFetch";
-import B_URL from "@/lib/constants";
+import {B_URL, OWNER_NAME } from "@/lib/constants";
 
 export default async function createDatabase(
   form: z.infer<typeof createDatabaseSchema>,
@@ -36,14 +36,13 @@ export default async function createDatabase(
 
   if (!result) throw new Error("No result");
 
-  await fetch(`${B_URL}/db/new`, {
+  await authFetch(`${B_URL}/project/exec`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `${project?.con_string}`
     },
     body: JSON.stringify({
-      "name": data.name,
+      "query": `CREATE DATABASE ${data.name} OWNER ${OWNER_NAME} ENCODING 'UTF8'`,
       "con_str": project.con_string
     })
   })

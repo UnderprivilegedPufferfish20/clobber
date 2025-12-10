@@ -1,4 +1,3 @@
-import CustomDataTable from "@/app/(pages)/proj/[projectId]/database/[databaseId]/_components/CustomDataTable";
 import { getProjectById } from "@/lib/actions/projects/getProjectById";
 import CreateDatabaseDialog from "./_components/CreateDatabaseDialog";
 import { Separator } from "@/components/ui/separator";
