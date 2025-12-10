@@ -8,5 +8,5 @@ export async function getDatabaseById(id: string) {
     
   if (!user) throw new Error("No active user");
 
-  return await prisma.database.findUnique({where: { id }, include: { project: true, tables:true }})
+  return await prisma.database.findUnique({where: { id }, include: { project: true }})
 }

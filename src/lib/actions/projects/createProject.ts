@@ -22,24 +22,29 @@ export default async function createProject(
 
   if (!success) throw new Error("Invalid form data");
 
+  const password = generateProjectPassword()
+
+  const backend_result = await authFetch(`${B_URL}/project/new`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      project_name: data.name,
+      password
+    })
+  })
+
+  
+
   const result = await prisma.project.create({
     data: {
       ownerId: user.id,
-      name: data.name
+      name: data.name,
+      superuser_pwd: password,
+      con_string: backend_result.connection_string
     }
   })
 
   if (!result) throw new Error("No result");
-
-  const backend_create_proj_res = await authFetch(`${B_URL}/project/new`, {
-    method: "POST",
-    body: JSON.stringify({
-      project_name: data.name,
-      password: generateProjectPassword()
-    })
-  })
-
-  //TODO: Map port to project name in database and store password
 
 
   revalidatePath('/proj')
