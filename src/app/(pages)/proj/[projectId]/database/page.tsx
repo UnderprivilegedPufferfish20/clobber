@@ -28,16 +28,20 @@ export default async function Page({ params }: PageProps<"/proj/[projectId]/data
   })
   
   return (
-    <div className="page-container">
+    <div className="page-container p-12">
       <div className="page-header">
         <h1 className="page-header-heading">Databases</h1>
         <CreateDatabaseDialog triggerText="New Database" projectId={projectId}/>
       </div>
       <Separator />
-      <DatabaseTable
-        data={data}
-        projectId={projectId}
-      />
+
+      <div className="mt-5">
+        <DatabaseTable
+          data={data}
+          projectId={projectId}
+        />
+      </div>
+
     </div>
   );
 }

@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MobileSidebar } from '@/app/(pages)/proj/_components/Sidebar';
-import { Project } from '@/lib/db/generated';
+import { Database, Project } from '@/lib/db/generated';
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,11 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
 
-type Props = { projects: Project[], sharedProjects: Project[] };
+type Props = { 
+  projects: ProjectWithDatabases[], 
+  sharedProjects: ProjectWithDatabases[]  
+};
+type ProjectWithDatabases = Project & { databases: Database[] };
 
 export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
   const pathname = usePathname();
@@ -59,7 +63,7 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
   return (
     <div className="flex items-center gap-3 w-full z-0">
       {/* Logo on the far left - hidden on mobile since MobileSidebar has it */}
-      <div className="hidden md:block">
+      <div className="hidden md:block mr-2">
         <Logo text={false} iconSize={32}/>
       </div>
       
@@ -76,7 +80,7 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
         />
 
         <Popover open={openProject} onOpenChange={setOpenProject}>
-          <PopoverTrigger asChild>
+          <PopoverTrigger>
             <ComboboxButton 
                 expanded={openProject}
               />
@@ -94,7 +98,7 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
                     onClick={() => setView('my')}
                     className={cn(
                       'flex-1 text-sm p-1 rounded-sm transition-colors',
-                      view === 'my' ? 'bg-white shadow-sm font-medium' : 'text-muted-foreground'
+                      view === 'my' ? 'bg-white shadow-sm font-medium dark:text-black' : 'text-muted-foreground'
                     )}
                   >
                     My Projects
@@ -103,7 +107,7 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
                     onClick={() => setView('shared')}
                     className={cn(
                       'flex-1 text-sm p-1 rounded-sm transition-colors',
-                      view === 'shared' ? 'bg-white shadow-sm font-medium' : 'text-muted-foreground'
+                      view === 'shared' ? 'bg-white shadow-sm font-medium dark:text-black' : 'text-muted-foreground'
                     )}
                   >
                     Shared with me
@@ -159,7 +163,7 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
             />
             
             <Popover open={openDatabase} onOpenChange={setOpenDatabase}>
-              <PopoverTrigger asChild>
+              <PopoverTrigger>
                 <ComboboxButton 
                   expanded={openDatabase}
                 />
@@ -206,14 +210,13 @@ function ComboboxButton(
   { expanded }: { expanded: boolean }
 ) {
   return (
-    <Button 
-      variant="outline" 
+    <div 
       role="combobox" 
       aria-expanded={expanded} 
-      className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-2xl px-2! text-muted-foreground hover:text-foreground"
+      className="bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit justify-between items-center border-none p-2! shadow-none text-2xl text-muted-foreground hover:text-foreground rounded-md"
     >
       <ChevronsUpDown className="opacity-50 p-0" />
-    </Button>
+    </div>
 
   )
 }
@@ -243,6 +246,6 @@ function HeaderRouteName<T extends HasName | null>(
 
 function HeaderSeperator() {
   return (
-    <div className="hidden md:block h-8 w-0.5 ml-2 bg-black/10 rotate-12 dark:bg-white/20" />
+    <div className="hidden md:block h-5 w-0.5 bg-black/10 rotate-12 dark:bg-white/20" />
   )
 }
