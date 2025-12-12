@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ColumnTableProps } from "@/lib/types/table";
+import { ColumnTableProps } from "@/lib/types";
 
 
 export function DataTable<

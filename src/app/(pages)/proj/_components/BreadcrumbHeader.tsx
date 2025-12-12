@@ -14,10 +14,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from '../../../../components/ui/separator';
 import CreateProjectDialog from '@/app/(pages)/proj/_components/CreateProjectDialog';
-import { getProjectById } from '@/lib/actions/projects/getProjectById';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
+import { getProjectById } from '@/lib/actions/projects';
 
 type Props = { 
   projects: ProjectWithDatabases[], 

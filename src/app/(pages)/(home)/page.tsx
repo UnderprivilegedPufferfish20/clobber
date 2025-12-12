@@ -7,11 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { redirect } from 'next/navigation';
 import Chip from './_components/Chip';
 import FeatureCard from './features/_components/FeatureCard';
-import { plans, FEATURES, stats, additionalFeatures } from '@/lib/constants/homepage';
-import { PlansRecord, Feature, Plan } from '@/lib/types/homepage';
+import { PlansRecord, Feature, Plan } from '@/lib/types';
+import { HomepageAdditionalFeatures, HomepageFeatures, HomepageStats, PricePlans } from '@/lib/constants';
 
-const typedPlans: PlansRecord = plans; // Assuming plans matches this structure
-const typedFeatures: Feature[] = FEATURES; // Assuming FEATURES matches Feature[]
+const typedPlans: PlansRecord = PricePlans; // Assuming plans matches this structure
+const typedFeatures: Feature[] = HomepageFeatures; // Assuming FEATURES matches Feature[]
 
 export default function HomePage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
@@ -142,7 +142,7 @@ export default function HomePage() {
 
         {/* Stats Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-          {stats.map((stat:any, index:any) => (
+          {HomepageStats.map((stat:any, index:any) => (
             <div key={index} className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
               <div className="text-3xl font-bold text-white mb-2">{stat.value}</div>
               <div className="text-indigo-300 text-sm font-medium">{stat.label}</div>
@@ -272,7 +272,7 @@ export default function HomePage() {
                 </h4>
                 
                 <div className="space-y-6 mb-8">
-                  {additionalFeatures.map((feature, index) => (
+                  {HomepageAdditionalFeatures.map((feature, index) => (
                     <div key={index} className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
                       <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                         {feature.icon}

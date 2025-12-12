@@ -1,9 +1,9 @@
-import { getProjectById } from "@/lib/actions/projects/getProjectById";
 import CreateDatabaseDialog from "./_components/CreateDatabaseDialog";
 import { Separator } from "@/components/ui/separator";
 import * as React from "react";
 import { DATA_TYPES } from "@/lib/types";
 import DatabaseTable from "./_components/DatabaseTable";
+import { getProjectById } from "@/lib/actions/projects";
 
 
 export default async function Page({ params }: PageProps<"/proj/[projectId]/database">) {

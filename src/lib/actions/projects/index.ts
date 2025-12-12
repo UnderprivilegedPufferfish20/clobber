@@ -1,16 +1,69 @@
-'use server'
+'use server';
 
-import { prisma } from '@/lib/db' // Adjust the import path for your Prisma client instance
-import { getUser } from '@/lib/actions/auth/getUser' // Adjust the import path for your auth helper
-import { inviteUsersSchema } from '@/lib/types/schemas/inviteUsersSchema' // Adjust the import path for your Zod schema
-import { z } from 'zod'
-import { revalidatePath } from 'next/cache' // Optional: use for Next.js cache invalidation
 
-// Define the shape of your form data expected by the action
-type FormDataType = z.infer<typeof inviteUsersSchema>
+import z from "zod";
+import { getUser } from "../auth";
+import prisma from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import fs from 'fs/promises';
+import { generateProjectPassword, getConnectionString, getDataDirectory } from "@/lib/utils";
+import { allocatePort, initializeDatabase } from "../database";
+import { createProjectSchema, inviteUsersSchema } from "@/lib/types/schemas";
 
-// The main server action function
-export default async function addCollaborator(form: FormDataType, projectId: string) {
+export async function getProjectById(id: string) {
+  const user = await getUser()
+    
+  if (!user) throw new Error("No active user");
+
+  return await prisma.project.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      collaborators: true,
+      owner: true,
+      databases: true,
+    }
+  })
+}
+
+export default async function createProject(
+  form: z.infer<typeof createProjectSchema>,
+  ownerId: string
+) {
+  const { success, data } = createProjectSchema.safeParse(form);
+  if (!success) throw new Error("Invalid form data");
+
+  // ✅ Only generate these ONCE
+  const password = generateProjectPassword();
+  const port = await allocatePort();
+
+  const dataDir = getDataDirectory(data.name);
+  const connectionString = getConnectionString(port, password);
+
+  const exists = await fs.stat(dataDir).then(() => true).catch(() => false);
+  if (exists) {
+    // This state is dangerous: cluster exists but no DB record → password/port unknown
+    throw new Error(
+      `Data directory already exists for "${data.name}" but no Project record was found. ` +
+      `Delete ${dataDir} or adopt/reset it explicitly.`
+    );
+  }
+
+  await initializeDatabase(dataDir, password, port);
+
+
+  return await prisma.project.create({
+    data: {
+      ownerId,
+      name: data.name,
+      superuser_pwd: password,
+      con_string: connectionString
+    },
+  });
+}
+
+export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, projectId: string) {
     const user = await getUser()
     
     if (!user) {
@@ -84,3 +137,4 @@ export default async function addCollaborator(form: FormDataType, projectId: str
     // Adjust the path to match your project details page URL structure
     revalidatePath(`/dashboard/projects/${projectId}`); 
 }
+

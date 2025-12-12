@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '@/lib/db';
-import {B_URL} from '@/lib/constants';
-import { UserCookie } from '@/lib/types/auth';
-import { generateProjectPassword } from '@/lib/utils';
+import createProject from '@/lib/actions/projects';
+import { startPostgres, verifyConnection } from '@/lib/actions/database';
+import { getDataDirectory } from '@/lib/utils';
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -49,28 +49,10 @@ export async function GET(request: NextRequest) {
 
     let redirectUrl: string;
     let projectId: string;
-    let authData: any;
 
     // Authenticate with backend first (needed for creating projects)
     
     if (existingUser) {
-
-        const backend_auth_res = await fetch(`${B_URL}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: user.id,
-            name: user.name,
-            email: user.email
-          })
-        });
-    
-        if (!backend_auth_res.ok) {
-          throw new Error(`Auth Error: backend login failed: ${backend_auth_res.statusText}`);
-        }
-    
-        authData = await backend_auth_res.json();
-      // User exists - check if they have projects
 
       if (existingUser.projects && existingUser.projects.length > 0) {
         // User has projects - redirect to most recent
@@ -82,37 +64,34 @@ export async function GET(request: NextRequest) {
       } else {
         // User has no projects - create one
 
-        const projectPassword = generateProjectPassword();
         const projectName = `${existingUser.name.split(' ')[0]}'s Project`;
 
-        const createProjectRes = await fetch(`${B_URL}/project/new`, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${authData.access_token}`
-          },
-          body: JSON.stringify({
-            project_name: projectName,
-            password: projectPassword
-          })
-        });
+        const new_project = await createProject({ name: projectName }, user.id)
 
-        if (!createProjectRes.ok) {
-          const errorText = await createProjectRes.text();
-          throw new Error(`Failed to create project: ${errorText}`);
+        const port = Number(new_project.con_string.split(":")[3].split("/")[0])
+
+        console.log('About to start postgres on port:', port);
+    
+        try {
+          await startPostgres(
+            getDataDirectory(projectName),
+            port
+          );
+          console.log('Postgres started successfully');
+        } catch (error) {
+          console.error('Failed to start postgres:', error);
+          throw new Error(`Failed to start postgres: ${error}`);
         }
 
-        const create_project_res_data = await createProjectRes.json()
+        try {
+          console.log('Verifying connection...');
+          await verifyConnection(port, new_project.superuser_pwd);
+          console.log('Connection verified successfully');
+        } catch (error) {
+          console.error('Failed to verify connection:', error);
+          throw new Error(`Failed to verify connection: ${error}`);
+        }
 
-
-        const new_project = await prisma.project.create({
-          data: {
-            con_string: create_project_res_data.connection_string,
-            name: projectName,
-            superuser_pwd: projectPassword,
-            ownerId: user.id
-          }
-        })
 
         projectId = new_project.id
       }
@@ -128,59 +107,37 @@ export async function GET(request: NextRequest) {
         } 
       });
 
-      const backend_auth_res = await fetch(`${B_URL}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: user.id,
-            name: user.name,
-            email: user.email
-          })
-        });
-    
-        if (!backend_auth_res.ok) {
-          throw new Error(`Auth Error: backend login failed: ${backend_auth_res.statusText}`);
-        }
-    
-        authData = await backend_auth_res.json();
-
-      // Create first project via backend API
-      const projectPassword = generateProjectPassword();
       const projectName = `${newUser.name.split(' ')[0]}'s Project`;
 
-      const createProjectRes = await fetch(`${B_URL}/project/new`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${authData.access_token}`
-        },
-        body: JSON.stringify({
-          project_name: projectName,
-          password: projectPassword
-        })
-      });
+      const new_project = await createProject({ name: projectName }, user.id)
 
-      if (!createProjectRes.ok) {
-        const errorText = await createProjectRes.text();
-        throw new Error(`Failed to create project: ${errorText}`);
+      const port = Number(new_project.con_string.split(":")[3].split("/")[0])
+
+      console.log('About to start postgres on port:', port);
+    
+      try {
+        await startPostgres(
+          getDataDirectory(projectName),
+          port
+        );
+        console.log('Postgres started successfully');
+      } catch (error) {
+        console.error('Failed to start postgres:', error);
+        throw new Error(`Failed to start postgres: ${error}`);
       }
 
-      const projectData = await createProjectRes.json();
-
-      const new_project = await prisma.project.create({
-          data: {
-            con_string: projectData.connection_string,
-            name: projectName,
-            superuser_pwd: projectPassword,
-            ownerId: user.id
-          }
-        })
-
-        projectId = new_project.id
+      try {
+        console.log('Verifying connection...');
+        await verifyConnection(port, new_project.superuser_pwd);
+        console.log('Connection verified successfully');
+      } catch (error) {
+        console.error('Failed to verify connection:', error);
+        throw new Error(`Failed to verify connection: ${error}`);
+      }
 
 
 
-      projectId = projectData.project_id;
+      projectId = new_project.id;
     }
 
     redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/proj/${projectId}`;
@@ -188,15 +145,8 @@ export async function GET(request: NextRequest) {
     // Set up response with cookie
     const response = NextResponse.redirect(redirectUrl);
 
-    const cookie_val: UserCookie = {
-      id: user.id,
-      tokens: {
-        access: authData.access_token,
-        refresh: authData.refresh_token
-      }
-    };
 
-    response.cookies.set('user', JSON.stringify(cookie_val), {
+    response.cookies.set('user', JSON.stringify(user), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -207,6 +157,10 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('OAuth callback error:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=oauth_error`);
+    // Add the specific error message to the redirect for debugging
+    const errorMessage = error instanceof Error ? error.message : 'oauth_error';
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/?error=${encodeURIComponent(errorMessage)}`
+    );
   }
 }

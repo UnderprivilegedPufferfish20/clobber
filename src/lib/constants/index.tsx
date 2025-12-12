@@ -1,6 +1,86 @@
-import { InfinityIcon, Database, BarChart3, Headphones, Sparkles, ServerCog, Boxes, GitBranch, TestTube, Zap, Globe, Shield, Users } from "lucide-react";
+import path from "path";
+import os from 'os';
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap } from "lucide-react";
+import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
 
-export const plans = {
+export const PORT_FILE = path.join(os.tmpdir(), 'nextjs_postgres_next_port.txt');
+export const INITIAL_PORT = 1025;
+
+
+
+
+export const B_URL: string = process.env.BACKEND_URL!
+export const OWNER_NAME: string = "clobberdb_owner"
+
+export const SUPERUSER_NAME = 'clobberdb_owner';
+
+export const SidebarRoutes = [
+  {
+    href: "",
+    label: "Home",
+    icon: HomeIcon,
+  },
+  {
+    href: "/database",
+    label: "Databases",
+    icon: DatabaseIcon,
+  },
+  {
+    href: "/buckets",
+    label: "Buckets",
+    icon: ShoppingBasketIcon,
+  },
+  {
+    href: "/functions",
+    label: "Functions",
+    icon: GitCompareArrows,
+  },
+  {
+    href: "/billing",
+    label: "Billing",
+    icon: CoinsIcon,
+  }
+]
+
+export const DatabaseSidebarRoutes = [
+  {
+    href: "",
+    label: "Home",
+    icon: HomeIcon,
+  },
+  {
+    href: "/schema",
+    label: "Schema",
+    icon: MapIcon,
+  },
+  {
+    href: "/auth",
+    label: "Auth",
+    icon: Key,
+  },
+  {
+    href: "/data-api",
+    label: "API",
+    icon: CableIcon,
+  },
+  {
+    href: "/backups",
+    label: "Backups",
+    icon: RefreshCcwDotIcon,
+  },
+  {
+    href: "/branches",
+    label: "Branches",
+    icon: GitBranchIcon,
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: CogIcon,
+  }
+]
+
+export const PricePlans = {
     monthly: {
       name: "Professional",
       price: 29,
@@ -43,20 +123,20 @@ export const plans = {
   };
 
 
-    export const additionalFeatures = [
+export const HomepageAdditionalFeatures = [
     { icon: <Globe className="w-5 h-5" />, title: "Global CDN", description: "Lightning-fast content delivery worldwide" },
     { icon: <Shield className="w-5 h-5" />, title: "Enterprise Security", description: "Bank-level encryption and compliance" },
     { icon: <Users className="w-5 h-5" />, title: "Team Collaboration", description: "Real-time collaboration tools" },
     { icon: <Headphones className="w-5 h-5" />, title: "24/7 Support", description: "Round-the-clock expert assistance" }
-  ];
+];
 
-  export const stats = [
-    { value: "99.9%", label: "Uptime SLA" },
-    { value: "< 100ms", label: "Response Time" },
-    { value: "150+", label: "Integrations" },
-    { value: "50K+", label: "Happy Customers" }
-  ];
-export const FEATURES = [
+export const HomepageStats = [
+  { value: "99.9%", label: "Uptime SLA" },
+  { value: "< 100ms", label: "Response Time" },
+  { value: "150+", label: "Integrations" },
+  { value: "50K+", label: "Happy Customers" }
+];
+export const HomepageFeatures = [
   {
     title: 'Unlimited Projects',
     description: 'Create, organize, and ship without limits. Spin up sandboxes or production apps on demand.',

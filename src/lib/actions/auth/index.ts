@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/db";
 import { User } from "@/lib/db/generated";
-import { UserCookie } from "@/lib/types/auth";
+import { UserCookie } from "@/lib/types";
 import { cookies } from "next/headers"
 
 export async function getUser(): Promise<User | null> {
@@ -21,7 +21,7 @@ export async function getUser(): Promise<User | null> {
       return null;
     }
 
-    const user = JSON.parse(userCookie.value) as UserCookie;
+    const user = JSON.parse(userCookie.value) as User;
 
     const full_user = await prisma.user.findUnique({
       where: {
@@ -40,16 +40,4 @@ export async function getUser(): Promise<User | null> {
 
 export async function getUserById(id: string) {
   return await prisma.user.findUnique({where: {id}, include: { projects: { include: { databases: true } }   , SharedProjects: { include: { databases: true } } }})
-}
-
-export async function getUserCookie(): Promise<UserCookie | null> {
-  const cookiejar = await cookies()
-
-  const user_cookie = cookiejar.get("user");
-
-  if (!user_cookie || !user_cookie.value) return null;
-
-  const data = JSON.parse(user_cookie.value)
-
-  return data as UserCookie;
 }

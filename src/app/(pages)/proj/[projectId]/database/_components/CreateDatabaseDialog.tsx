@@ -2,7 +2,7 @@
 
 import CustomDialogHeader from '@/components/CustomDialogHeader';
 import { Button } from '@/components/ui/button';
-import { createDatabaseSchema } from '@/lib/types/schemas/createDatabaseSchema';
+
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { CpuIcon, Loader2, ServerIcon } from 'lucide-react';
 import React, { useCallback, useState } from 'react'
@@ -21,7 +21,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import createDatabase from '@/lib/actions/database/createDatabase';
+import { createDatabaseSchema } from '@/lib/types/schemas';
+import { executeQuery } from '@/lib/actions/database';
+import { getProjectById } from '@/lib/actions/projects';
+import { OWNER_NAME } from '@/lib/constants';
+
 
 const CreateDatabaseDialog = ({ 
   triggerText, 
@@ -39,7 +43,10 @@ const CreateDatabaseDialog = ({
 
   const { mutate, isPending } = useMutation({
     mutationFn: (form: z.infer<typeof createDatabaseSchema>) => 
-      createDatabase(form, projectId),
+      executeQuery({
+        query: `CREATE DATABASE ${form.name} OWNER ${OWNER_NAME} ENCODING 'UTF8'`,
+        projectId
+      }),
     onSuccess: () => {
       toast.success("Database Created", { id:"create-Database" });
       form.reset()

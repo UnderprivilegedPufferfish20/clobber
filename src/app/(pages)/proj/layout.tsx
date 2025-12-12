@@ -4,8 +4,7 @@ import { ModeToggle } from '@/app/(pages)/proj/_components/ThemeModeToggle'
 import { Separator } from '@/components/ui/separator'
 import UserButton from './_components/UserButton'
 import React from 'react'
-import { getUser, getUserById } from '@/lib/actions/auth/getUser'
-import { getProjectById } from '@/lib/actions/projects/getProjectById'
+import { getUser, getUserById } from '@/lib/actions/auth'
 
 async function layout({ children }: { children: React.ReactNode }) {
 

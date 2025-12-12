@@ -2,10 +2,9 @@
 
 import CustomDialogHeader from '@/components/CustomDialogHeader';
 import { Button } from '@/components/ui/button';
-import {inviteUsersSchema} from '@/lib/types/schemas/inviteUsersSchema';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { CpuIcon, Loader2, ServerIcon, UserPlus, UserPlusIcon, Users2Icon } from 'lucide-react';
-import React, { useCallback, useState } from 'react'
+import { Loader2, UserPlusIcon, Users2Icon } from 'lucide-react';
+import { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form';
 import {z} from 'zod'
 import {zodResolver} from '@hookform/resolvers/zod'
@@ -21,8 +20,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import createDatabase from '@/lib/actions/database/createDatabase';
-import inviteUser from '@/lib/actions/projects/inviteUsers';
+import { inviteUsersSchema } from '@/lib/types/schemas';
+import { addCollaborator } from '@/lib/actions/projects';
 
 const InviteUsersDialog = ({ 
   triggerText, 
@@ -40,7 +39,7 @@ const InviteUsersDialog = ({
 
   const { mutate, isPending } = useMutation({
     mutationFn: (form: z.infer<typeof inviteUsersSchema>) => 
-      inviteUser(form, projectId),
+      addCollaborator(form, projectId),
     onSuccess: () => {
       toast.success("Collaborator Added", { id:"invite-user" });
       form.reset()

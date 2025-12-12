@@ -2,7 +2,6 @@
 
 import CustomDialogHeader from '@/components/CustomDialogHeader';
 import { Button } from '@/components/ui/button';
-import { createProjectSchema } from '@/lib/types/schemas/createProjectSchema';
 import { Dialog } from '@/components/ui/dialog';
 import { DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2, Plus, ServerIcon } from 'lucide-react';
@@ -22,9 +21,16 @@ import {
 import { Input } from '@/components/ui/input';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import createProject from '@/lib/actions/projects/createProject';
+import createProject from '@/lib/actions/projects';
+import { createProjectSchema } from '@/lib/types/schemas';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 const CreateProjectDialog = ({ triggerText }: {triggerText?: string }) => {
+  const r = useRouter()
+
+  const { user } = useAuth()
+
   const [open, setOpen] = useState(false);
 
   const form = useForm<z.infer<typeof createProjectSchema>>({
@@ -33,9 +39,10 @@ const CreateProjectDialog = ({ triggerText }: {triggerText?: string }) => {
   })
 
   const { mutate, isPending } = useMutation({
-    mutationFn: createProject,
-    onSuccess: () => {
+    mutationFn: (form: z.infer<typeof createProjectSchema>) => createProject(form, user.id),
+    onSuccess: ({ id }) => {
       toast.success("Project Created", { id:"create-credential" });
+      r.push(`/proj/${id}`)
       form.reset()
       setOpen(false);
     },

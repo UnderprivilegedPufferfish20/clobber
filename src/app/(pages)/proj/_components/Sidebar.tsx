@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-// Import both sets of routes
-import { routes as dbRoutes } from '@/lib/constants/databaseSidebar'
-import { routes as projRoutes } from '@/lib/constants/sidebar' 
+
 
 // Import tooltip components
 import {
@@ -18,6 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { DatabaseSidebarRoutes, SidebarRoutes } from '@/lib/constants'
 
 
 /**
@@ -39,7 +38,7 @@ const Sidebar = () => {
   // 1. Decide which routes and base path to use dynamically
   const inDbView = isInDatabaseView(pathname);
   
-  const currentRoutes = inDbView ? dbRoutes : projRoutes;
+  const currentRoutes = inDbView ? DatabaseSidebarRoutes : SidebarRoutes;
   
   // Base path calculation is dynamic:
   const segments = pathname.split('/').filter(Boolean);
@@ -159,7 +158,7 @@ export function MobileSidebar() {
   const router = useRouter()
   
   const inDbView = isInDatabaseView(pathname);
-  const currentRoutes = inDbView ? dbRoutes : projRoutes;
+  const currentRoutes = inDbView ? DatabaseSidebarRoutes : SidebarRoutes;
   const segments = pathname.split('/').filter(Boolean);
   const basePath = inDbView 
     ? '/' + segments.slice(0, 4).join('/') 
