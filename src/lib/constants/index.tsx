@@ -1,18 +1,8 @@
-import path from "path";
-import os from 'os';
 import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
 
-export const PORT_FILE = path.join(os.tmpdir(), 'nextjs_postgres_next_port.txt');
-export const INITIAL_PORT = 1025;
 
 
-
-
-export const B_URL: string = process.env.BACKEND_URL!
-export const OWNER_NAME: string = "clobberdb_owner"
-
-export const SUPERUSER_NAME = 'clobberdb_owner';
 
 export const SidebarRoutes = [
   {

@@ -39,5 +39,5 @@ export async function getUser(): Promise<User | null> {
 }
 
 export async function getUserById(id: string) {
-  return await prisma.user.findUnique({where: {id}, include: { projects: { include: { databases: true } }   , SharedProjects: { include: { databases: true } } }})
+  return await prisma.user.findUnique({where: {id}, include: { projects: true   , SharedProjects: true }})
 }

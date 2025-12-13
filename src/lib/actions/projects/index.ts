@@ -5,9 +5,8 @@ import z from "zod";
 import { getUser } from "../auth";
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import fs from 'fs/promises';
-import { generateProjectPassword, getConnectionString, getDataDirectory } from "@/lib/utils";
-import { allocatePort, initializeDatabase } from "../database";
+import { generateProjectPassword } from "@/lib/utils";
+import { applyTenantGrants, createTenantDatabase } from "../database";
 import { createProjectSchema, inviteUsersSchema } from "@/lib/types/schemas";
 
 export async function getProjectById(id: string) {
@@ -22,7 +21,6 @@ export async function getProjectById(id: string) {
     include: {
       collaborators: true,
       owner: true,
-      databases: true,
     }
   })
 }
@@ -31,36 +29,118 @@ export default async function createProject(
   form: z.infer<typeof createProjectSchema>,
   ownerId: string
 ) {
-  const { success, data } = createProjectSchema.safeParse(form);
-  if (!success) throw new Error("Invalid form data");
+  console.log('\n🎯 === CREATE PROJECT STARTED ===');
+  console.log('Owner ID:', ownerId);
+  console.log('Project name:', form.name);
 
-  // ✅ Only generate these ONCE
-  const password = generateProjectPassword();
-  const port = await allocatePort();
+  const user = await getUser();
+  if (!user) {
+    console.error('❌ No active user found');
+    throw new Error('No active user');
+  }
+  console.log('✅ User authenticated:', user.id);
 
-  const dataDir = getDataDirectory(data.name);
-  const connectionString = getConnectionString(port, password);
-
-  const exists = await fs.stat(dataDir).then(() => true).catch(() => false);
-  if (exists) {
-    // This state is dangerous: cluster exists but no DB record → password/port unknown
-    throw new Error(
-      `Data directory already exists for "${data.name}" but no Project record was found. ` +
-      `Delete ${dataDir} or adopt/reset it explicitly.`
-    );
+  const parsed = createProjectSchema.safeParse(form);
+  if (!parsed.success) {
+    console.error('❌ Invalid form data:', parsed.error);
+    throw new Error('Invalid form data');
   }
 
-  await initializeDatabase(dataDir, password, port);
+  const password = generateProjectPassword();
+  console.log('✅ Generated project password (length:', password.length, ')');
 
+  // Validate environment variables before proceeding
+  const connectionName = process.env.CLOUD_SQL_CONNECTION_NAME;
+  const adminUser = process.env.CLOUD_SQL_ADMIN_USER;
+  const adminPassword = process.env.CLOUD_SQL_ADMIN_PASSWORD;
 
-  return await prisma.project.create({
+  console.log('🔍 Checking environment variables:', {
+    hasConnectionName: !!connectionName,
+    hasAdminUser: !!adminUser,
+    hasAdminPassword: !!adminPassword,
+    connectionName: connectionName || 'MISSING',
+    adminUser: adminUser || 'MISSING',
+  });
+
+  if (!connectionName || !adminUser || !adminPassword) {
+    const missing = [
+      !connectionName && 'CLOUD_SQL_CONNECTION_NAME',
+      !adminUser && 'CLOUD_SQL_ADMIN_USER',
+      !adminPassword && 'CLOUD_SQL_ADMIN_PASSWORD',
+    ].filter(Boolean);
+    
+    console.error('❌ Missing environment variables:', missing);
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+
+  // create project first to get a stable uuid for db/user names
+  console.log('\n📝 Creating Prisma project record...');
+  const project = await prisma.project.create({
     data: {
       ownerId,
-      name: data.name,
-      superuser_pwd: password,
-      con_string: connectionString
+      name: parsed.data.name,
+      db_name: 'PENDING',
+      db_user: 'PENDING',
+      db_pwd: password,
     },
   });
+  console.log('✅ Prisma project created:', {
+    id: project.id,
+    name: project.name,
+  });
+
+  try {
+    console.log('\n🏗️  Creating tenant database...');
+    const { dbName, dbUser } = await createTenantDatabase({
+      projectUuid: project.id,
+      projectName: project.name,
+      password,
+    });
+
+    console.log('✅ Tenant database created:', { dbName, dbUser });
+
+    console.log('\n🔐 Applying tenant grants...');
+    await applyTenantGrants({
+      connectionName,
+      adminUser,
+      adminPassword,
+      dbName,
+      dbUser,
+    });
+
+    console.log('✅ Grants applied successfully');
+
+    console.log('\n💾 Updating Prisma project with database credentials...');
+    const updatedProject = await prisma.project.update({
+      where: { id: project.id },
+      data: {
+        db_name: dbName,
+        db_user: dbUser,
+        db_pwd: password,
+      },
+    });
+
+    console.log('✅ Project updated with credentials');
+    console.log('✅ === CREATE PROJECT COMPLETED ===\n');
+    
+    return updatedProject;
+  } catch (error) {
+    console.error('\n❌ === CREATE PROJECT FAILED ===');
+    console.error('Error details:', error);
+    
+    console.log('🧹 Cleaning up pending project...');
+    try {
+      await prisma.project.delete({
+        where: { id: project.id },
+      });
+      console.log('✅ Pending project cleaned up');
+    } catch (cleanupError) {
+      console.error('❌ Failed to clean up project:', cleanupError);
+    }
+    
+    console.log('❌ === CREATE PROJECT CLEANUP COMPLETED ===\n');
+    throw error;
+  }
 }
 
 export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, projectId: string) {
@@ -73,7 +153,6 @@ export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, p
     const { success, data } = inviteUsersSchema.safeParse(form)
 
     if (!success) {
-        // You might want to return a more detailed error or status object in a real app
         throw new Error("Invalid form data"); 
     }
 
@@ -81,26 +160,20 @@ export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, p
         where: {
             email: data.email
         },
-        // Ensure you select the ID, which is needed for the connection
         select: { id: true } 
     })
 
     if (!invitedUser) {
-        // Corrected variable name from 'inviteUser' to 'invitedUser'
         throw new Error("User not found"); 
     }
 
     if (invitedUser.id === user.id) throw new Error("You're the owner");
 
-    // Optional check: Ensure the user being invited isn't already a collaborator or the owner
-    // This requires checking the project's current collaborators before updating.
-    // We can handle this by letting the database constraint handle it, or pre-check here:
 
     const project = await prisma.project.findUnique({
         where: {
             id: projectId
         },
-        // Include current collaborators to check existence
         include: {
             collaborators: {
                 select: { id: true }
@@ -124,8 +197,6 @@ export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, p
         },
         data: {
             collaborators: {
-                // Use Prisma's 'connect' syntax to link the existing user record 
-                // to the project's collaborators relationship
                 connect: {
                     id: invitedUser.id,
                 }
@@ -133,8 +204,7 @@ export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, p
         }
     });
 
-    // Optional: Revalidate the path where the project is displayed to show the new collaborator
-    // Adjust the path to match your project details page URL structure
+
     revalidatePath(`/dashboard/projects/${projectId}`); 
 }
 
