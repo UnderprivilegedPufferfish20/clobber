@@ -1,47 +1,43 @@
-import CreateDatabaseDialog from "./_components/CreateDatabaseDialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PlusIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import SchemaPicker from "./_components/SchemaPicker";
+import { getSchemas, getTables } from "@/lib/actions/database/actions";
+import DatabaseSidebar from "./_components/Sidebar";
+import { DatabaseNavbar } from "./_components/NavMenu";
 import { Separator } from "@/components/ui/separator";
-import * as React from "react";
-import { DATA_TYPES } from "@/lib/types";
-import DatabaseTable from "./_components/DatabaseTable";
-import { getProjectById } from "@/lib/actions/projects";
+
+const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database">) => {
+
+  const p = await params;
+  const sp = await searchParams
+
+  const schemas = await getSchemas(p.projectId);
+  const tables = await getTables(p.projectId, sp["schema"] ? sp['schema'][0] : "public");
 
 
-export default async function Page({ params }: PageProps<"/proj/[projectId]/database">) {
-  const projectId = (await params).projectId
-
-  const project = await getProjectById(projectId)
-
-  if (!project) throw new Error("Couldn't find project");
-
-  const data: {
-    "Name": string[];
-    "ID": string[];
-    "Created At": string[];
-    "Size (GB)": string[];
-  } = {"ID": [], "Created At": [], 'Name': [], 'Size (GB)': []}
-
-  project.databases.forEach(db => {
-    data['Size (GB)'].push(String(0.25))
-    data['ID'].push(db.id)
-    data["Created At"].push(db.createdAt.toLocaleDateString())
-    data['Name'].push(db.name)
-  })
-  
   return (
-    <div className="page-container p-12">
-      <div className="page-header">
-        <h1 className="page-header-heading">Databases</h1>
-        <CreateDatabaseDialog triggerText="New Database" projectId={projectId}/>
-      </div>
+    <div className='fullscreen flex flex-col items-center'>
+
+      <header className="fullwidth h-20 min-h-20 max-h-20 flex gap-2 items-center-safe p-2 px-4">
+        <span className="font-semibold text-3xl mr-8">Database</span>
+
+        <DatabaseNavbar />
+
+        
+      </header>
+
       <Separator />
 
-      <div className="mt-5">
-        <DatabaseTable
-          data={data}
-          projectId={projectId}
-        />
-      </div>
+      <div className="fullscreen flex items-center">
+        <DatabaseSidebar />
 
+        <div className="fullscreen flex flex-col items-center justify-center">
+          <p className="text-muted-foreground">No data here...</p>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
+
+export default page

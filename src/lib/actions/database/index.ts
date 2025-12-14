@@ -20,15 +20,6 @@ if (!projectId) throw new Error('Missing env GCP_PROJECT_ID');
 if (!instanceId) throw new Error('Missing env CLOUD_SQL_INSTANCE_ID');
 if (!con) throw new Error("No con str in env");
 
-console.log('🔧 Database module initialized with:', {
-  projectId,
-  instanceId,
-  hasAdminUser: !!process.env.CLOUD_SQL_ADMIN_USER,
-  hasAdminPassword: !!process.env.CLOUD_SQL_ADMIN_PASSWORD,
-  hasConnectionName: !!process.env.CLOUD_SQL_CONNECTION_NAME,
-  hasCredentialsFile: !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  hasCredentialsJson: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
-});
 
 // Initialize clients with credentials if provided
 const getClientOptions = () => {
@@ -51,17 +42,9 @@ const getClientOptions = () => {
 };
 
 const clientOptions = getClientOptions();
-console.log('Admin clientOptions:', {
-  hasCredentials: !!clientOptions.credentials,
-  hasKeyFilename: !!(clientOptions as any).keyFilename,
-});
+
 
 const dbs = new SqlDatabasesServiceClient({...clientOptions, fallback: true});
-console.log('Admin client config:', {
-  projectId,
-  instanceId,
-  endpoint: dbs.apiEndpoint,            // or (dbs as any).apiEndpoint
-});
 const users = new SqlUsersServiceClient({...clientOptions, fallback: true});
 const ops = new SqlOperationsServiceClient({...clientOptions, fallback: true});
 
@@ -112,40 +95,11 @@ export async function createTenantDatabase(opts: {
   projectName: string;
   password: string;
 }) {
-  console.log('\n🚀 === CREATE TENANT DATABASE STARTED ===');
-  console.log('Input parameters:', {
-    projectUuid: opts.projectUuid,
-    projectName: opts.projectName,
-    passwordLength: opts.password.length,
-  });
-
   const dbName = `db_${safeIdent(opts.projectName)}_${opts.projectUuid.slice(0, 8)}`;
   const dbUser = `u_${opts.projectUuid.replace(/-/g, '').slice(0, 16)}`;
 
-  console.log('Generated names:', { dbName, dbUser });
-
-  // 1) create database
-  console.log('\n📦 Step 1: Creating database...');
-
-  console.log('Admin API call params:', {
-    projectId,
-    instanceId,
-    typeOfProjectId: typeof projectId,
-    typeOfInstanceId: typeof instanceId,
-  });
-
-  console.log('Env connection name:', process.env.CLOUD_SQL_CONNECTION_NAME);
 
   try {
-
-    const [listResp] = await dbs.list({
-      project: projectId,
-      instance: instanceId,
-    });
-
-    console.log('List databases response:', {
-      databaseNames: listResp.items?.map(d => d.name),
-    });
 
     const [op] = await dbs.insert({
       project: projectId,
@@ -166,8 +120,6 @@ export async function createTenantDatabase(opts: {
     throw error;
   }
 
-  // 2) create user
-  console.log('\n👤 Step 2: Creating user...');
   try {
     const [op] = await users.insert({
       project: projectId,

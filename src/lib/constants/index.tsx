@@ -12,7 +12,7 @@ export const SidebarRoutes = [
   },
   {
     href: "/database",
-    label: "Databases",
+    label: "Database",
     icon: DatabaseIcon,
   },
   {

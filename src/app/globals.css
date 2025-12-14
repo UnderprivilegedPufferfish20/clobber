@@ -139,4 +139,17 @@
     /* font-semibold text-4xl */
     @apply font-semibold text-4xl;
   }
+
+  .fullwidth {
+    @apply w-full min-w-full max-w-full
+  }
+
+
+  .fullheight {
+    @apply h-full min-h-full max-h-full
+  }
+
+  .fullscreen { 
+    @apply w-full min-w-full max-w-full h-full min-h-full max-h-full
+  }
 }
