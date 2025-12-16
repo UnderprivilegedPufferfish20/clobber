@@ -12,6 +12,10 @@ export const createTableSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" })
 })
 
+export const createSchemaScheam = z.object({
+  name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" })
+})
+
 export const inviteUsersSchema = z.object({
     email: z.email({ message: "Please enter valid email" }) 
 })

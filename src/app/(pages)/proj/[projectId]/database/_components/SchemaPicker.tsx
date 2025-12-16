@@ -1,19 +1,15 @@
+// SchemaPicker.tsx
 "use client";
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import CreateSchemaDialog from "./CreateSchemaDialog";
+import { Separator } from "@/components/ui/separator";
 
 type ComboboxButtonProps = React.ComponentPropsWithoutRef<typeof Button> & {
   expanded: boolean;
@@ -21,45 +17,47 @@ type ComboboxButtonProps = React.ComponentPropsWithoutRef<typeof Button> & {
 };
 
 const ComboboxButton = React.forwardRef<HTMLButtonElement, ComboboxButtonProps>(
-  ({ expanded, text, ...props }, ref) => {
-    return (
-      <Button
-        ref={ref}
-        variant="outline"
-        role="combobox"
-        aria-expanded={expanded}
-        className={cn(
-          "bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit ml-2 justify-between items-center border-none shadow-none text-sm text-muted-foreground hover:text-foreground",
-          props.className
-        )}
-        {...props}
-      >
-        {text}
-        {expanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-      </Button>
-    );
-  }
+  ({ expanded, text, ...props }, ref) => (
+    <Button
+      ref={ref}
+      variant="outline"
+      role="combobox"
+      aria-expanded={expanded}
+      className={cn(
+        "bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 w-fit justify-between items-center border-none shadow-none text-sm text-muted-foreground hover:text-foreground",
+        props.className
+      )}
+      {...props}
+    >
+      {text}
+      {expanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+    </Button>
+  )
 );
 ComboboxButton.displayName = "ComboboxButton";
 
-const SchemaPicker = ({ schemas }: { schemas: string[] }) => {
-  const router = useRouter();
+type SchemaPickerProps = {
+  schemas: string[];
+  value: string;
+  onChange: (schema: string) => void;
+};
+
+const SchemaPicker = ({ schemas, value, onChange }: SchemaPickerProps) => {
   const pathname = usePathname();
+  const projectId = pathname.split("/")[2];
 
   const [open, setOpen] = React.useState(false);
-  const [value, setValue] = React.useState(schemas[0] ?? "");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <ComboboxButton
           expanded={open}
-          // IMPORTANT: allow trigger click to work by forwarding refs/handlers
+          className="border-2 w-48"
           onClick={() => setOpen((v) => !v)}
           text={
             <p className="text-muted-foreground">
-              schema{" "}
-              <span className="dark:text-white text-black ml-1">{value}</span>
+              schema <span className="dark:text-white text-black ml-1">{value}</span>
             </p>
           }
         />
@@ -70,6 +68,7 @@ const SchemaPicker = ({ schemas }: { schemas: string[] }) => {
           <CommandInput placeholder="Search schema..." className="h-9" />
           <CommandList>
             <CommandEmpty>No schemas found.</CommandEmpty>
+
             <CommandGroup>
               {schemas.map((row) => {
                 const selected = value === row;
@@ -78,9 +77,8 @@ const SchemaPicker = ({ schemas }: { schemas: string[] }) => {
                     key={row}
                     value={row}
                     onSelect={(currentValue) => {
-                      setValue(currentValue);
+                      onChange(currentValue);
                       setOpen(false);
-                      router.push(`${pathname}?schema=${encodeURIComponent(currentValue)}`);
                     }}
                   >
                     {row}
@@ -88,6 +86,11 @@ const SchemaPicker = ({ schemas }: { schemas: string[] }) => {
                   </CommandItem>
                 );
               })}
+            </CommandGroup>
+
+            <CommandGroup>
+              <Separator />
+              <CreateSchemaDialog projectId={projectId} />
             </CommandGroup>
           </CommandList>
         </Command>
