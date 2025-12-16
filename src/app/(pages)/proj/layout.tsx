@@ -36,7 +36,7 @@ async function layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* push content below header */}
-        <div className="pt-[65px] text-accent-foreground fullscreen overflow-x-hidden overflow-y-hidden">
+        <div className="pt-[65px] text-accent-foreground w-full h-full overflow-x-hidden overflow-y-hidden">
           {children}
         </div>
       </div>

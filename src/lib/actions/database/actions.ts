@@ -141,3 +141,61 @@ export async function addTable(
 
   console.log("@@ CREATE TABLE: ", result);
 }
+
+export async function getTableData(
+  projectId: string,
+  schema: string,
+  table: string,
+  page: number = 1,
+  pageSize: number = 50
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const offset = (page - 1) * pageSize;
+
+  // Get total count
+  const countResult = await pool.query(`
+    SELECT COUNT(*) as total 
+    FROM ${schema}.${table};
+  `);
+
+  const total = parseInt(countResult.rows[0].total);
+
+  // Get paginated data
+  const dataResult = await pool.query(`
+    SELECT * 
+    FROM ${schema}.${table}
+    ORDER BY "$id" DESC
+    LIMIT $1 OFFSET $2;
+  `, [pageSize, offset]);
+
+  // Get column information
+  const columnsResult = await pool.query(`
+    SELECT column_name, data_type, is_nullable
+    FROM information_schema.columns
+    WHERE table_schema = $1 AND table_name = $2
+    ORDER BY ordinal_position;
+  `, [schema, table]);
+
+  return {
+    rows: dataResult.rows,
+    columns: columnsResult.rows,
+    pagination: {
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize)
+    }
+  };
+}

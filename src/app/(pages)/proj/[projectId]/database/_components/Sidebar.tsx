@@ -1,23 +1,24 @@
 "use client";
 
 import { Separator } from "@/components/ui/separator";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SchemaPicker from "./SchemaPicker";
 import { useQuery } from "@tanstack/react-query";
 import { getSchemas, getTables } from "@/lib/actions/database/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import AddTableDialog from "./AddTableDialog";
 import { SlidersHorizontal, Table2Icon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
+import { cn } from "@/lib/utils";
 
 const DatabaseSidebar = () => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-
-
+  const router = useRouter();
 
   const page = searchParams.get("page") ?? "table_editor";
+  const selectedTable = searchParams.get("table");
   const projectId = useMemo(() => pathname.split("/")[2] ?? "", [pathname]);
 
   // 1) Schemas
@@ -40,9 +41,9 @@ const DatabaseSidebar = () => {
 
   useEffect(() => {
     if (!schema && schemas && schemas.length > 0) {
-      setSchema(schemas[0]); // default to first schema once it arrives
+      setSchema(schemas[0]);
     }
-  }, [schemas, schema]);
+  }, [schemas, schema, setSchema]);
 
   // 3) Tables (only fetch when schema is ready)
   const {
@@ -56,6 +57,15 @@ const DatabaseSidebar = () => {
     enabled: !!projectId && !!schema,
   });
 
+  const handleTableClick = (tableName: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("table", tableName);
+    if (schema) {
+      params.set("schema", schema);
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   // ---- Render states
   if (schemasError) {
     return (
@@ -66,8 +76,6 @@ const DatabaseSidebar = () => {
       </aside>
     );
   }
-
-
 
   return (
     <aside className="fullheight w-74 min-w-74 max-w-74 flex flex-col items-center border-r-2">
@@ -108,12 +116,21 @@ const DatabaseSidebar = () => {
                   <Skeleton className="h-6 fullwidth bg-gray-700" />
                 </div>
               ) : (
-                tables.map((t) => (
-                  <div key={t} className="fullwidth bg-gray-900 px-3 py-2 flex items-center hover:bg-gray-800 hover:cursor-pointer">
-                    <Table2Icon />
-                    <h2 className="font-semibold text-xl ml-4">{t}</h2>
-                  </div>
-                ))
+                <div className="fullwidth">
+                  {tables.map((t) => (
+                    <div
+                      key={t}
+                      onClick={() => handleTableClick(t)}
+                      className={cn(
+                        "fullwidth px-3 py-2 flex items-center hover:bg-gray-800 hover:cursor-pointer transition-colors",
+                        selectedTable === t ? "bg-indigo-600/20 border-l-4 border-indigo-500" : "bg-gray-900"
+                      )}
+                    >
+                      <Table2Icon className="w-4 h-4" />
+                      <h2 className="font-semibold text-sm ml-4">{t}</h2>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
