@@ -1,5 +1,6 @@
-import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap } from "lucide-react";
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
+import { DATA_TYPES, DataTypeType } from "../types";
 
 
 
@@ -173,3 +174,43 @@ export const HomepageFeatures = [
     icon: TestTube,
   },
 ];
+
+
+export const DTypes: DataTypeType[] = [
+  {
+    dtype: DATA_TYPES.STRING,
+    description: "Variable-length character string",
+    icon: TypeIcon
+  },
+  {
+    dtype: DATA_TYPES.INT,
+    description: "Signed integer",
+    icon: HashIcon
+  },
+  {
+    dtype: DATA_TYPES.FLOAT,
+    description: "Any precision floating-point number",
+    icon: HashIcon
+  },
+  {
+    dtype: DATA_TYPES.BOOL,
+    description: "Logical boolean (true/false)",
+    icon: ToggleRightIcon
+  },
+  {
+    dtype: DATA_TYPES.DateTime,
+    description: "Date and time, including time zone",
+    icon: HashIcon
+  },
+  {
+    dtype: DATA_TYPES.JSON,
+    description: "Textual JSON data",
+    icon: CurlyBracesIcon
+  },
+  {
+    dtype: DATA_TYPES.BYTES,
+    description: "Variable-length binary string",
+    icon: BinaryIcon
+  },
+  
+]

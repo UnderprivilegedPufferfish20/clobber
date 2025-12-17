@@ -5,7 +5,8 @@ import { getTenantPool } from ".";
 import { getUser } from "../auth";
 import { getProjectById } from "../projects";
 import z from "zod";
-import { FilterOperator, QueryFilters } from "@/lib/types";
+import { DATA_TYPES, FilterOperator, QueryFilters } from "@/lib/types";
+import { getPostgresCast, castFilterValue, mapPostgresType, buildWhereClause } from "@/lib/utils";
 
 export async function getSchemas(projectId: string) {
   const user = await getUser()
@@ -143,6 +144,9 @@ export async function addTable(
   console.log("@@ CREATE TABLE: ", result);
 }
 
+
+
+// Updated getTableData function
 export async function getTableData(
   projectId: string,
   schema: string,
@@ -165,83 +169,30 @@ export async function getTableData(
     database: project.db_name,
   });
 
-  const whereClauses: string[] = [];
-  const whereParams: any[] = [];
-  let paramCount = 1;
+  // First, get column types
+  const columnsResult = await pool.query(
+    `
+    SELECT column_name, data_type, is_nullable
+    FROM information_schema.columns
+    WHERE table_schema = $1 AND table_name = $2
+    ORDER BY ordinal_position;
+  `,
+    [schema, table]
+  );
 
-  for (const [column, [op, raw]] of Object.entries(filters)) {
-    const value = (raw ?? "").trim();
-    if (!value && op !== FilterOperator.IS) continue;
-
-    const col = `"${column}"`;
-    const textCol = `${col}::text`;
-
-    switch (op) {
-      case FilterOperator.LIKE: {
-        // use ILIKE so it's case-insensitive, keep your previous behavior
-        whereClauses.push(`${textCol} ILIKE $${paramCount}`);
-        whereParams.push(`%${value}%`);
-        paramCount++;
-        break;
-      }
-
-      case FilterOperator.IN: {
-        // accept comma-separated values: "a,b,c"
-        const items = value
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-
-        if (!items.length) break;
-
-        // safest: use ANY($n) with a text[] param
-        whereClauses.push(`${textCol} = ANY($${paramCount}::text[])`);
-        whereParams.push(items);
-        paramCount++;
-        break;
-      }
-
-      case FilterOperator.IS: {
-        // common values: "NULL", "NOT NULL", "TRUE", "FALSE"
-        const upper = value.toUpperCase();
-
-        if (upper === "NULL") {
-          whereClauses.push(`${col} IS NULL`);
-        } else if (upper === "NOT NULL") {
-          whereClauses.push(`${col} IS NOT NULL`);
-        } else if (upper === "TRUE" || upper === "FALSE") {
-          whereClauses.push(`${col} IS ${upper}`);
-        } else {
-          // fallback: treat as literal compare using IS (rare, but keeps type)
-          whereClauses.push(`${textCol} IS $${paramCount}`);
-          whereParams.push(value);
-          paramCount++;
-        }
-        break;
-      }
-
-      case FilterOperator.EQUALS:
-      case FilterOperator.NOT_EQUAL:
-      case FilterOperator.GREATER_THAN:
-      case FilterOperator.LESS_THAN:
-      case FilterOperator.GREATER_THAN_OR_EQUAL_TO:
-      case FilterOperator.LESS_THAN_OR_EQUAL_TO: {
-        // compare as text to keep it generic across types like your old code
-        whereClauses.push(`${textCol} ${op} $${paramCount}`);
-        whereParams.push(value);
-        paramCount++;
-        break;
-      }
-
-      default: {
-        // ignore unknown ops
-        break;
-      }
-    }
+  // Build column type map
+  const columnTypes = new Map<string, DATA_TYPES>();
+  for (const col of columnsResult.rows) {
+    columnTypes.set(col.column_name, mapPostgresType(col.data_type));
   }
 
-  const whereClause =
-    whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+  // Build WHERE clause with type safety
+  const { whereClause, whereParams, errors } = buildWhereClause(filters, columnTypes);
+
+  // Return errors if any filters are invalid
+  if (Object.keys(errors).length > 0) {
+    throw new Error(`Invalid filters: ${JSON.stringify(errors)}`);
+  }
 
   const orderBy = sort
     ? `"${sort.column}" ${sort.direction}, "$id" DESC`
@@ -256,6 +207,7 @@ export async function getTableData(
   const total = parseInt(countResult.rows[0].total);
 
   const offset = (page - 1) * pageSize;
+  const paramCount = whereParams.length + 1;
 
   const dataQuery = `
     SELECT * 
@@ -267,19 +219,12 @@ export async function getTableData(
 
   const dataResult = await pool.query(dataQuery, [...whereParams, pageSize, offset]);
 
-  const columnsResult = await pool.query(
-    `
-    SELECT column_name, data_type, is_nullable
-    FROM information_schema.columns
-    WHERE table_schema = $1 AND table_name = $2
-    ORDER BY ordinal_position;
-  `,
-    [schema, table]
-  );
-
   return {
     rows: dataResult.rows,
-    columns: columnsResult.rows,
+    columns: columnsResult.rows.map(col => ({
+      ...col,
+      data_type_enum: mapPostgresType(col.data_type)
+    })),
     pagination: {
       total,
       page,

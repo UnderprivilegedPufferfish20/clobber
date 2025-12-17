@@ -45,8 +45,8 @@ export enum DATA_TYPES {
   FLOAT = 'float',
   BOOL = 'boolean',
   DateTime = 'datetime',
-  EMAIL = 'email',
-  URL = 'url'
+  BYTES = "bytes",
+  JSON = "JSON"
 }
 
 export type TableViewProps = {
@@ -95,6 +95,12 @@ export enum FilterOperator {
   LIKE = "~~",
   IN = "IN",
   IS = "IS"
+}
+
+export type DataTypeType = {
+  dtype: DATA_TYPES,
+  description: string,
+  icon: LucideIcon
 }
 
 export type QueryFilters = Record<string, [FilterOperator, string]>

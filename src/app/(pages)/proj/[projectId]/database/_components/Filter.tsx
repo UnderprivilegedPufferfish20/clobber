@@ -10,13 +10,12 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { FilterConfig } from "@/lib/types";
-import { X, Plus, FilterIcon, Trash2 } from "lucide-react";
+import { FilterConfig, DATA_TYPES } from "@/lib/types";
+import { X, Plus, FilterIcon, Trash2, AlertCircle } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Dispatch, SetStateAction, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
-
-import { FilterOperator, QueryFilters } from "@/lib/types"; // adjust import path
+import { FilterOperator, QueryFilters } from "@/lib/types";
 
 const OP_TO_TOKEN: Record<FilterOperator, string> = {
   [FilterOperator.EQUALS]: "=",
@@ -80,11 +79,11 @@ function opLabel(op: FilterOperator) {
     case FilterOperator.NOT_EQUAL:
       return "not equal";
     case FilterOperator.GREATER_THAN:
-      return "greater than";
+      return ">";
     case FilterOperator.GREATER_THAN_OR_EQUAL_TO:
       return "≥";
     case FilterOperator.LESS_THAN:
-      return "less than";
+      return "<";
     case FilterOperator.LESS_THAN_OR_EQUAL_TO:
       return "≤";
     case FilterOperator.IN:
@@ -96,6 +95,151 @@ function opLabel(op: FilterOperator) {
   }
 }
 
+// Get available operators for a data type
+function getOperatorsForType(dataType: DATA_TYPES): FilterOperator[] {
+  const common = [FilterOperator.EQUALS, FilterOperator.NOT_EQUAL, FilterOperator.IS, FilterOperator.IN];
+  
+  switch (dataType) {
+    case DATA_TYPES.STRING:
+      return [...common, FilterOperator.LIKE];
+    
+    case DATA_TYPES.INT:
+    case DATA_TYPES.FLOAT:
+    case DATA_TYPES.DateTime:
+      return [
+        ...common,
+        FilterOperator.GREATER_THAN,
+        FilterOperator.LESS_THAN,
+        FilterOperator.GREATER_THAN_OR_EQUAL_TO,
+        FilterOperator.LESS_THAN_OR_EQUAL_TO,
+      ];
+    
+    case DATA_TYPES.BOOL:
+      return [FilterOperator.EQUALS, FilterOperator.NOT_EQUAL, FilterOperator.IS];
+    
+    case DATA_TYPES.JSON:
+      return [FilterOperator.EQUALS, FilterOperator.NOT_EQUAL, FilterOperator.IS, FilterOperator.LIKE];
+    
+    default:
+      return common;
+  }
+}
+
+// Validate filter value based on type
+function validateFilterValue(value: string, dataType: DATA_TYPES, operator: FilterOperator): string | null {
+  if (operator === FilterOperator.IS) {
+    const upper = value.toUpperCase();
+    if (!['NULL', 'NOT NULL', 'TRUE', 'FALSE'].includes(upper)) {
+      return 'Must be: NULL, NOT NULL, TRUE, or FALSE';
+    }
+    if ((upper === 'TRUE' || upper === 'FALSE') && dataType !== DATA_TYPES.BOOL) {
+      return 'TRUE/FALSE only valid for boolean columns';
+    }
+    return null;
+  }
+
+  if (!value.trim()) {
+    return 'Value is required';
+  }
+
+  switch (dataType) {
+    case DATA_TYPES.INT: {
+      if (operator === FilterOperator.IN) {
+        const items = value.split(',').map(s => s.trim());
+        for (const item of items) {
+          if (isNaN(parseInt(item, 10))) {
+            return `"${item}" is not a valid integer`;
+          }
+        }
+      } else {
+        if (isNaN(parseInt(value, 10))) {
+          return 'Must be a valid integer';
+        }
+      }
+      break;
+    }
+
+    case DATA_TYPES.FLOAT: {
+      if (operator === FilterOperator.IN) {
+        const items = value.split(',').map(s => s.trim());
+        for (const item of items) {
+          if (isNaN(parseFloat(item))) {
+            return `"${item}" is not a valid number`;
+          }
+        }
+      } else {
+        if (isNaN(parseFloat(value))) {
+          return 'Must be a valid number';
+        }
+      }
+      break;
+    }
+
+    case DATA_TYPES.BOOL: {
+      const lower = value.toLowerCase().trim();
+      if (!['true', 'false', 't', 'f', '1', '0', 'yes', 'no'].includes(lower)) {
+        return 'Must be true or false';
+      }
+      break;
+    }
+
+    case DATA_TYPES.DateTime: {
+      if (operator !== FilterOperator.IN) {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          return 'Must be a valid date/time';
+        }
+      }
+      break;
+    }
+  }
+
+  return null;
+}
+
+// Get placeholder text based on type and operator
+function getPlaceholder(dataType: DATA_TYPES, operator: FilterOperator): string {
+  if (operator === FilterOperator.IS) {
+    return 'NULL, NOT NULL, TRUE, FALSE';
+  }
+
+  if (operator === FilterOperator.IN) {
+    switch (dataType) {
+      case DATA_TYPES.INT:
+        return 'e.g., 1,2,3';
+      case DATA_TYPES.FLOAT:
+        return 'e.g., 1.5,2.0,3.5';
+      case DATA_TYPES.STRING:
+        return 'e.g., value1,value2,value3';
+      case DATA_TYPES.BOOL:
+        return 'e.g., true,false';
+      default:
+        return 'Comma-separated values';
+    }
+  }
+
+  switch (dataType) {
+    case DATA_TYPES.INT:
+      return 'Enter integer';
+    case DATA_TYPES.FLOAT:
+      return 'Enter number';
+    case DATA_TYPES.BOOL:
+      return 'true or false';
+    case DATA_TYPES.DateTime:
+      return 'YYYY-MM-DD or ISO date';
+    case DATA_TYPES.STRING:
+    default:
+      return 'Enter value';
+  }
+}
+
+interface ColumnInfo {
+  column_name: string;
+  data_type: string;
+  data_type_enum: DATA_TYPES;
+  is_nullable: string;
+}
+
 const Filter = ({
   activeFilters,
   setActiveFilters,
@@ -105,7 +249,7 @@ const Filter = ({
   activeFilters: FilterConfig[];
   setActiveFilters: Dispatch<SetStateAction<FilterConfig[]>>;
   setStartPage: Dispatch<SetStateAction<number>>;
-  columns: any[];
+  columns: ColumnInfo[];
 }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -114,12 +258,19 @@ const Filter = ({
 
   // local (draft) state inside the popover
   const [editingFilters, setEditingFilters] = useState<FilterConfig[]>([]);
-  const [newFilterOperator, setNewFilterOperator] = useState<FilterOperator>(FilterOperator.LIKE);
+  const [newFilterOperator, setNewFilterOperator] = useState<FilterOperator>(FilterOperator.EQUALS);
   const [newFilterColumn, setNewFilterColumn] = useState("");
   const [newFilterValue, setNewFilterValue] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Create column type lookup
+  const columnTypeMap = useMemo(
+    () => new Map(columns.map(c => [c.column_name, c.data_type_enum])),
+    [columns]
+  );
 
   const availableColumns = useMemo(
-    () => columns.map((c: any) => c.column_name) as string[],
+    () => columns.map((c) => c.column_name) as string[],
     [columns]
   );
 
@@ -128,14 +279,55 @@ const Filter = ({
     [availableColumns, editingFilters]
   );
 
-  const canAdd =
-    !!newFilterColumn && (newFilterOperator === FilterOperator.IS || !!newFilterValue.trim());
+  // Get the selected column's type
+  const selectedColumnType = newFilterColumn 
+    ? columnTypeMap.get(newFilterColumn) || DATA_TYPES.STRING
+    : DATA_TYPES.STRING;
 
-  const canApply =
-    editingFilters.length > 0 &&
-    editingFilters.every(
-      (f) => !!f.column && (f.operator === FilterOperator.IS || !!f.value?.trim())
-    );
+  // Get available operators for selected column
+  const availableOperators = useMemo(
+    () => newFilterColumn ? getOperatorsForType(selectedColumnType) : [],
+    [newFilterColumn, selectedColumnType]
+  );
+
+  // Update operator when column changes if current operator isn't valid
+  const handleColumnChange = (column: string) => {
+    setNewFilterColumn(column);
+    setNewFilterValue("");
+    setValidationError(null);
+    
+    const colType = columnTypeMap.get(column) || DATA_TYPES.STRING;
+    const validOps = getOperatorsForType(colType);
+    
+    if (!validOps.includes(newFilterOperator)) {
+      setNewFilterOperator(validOps[0]);
+    }
+  };
+
+  // Validate on value change
+  const handleValueChange = (value: string) => {
+    setNewFilterValue(value);
+    
+    if (!newFilterColumn) return;
+    
+    const error = validateFilterValue(value, selectedColumnType, newFilterOperator);
+    setValidationError(error);
+  };
+
+  const canAdd = useMemo(() => {
+    if (!newFilterColumn) return false;
+    if (newFilterOperator === FilterOperator.IS && !newFilterValue.trim()) return false;
+    if (newFilterOperator !== FilterOperator.IS && !newFilterValue.trim()) return false;
+    return validationError === null;
+  }, [newFilterColumn, newFilterOperator, newFilterValue, validationError]);
+
+  const canApply = useMemo(() => {
+    return editingFilters.every((f) => {
+      const colType = columnTypeMap.get(f.column) || DATA_TYPES.STRING;
+      const error = validateFilterValue(f.value, colType, f.operator);
+      return error === null;
+    });
+  }, [editingFilters, columnTypeMap]);
 
   const applyFiltersToUrl = (filters: FilterConfig[]) => {
     const newParams = new URLSearchParams(searchParams.toString());
@@ -167,7 +359,8 @@ const Filter = ({
     setEditingFilters(updated);
     setNewFilterColumn("");
     setNewFilterValue("");
-    setNewFilterOperator(FilterOperator.LIKE);
+    setNewFilterOperator(FilterOperator.EQUALS);
+    setValidationError(null);
   };
 
   const removeFilter = (column: string) => {
@@ -178,11 +371,11 @@ const Filter = ({
     setEditingFilters([]);
     setNewFilterColumn("");
     setNewFilterValue("");
-    setNewFilterOperator(FilterOperator.LIKE);
+    setNewFilterOperator(FilterOperator.EQUALS);
+    setValidationError(null);
   };
 
   const handleApply = () => {
-    // persist + close
     setActiveFilters(editingFilters);
     applyFiltersToUrl(editingFilters);
     setIsOpen(false);
@@ -193,7 +386,10 @@ const Filter = ({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (open) setEditingFilters(activeFilters);
+        if (open) {
+          setEditingFilters(activeFilters);
+          setValidationError(null);
+        }
       }}
     >
       <PopoverTrigger asChild>
@@ -208,8 +404,7 @@ const Filter = ({
         </Button>
       </PopoverTrigger>
 
-      {/* Supabase-ish: header actions, rows list, "add new" row */}
-      <PopoverContent className="w-[520px] p-0" align="start">
+      <PopoverContent className="w-[560px] p-0" align="start">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-3 py-2">
           <div className="flex items-center gap-2">
@@ -235,7 +430,6 @@ const Filter = ({
               </Button>
             )}
 
-            {/* TOP actions (per your ask) */}
             <Button
               size="sm"
               variant="secondary"
@@ -250,7 +444,7 @@ const Filter = ({
             <Button
               size="sm"
               onClick={handleApply}
-              disabled={!canApply && editingFilters.length > 0 ? true : editingFilters.length === 0}
+              disabled={!canApply}
               className="h-8 px-3 text-xs"
             >
               Apply
@@ -262,39 +456,43 @@ const Filter = ({
           {/* Applied (draft) list */}
           {editingFilters.length > 0 ? (
             <div className="space-y-2">
-              {editingFilters.map((f) => (
-                <div
-                  key={f.column}
-                  className="grid grid-cols-[1.2fr_0.9fr_1.4fr_auto] items-center gap-2 rounded-md border bg-background px-2 py-2"
-                >
-                  <div className="min-w-0">
-                    <div className="text-[11px] text-muted-foreground">Column</div>
-                    <div className="truncate text-sm font-medium">{f.column}</div>
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="text-[11px] text-muted-foreground">Operator</div>
-                    <div className="truncate text-sm">{opLabel(f.operator)}</div>
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="text-[11px] text-muted-foreground">Value</div>
-                    <div className="truncate font-mono text-sm">
-                      {f.operator === FilterOperator.IS ? "(null check)" : f.value}
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFilter(f.column)}
-                    className="h-8 w-8 p-0"
-                    aria-label={`Remove filter for ${f.column}`}
+              {editingFilters.map((f) => {
+                const colType = columnTypeMap.get(f.column) || DATA_TYPES.STRING;
+                return (
+                  <div
+                    key={f.column}
+                    className="grid grid-cols-[1.2fr_0.9fr_1.4fr_auto] items-center gap-2 rounded-md border bg-background px-2 py-2"
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                    <div className="min-w-0">
+                      <div className="text-[11px] text-muted-foreground">Column</div>
+                      <div className="truncate text-sm font-medium">{f.column}</div>
+                      <div className="text-[10px] text-muted-foreground">{colType}</div>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="text-[11px] text-muted-foreground">Operator</div>
+                      <div className="truncate text-sm">{opLabel(f.operator)}</div>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="text-[11px] text-muted-foreground">Value</div>
+                      <div className="truncate font-mono text-sm">
+                        {f.operator === FilterOperator.IS ? f.value.toUpperCase() : f.value}
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFilter(f.column)}
+                      className="h-8 w-8 p-0"
+                      aria-label={`Remove filter for ${f.column}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
@@ -302,55 +500,73 @@ const Filter = ({
             </div>
           )}
 
-          {/* Add new filter row (Supabase-ish) */}
+          {/* Add new filter row */}
           <div className="mt-3 rounded-md border bg-background p-2">
             <div className="mb-2 text-xs font-medium text-muted-foreground">Add filter</div>
 
             <div className="grid grid-cols-[1.2fr_0.9fr_1.4fr] gap-2">
-              <Select value={newFilterColumn} onValueChange={setNewFilterColumn}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder={unusedColumns.length ? "Select column" : "No columns left"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {unusedColumns.map((col) => (
-                    <SelectItem key={col} value={col}>
-                      {col}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <Select value={newFilterColumn} onValueChange={handleColumnChange}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder={unusedColumns.length ? "Select column" : "No columns left"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unusedColumns.map((col) => {
+                      const colType = columnTypeMap.get(col);
+                      return (
+                        <SelectItem key={col} value={col}>
+                          <div className="flex items-center gap-2">
+                            <span>{col}</span>
+                            <span className="text-xs text-muted-foreground">({colType})</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <Select
                 value={newFilterOperator}
-                onValueChange={(v) => setNewFilterOperator(v as FilterOperator)}
+                onValueChange={(v) => {
+                  setNewFilterOperator(v as FilterOperator);
+                  setNewFilterValue("");
+                  setValidationError(null);
+                }}
+                disabled={!newFilterColumn}
               >
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="Operator" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={FilterOperator.LIKE}>contains</SelectItem>
-                  <SelectItem value={FilterOperator.EQUALS}>equals</SelectItem>
-                  <SelectItem value={FilterOperator.NOT_EQUAL}>not equal</SelectItem>
-                  <SelectItem value={FilterOperator.GREATER_THAN}>&gt;</SelectItem>
-                  <SelectItem value={FilterOperator.GREATER_THAN_OR_EQUAL_TO}>&gt;=</SelectItem>
-                  <SelectItem value={FilterOperator.LESS_THAN}>&lt;</SelectItem>
-                  <SelectItem value={FilterOperator.LESS_THAN_OR_EQUAL_TO}>&lt;=</SelectItem>
-                  <SelectItem value={FilterOperator.IN}>in</SelectItem>
-                  <SelectItem value={FilterOperator.IS}>is</SelectItem>
+                  {availableOperators.map((op) => (
+                    <SelectItem key={op} value={op}>
+                      {opLabel(op)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
-              <Input
-                className="h-9"
-                placeholder={newFilterOperator === FilterOperator.IS ? "—" : "Value"}
-                value={newFilterValue}
-                onChange={(e) => setNewFilterValue(e.target.value)}
-                disabled={newFilterOperator === FilterOperator.IS}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") addFilter();
-                }}
-              />
+              <div className="space-y-1">
+                <Input
+                  className={`h-9 ${validationError ? 'border-red-500' : ''}`}
+                  placeholder={getPlaceholder(selectedColumnType, newFilterOperator)}
+                  value={newFilterValue}
+                  onChange={(e) => handleValueChange(e.target.value)}
+                  disabled={!newFilterColumn}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && canAdd) addFilter();
+                  }}
+                />
+              </div>
             </div>
+
+            {validationError && (
+              <div className="mt-2 flex items-center gap-1 text-xs text-red-600">
+                <AlertCircle className="h-3 w-3" />
+                {validationError}
+              </div>
+            )}
 
             {unusedColumns.length === 0 && editingFilters.length > 0 && (
               <p className="mt-2 text-center text-xs text-muted-foreground">
