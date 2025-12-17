@@ -1,7 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import os from 'os'
-import path from "path";
+
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -35,4 +34,24 @@ export function sanitizeDirectoryName(name: string): string {
       return '-';
     })
     .join('');
+}
+
+
+
+export function debounce<T extends (...args: any[]) => any>(func: T, delay: number): T {
+  let timer: NodeJS.Timeout | null = null;
+  return ((...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => func(...args), delay);
+  }) as T;
+}
+  
+export function throttle<T extends (...args: any[]) => any>(func: T, delay: number): T {
+  let lastCall = 0;
+  return ((...args: Parameters<T>) => {
+    const now = new Date().getTime();
+    if (now - lastCall < delay) return;
+    lastCall = now;
+    return func(...args);
+  }) as T;
 }

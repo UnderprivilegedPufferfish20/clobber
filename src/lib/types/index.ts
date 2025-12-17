@@ -49,6 +49,24 @@ export enum DATA_TYPES {
   URL = 'url'
 }
 
+export type TableViewProps = {
+  projectId: string;
+};
+
+export type EditingCell = {
+  rowKey: string;
+  col: string;
+  initial: string;
+};
+
+// in "@/lib/types"
+export type FilterConfig = {
+  column: string;
+  operator: FilterOperator;
+  value: string;
+};
+
+
 export type PostgresInstance = {
   port: number;
   projectName: string;
@@ -65,49 +83,21 @@ export type CreateProject = {
 export type ExecuteQuery = {
   query: string;
   projectId: string;
-};
+}
 
-export type ColumnDefinition<
-  TColumns extends string,
-  TData extends Record<TColumns, unknown[]>
-> = {
-  /**
-   * The key into the `data` object.
-   */
-  key: TColumns;
-  /**
-   * Optional label to show in the header; falls back to `key`.
-   */
-  label?: string;
-  /**
-   * Optional custom cell renderer.
-   */
-  render?: (args: {
-    value: TData[TColumns][number] | undefined;
-    rowIndex: number;
-    columnKey: TColumns;
-  }) => React.ReactNode;
-};
+export enum FilterOperator {
+  EQUALS = "=",
+  NOT_EQUAL = "<>",
+  GREATER_THAN = ">",
+  LESS_THAN = "<",
+  GREATER_THAN_OR_EQUAL_TO = ">=",
+  LESS_THAN_OR_EQUAL_TO = "<=",
+  LIKE = "~~",
+  IN = "IN",
+  IS = "IS"
+}
 
-export type ColumnTableProps<
-  TColumns extends string,
-  TData extends Record<TColumns, unknown[]>
-> = {
-  /**
-   * Column definitions (order, labels, custom renderers)
-   */
-  columns: ColumnDefinition<TColumns, TData>[];
-  /**
-   * Column-oriented data: { columnKey: [v0, v1, v2, ...] }
-   */
-  data: TData;
-  /**
-   * Optional key generator for each row.
-   */
-  getRowKey?: (rowIndex: number) => React.Key;
-  /**
-   * Message shown when there are no rows.
-   */
-  emptyMessage?: string;
-};
+export type QueryFilters = Record<string, [FilterOperator, string]>
+
+
 

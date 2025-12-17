@@ -5,6 +5,7 @@ import { getTenantPool } from ".";
 import { getUser } from "../auth";
 import { getProjectById } from "../projects";
 import z from "zod";
+import { FilterOperator, QueryFilters } from "@/lib/types";
 
 export async function getSchemas(projectId: string) {
   const user = await getUser()
@@ -147,7 +148,9 @@ export async function getTableData(
   schema: string,
   table: string,
   page: number = 1,
-  pageSize: number = 50
+  pageSize: number = 50,
+  filters: QueryFilters = {},
+  sort?: { column: string; direction: "asc" | "desc" }
 ) {
   const user = await getUser();
   if (!user) throw new Error("No user");
@@ -159,34 +162,120 @@ export async function getTableData(
     connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
     user: project.db_user,
     password: project.db_pwd,
-    database: project.db_name
+    database: project.db_name,
   });
+
+  const whereClauses: string[] = [];
+  const whereParams: any[] = [];
+  let paramCount = 1;
+
+  for (const [column, [op, raw]] of Object.entries(filters)) {
+    const value = (raw ?? "").trim();
+    if (!value && op !== FilterOperator.IS) continue;
+
+    const col = `"${column}"`;
+    const textCol = `${col}::text`;
+
+    switch (op) {
+      case FilterOperator.LIKE: {
+        // use ILIKE so it's case-insensitive, keep your previous behavior
+        whereClauses.push(`${textCol} ILIKE $${paramCount}`);
+        whereParams.push(`%${value}%`);
+        paramCount++;
+        break;
+      }
+
+      case FilterOperator.IN: {
+        // accept comma-separated values: "a,b,c"
+        const items = value
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        if (!items.length) break;
+
+        // safest: use ANY($n) with a text[] param
+        whereClauses.push(`${textCol} = ANY($${paramCount}::text[])`);
+        whereParams.push(items);
+        paramCount++;
+        break;
+      }
+
+      case FilterOperator.IS: {
+        // common values: "NULL", "NOT NULL", "TRUE", "FALSE"
+        const upper = value.toUpperCase();
+
+        if (upper === "NULL") {
+          whereClauses.push(`${col} IS NULL`);
+        } else if (upper === "NOT NULL") {
+          whereClauses.push(`${col} IS NOT NULL`);
+        } else if (upper === "TRUE" || upper === "FALSE") {
+          whereClauses.push(`${col} IS ${upper}`);
+        } else {
+          // fallback: treat as literal compare using IS (rare, but keeps type)
+          whereClauses.push(`${textCol} IS $${paramCount}`);
+          whereParams.push(value);
+          paramCount++;
+        }
+        break;
+      }
+
+      case FilterOperator.EQUALS:
+      case FilterOperator.NOT_EQUAL:
+      case FilterOperator.GREATER_THAN:
+      case FilterOperator.LESS_THAN:
+      case FilterOperator.GREATER_THAN_OR_EQUAL_TO:
+      case FilterOperator.LESS_THAN_OR_EQUAL_TO: {
+        // compare as text to keep it generic across types like your old code
+        whereClauses.push(`${textCol} ${op} $${paramCount}`);
+        whereParams.push(value);
+        paramCount++;
+        break;
+      }
+
+      default: {
+        // ignore unknown ops
+        break;
+      }
+    }
+  }
+
+  const whereClause =
+    whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+  const orderBy = sort
+    ? `"${sort.column}" ${sort.direction}, "$id" DESC`
+    : '"$id" DESC';
+
+  const countQuery = `
+    SELECT COUNT(*) as total 
+    FROM "${schema}"."${table}" ${whereClause};
+  `;
+
+  const countResult = await pool.query(countQuery, whereParams);
+  const total = parseInt(countResult.rows[0].total);
 
   const offset = (page - 1) * pageSize;
 
-  // Get total count
-  const countResult = await pool.query(`
-    SELECT COUNT(*) as total 
-    FROM ${schema}.${table};
-  `);
-
-  const total = parseInt(countResult.rows[0].total);
-
-  // Get paginated data
-  const dataResult = await pool.query(`
+  const dataQuery = `
     SELECT * 
-    FROM ${schema}.${table}
-    ORDER BY "$id" DESC
-    LIMIT $1 OFFSET $2;
-  `, [pageSize, offset]);
+    FROM "${schema}"."${table}"
+    ${whereClause}
+    ORDER BY ${orderBy}
+    LIMIT $${paramCount} OFFSET $${paramCount + 1};
+  `;
 
-  // Get column information
-  const columnsResult = await pool.query(`
+  const dataResult = await pool.query(dataQuery, [...whereParams, pageSize, offset]);
+
+  const columnsResult = await pool.query(
+    `
     SELECT column_name, data_type, is_nullable
     FROM information_schema.columns
     WHERE table_schema = $1 AND table_name = $2
     ORDER BY ordinal_position;
-  `, [schema, table]);
+  `,
+    [schema, table]
+  );
 
   return {
     rows: dataResult.rows,
@@ -195,7 +284,7 @@ export async function getTableData(
       total,
       page,
       pageSize,
-      totalPages: Math.ceil(total / pageSize)
-    }
+      totalPages: Math.ceil(total / pageSize),
+    },
   };
 }
