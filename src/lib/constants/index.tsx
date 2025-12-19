@@ -3,7 +3,15 @@ import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } fr
 import { DATA_TYPES, DataTypeType } from "../types";
 
 
-
+export const DATA_TYPES_LIST = [
+  'string',
+  'integer',
+  'float',
+  'boolean',
+  'datetime',
+  "bytes",
+  "JSON"
+] as const
 
 export const SidebarRoutes = [
   {

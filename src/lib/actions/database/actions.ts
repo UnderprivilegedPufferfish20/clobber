@@ -1,12 +1,12 @@
 'use server';
 
-import { createFolderSchema, createQuerySchema, createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
+import { createColumnSchema, createFolderSchema, createQuerySchema, createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
 import { getTenantPool } from ".";
 import { getUser } from "../auth";
 import { getProjectById } from "../projects";
 import z from "zod";
 import { DATA_TYPES, FilterOperator, QueryFilters } from "@/lib/types";
-import { getPostgresCast, castFilterValue, mapPostgresType, buildWhereClause } from "@/lib/utils";
+import { getPostgresCast, castFilterValue, mapPostgresType, buildWhereClause, getPostgresType } from "@/lib/utils";
 import prisma from "@/lib/db";
 
 export async function getSchemas(projectId: string) {
@@ -146,8 +146,6 @@ export async function addTable(
 }
 
 
-
-// Updated getTableData function
 export async function getTableData(
   projectId: string,
   schema: string,
@@ -291,4 +289,73 @@ export async function createQuery(
   }
 
   
+}
+
+export async function addColumn(
+  form: z.infer<typeof createColumnSchema>,
+  schema: string,
+  projectId: string,
+  table: string
+) {
+  const { success, data } = createColumnSchema.safeParse(form);
+  if (!success) throw new Error("Invalid form");
+
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  // 1. Resolve Postgres Data Type (handling arrays)
+  const baseType = getPostgresType(data.dtype);
+  const finalType = data.isArray ? `${baseType}[]` : baseType;
+
+  // 2. Handle Constraints
+  const constraints = [];
+  if (data.isPkey) constraints.push("PRIMARY KEY");
+  if (data.isUnique) constraints.push("UNIQUE");
+  if (!data.isNullable) constraints.push("NOT NULL");
+
+  // 3. Handle Default Value with explicit casting for safety
+  // We wrap the default in single quotes and cast it to ensure type safety
+  const defaultStatement = data.default 
+    ? `DEFAULT '${data.default.replace(/'/g, "''")}'::${finalType}` 
+    : "";
+
+  const constraintString = constraints.join(" ");
+
+  // 4. Execute with Transaction
+  // Primary Keys require extra care: a table can only have one.
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // If adding a Primary Key, we first drop any existing PK constraint on this table
+    if (data.isPkey) {
+      await client.query(`
+        ALTER TABLE "${schema}"."${table}" 
+        DROP CONSTRAINT IF EXISTS "${table}_pkey" CASCADE
+      `);
+    }
+
+    const query = `
+      ALTER TABLE "${schema}"."${table}"
+      ADD COLUMN IF NOT EXISTS "${data.name}" ${finalType} ${defaultStatement} ${constraintString}
+    `.trim();
+
+    await client.query(query);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }

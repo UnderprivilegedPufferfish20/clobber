@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { DATA_TYPES, FilterOperator, QueryFilters } from "./types";
+import { DATA_TYPE_TYPE, DATA_TYPES, FilterOperator, QueryFilters } from "./types";
 
 
 export function cn(...inputs: ClassValue[]) {
@@ -70,6 +70,28 @@ export function mapPostgresType(pgType: string): DATA_TYPES {
   if (type.includes('json')) return DATA_TYPES.JSON;
   
   return DATA_TYPES.STRING; // default fallback
+}
+
+export function getPostgresType(type: DATA_TYPE_TYPE): string {
+  switch (type) {
+    case 'string':
+      return 'TEXT'; // 'VARCHAR' is also valid, but 'TEXT' is preferred in Postgres for arbitrary lengths.
+    case 'integer':
+      return 'INTEGER';
+    case 'float':
+      return 'DOUBLE PRECISION'; // Mapping 'float' to standard 8-byte floating point.
+    case 'boolean':
+      return 'BOOLEAN';
+    case 'datetime':
+      return 'TIMESTAMP'; // Use 'TIMESTAMPTZ' if you need time zone awareness.
+    case 'bytes':
+      return 'BYTEA'; // Standard Postgres type for binary data (byte array).
+    case 'JSON':
+      return 'JSONB'; // 'JSONB' is generally preferred over 'JSON' for efficiency and indexing.
+    default:
+      const exhaustCheck: never = type;
+      throw new Error(`Unhandled data type: ${exhaustCheck}`);
+  }
 }
 
 // Get the PostgreSQL cast syntax for a given data type

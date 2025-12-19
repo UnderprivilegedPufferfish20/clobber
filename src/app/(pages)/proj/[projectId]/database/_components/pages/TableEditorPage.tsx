@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Database } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Database, PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { Input } from "@/components/ui/input";
@@ -23,9 +23,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { throttle } from "@/lib/utils";
 import { EditingCell, FilterConfig, QueryFilters, TableViewProps } from "@/lib/types";
 import Filter, { parseFiltersParam, stringifyFilters } from "../Filter";
+import AddRowSheet from "../sheets/AddRowSheet";
+import AddColumnSheet from "../sheets/AddColumnSheet";
+import { Button } from "@/components/ui/button";
 
 
 
@@ -43,11 +52,11 @@ const TableView = ({ projectId }: TableViewProps) => {
 
   const sortStr = searchParams.get("sort") || "";
   let sortColumn: string | undefined;
-  let sortDir: "asc" | "desc" | undefined;
+  let sortDir: "ASC" | "DESC" | undefined;
   if (sortStr) {
     const [col, dir] = sortStr.split(":");
     sortColumn = col;
-    sortDir = dir as "asc" | "desc";
+    sortDir = dir as "ASC" | "DESC";
   }
 
   const filterParam = searchParams.get("filter");
@@ -246,7 +255,7 @@ const TableView = ({ projectId }: TableViewProps) => {
   const handleSort = (col: string) => {
     let newSort: string | null = null;
     if (sortColumn === col) {
-      if (sortDir === "asc") {
+      if (sortDir === "ASC") {
         newSort = `${col}:desc`;
       } else {
         newSort = null;
@@ -351,6 +360,11 @@ const TableView = ({ projectId }: TableViewProps) => {
             setActiveFilters={setActiveFilters}
             setStartPage={setStartPage}            
           />
+          <InsertButton
+            projectId={projectId}
+            tableId={table}
+            schema={schema}
+          />
         </div>
 
         <div className="flex items-center gap-2">
@@ -409,7 +423,7 @@ const TableView = ({ projectId }: TableViewProps) => {
                         <div className="flex items-center gap-2">
                           <span className="truncate">{col.column_name}</span>
                           {sortColumn === col.column_name ? (
-                            sortDir === "asc" ? (
+                            sortDir === "ASC" ? (
                               <ArrowUp size={14} />
                             ) : (
                               <ArrowDown size={14} />
@@ -430,7 +444,7 @@ const TableView = ({ projectId }: TableViewProps) => {
           </div>
 
           {/* body */}
-          <Table className="table-fixed">
+          <Table className="overflow-scroll">
             <TableBody>
               {allRows.map((row: any, idx: number) => {
                 const rowKey = String(row.$id ?? `${minPage}-${idx}`);
@@ -500,3 +514,59 @@ const TableView = ({ projectId }: TableViewProps) => {
 };
 
 export default TableView;
+
+function InsertButton({
+  projectId,
+  tableId,
+  schema
+}: {
+  projectId: string,
+  tableId: string,
+  schema: string
+}) {
+  const [openRow, setOpenRow] = useState(false);
+  const [openCol, setOpenCol] = useState(false);
+
+  return (
+    <>
+      <AddRowSheet 
+        onOpenChange={setOpenRow}
+        open={openRow}
+        projectId={projectId}
+        hideTrigger 
+        tableId={tableId}
+      />
+      <AddColumnSheet  
+        schema={schema}
+        onOpenChange={setOpenCol}
+        open={openCol}
+        projectId={projectId}
+        hideTrigger 
+        tableId={tableId}
+      />
+
+
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            className='bg-gray-50 dark:bg-black/10 dark:hover:bg-gray-900 hover:bg-gray-100 flex items-center justify-center border-2'
+            variant={'outline'}
+          >
+            Insert
+          </Button> 
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onSelect={() => setOpenRow(true)}>
+            Add Row
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setOpenCol(true)}>
+            Add Column
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+    </>
+  )
+}

@@ -1,5 +1,6 @@
 import { LucideIcon } from "lucide-react";
 import { User } from "../db/generated";
+import { DATA_TYPES_LIST } from "../constants";
 
 export interface AuthContextType {
   user: User | null;
@@ -105,5 +106,7 @@ export type DataTypeType = {
 
 export type QueryFilters = Record<string, [FilterOperator, string]>
 
+
+export type DATA_TYPE_TYPE = (typeof DATA_TYPES_LIST)[number]
 
 
