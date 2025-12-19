@@ -359,3 +359,75 @@ export async function addColumn(
     client.release();
   }
 }
+
+export async function getCols(
+  schema: string,
+  projectId: string,
+  table: string
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const col_details = await pool.query(`
+    SELECT *
+    FROM information_schema.columns
+    WHERE table_schema = '${schema.toLowerCase()}'
+      AND table_name = '${table.toLowerCase()}';
+  `)
+
+  const cols_to_dtype: Record<string, DATA_TYPES> = {}
+
+  for (let i = 0; i < col_details.rows.length; i++) {
+    cols_to_dtype[col_details.rows[i].column_name] = mapPostgresType(col_details.rows[i].data_type)
+  }
+
+  return cols_to_dtype
+}
+
+export async function addRow(
+  schema: string,
+  projectId: string,
+  table: string,
+  form: Record<string, any>
+) {
+
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const col_details = await pool.query(`
+    SELECT *
+    FROM information_schema.columns
+    WHERE table_schema = '${schema}'
+      AND table_name = '${table}';
+  `)
+
+  const cols_to_dtype: Record<string, DATA_TYPES> = {}
+
+  for (let i = 0; i < col_details.rows.length; i++) {
+    cols_to_dtype[col_details.rows[i].column_name] = mapPostgresType(col_details.rows[i].data_type)
+  }
+
+  console.log("@@Cols: ", cols_to_dtype)
+
+
+}

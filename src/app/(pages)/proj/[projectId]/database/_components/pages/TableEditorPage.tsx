@@ -534,7 +534,8 @@ function InsertButton({
         open={openRow}
         projectId={projectId}
         hideTrigger 
-        tableId={tableId}
+        schema={schema}
+        table={tableId}
       />
       <AddColumnSheet  
         schema={schema}
