@@ -152,4 +152,8 @@
   .fullscreen { 
     @apply w-full min-w-full max-w-full h-full min-h-full max-h-full
   }
+
+  .sidebar {
+    @apply h-full min-h-full max-h-full w-74 min-w-74 max-w-74 flex flex-col items-center border-r-2
+  }
 }

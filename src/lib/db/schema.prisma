@@ -29,4 +29,29 @@ model Project {
 
   owner         User     @relation(fields: [ownerId], references: [id])
   collaborators User[]   @relation("Invited To")
+
+  sqlfolders SqlFolder[]
+  sqlqueries sql[]
+}
+
+model SqlFolder {
+  id String @id @default(uuid())
+  projectId String
+  name String
+
+  queries sql[]
+
+  project Project @relation(fields: [projectId], references: [id])
+}
+
+model sql {
+  id String @id @default(uuid())
+  projectId String
+  folderId String? 
+  createdAt DateTime @default(now())
+  name String
+  query String
+
+  folder SqlFolder? @relation(fields: [folderId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
 }

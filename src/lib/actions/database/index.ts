@@ -193,12 +193,6 @@ export async function executeQuery(request: ExecuteQuery) {
   const project = await getProjectById(projectId);
   if (!project) throw new Error('Execute query: project not found');
 
-  console.log('Executing for project:', {
-    projectId: project.id,
-    dbName: project.db_name,
-    dbUser: project.db_user,
-  });
-
   const pool = await getTenantPool({
     connectionName: con,
     user: project.db_user,
@@ -209,8 +203,11 @@ export async function executeQuery(request: ExecuteQuery) {
   const result = await pool.query(query);
   console.log(`✅ Query executed, returned ${result.rows.length} rows`);
   console.log('✅ === EXECUTE QUERY COMPLETED ===\n');
-  
-  return { success: true, rows: result.rows };
+
+  return {
+    rows: result.rows,
+    columns: result.fields.map(f => f.name)
+  }
 }
 
 export async function applyTenantGrants(opts: {

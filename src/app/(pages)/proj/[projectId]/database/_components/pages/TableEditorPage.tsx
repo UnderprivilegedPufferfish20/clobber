@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { throttle } from "@/lib/utils";
 import { EditingCell, FilterConfig, QueryFilters, TableViewProps } from "@/lib/types";
-import Filter, { parseFiltersParam, stringifyFilters } from "./Filter";
+import Filter, { parseFiltersParam, stringifyFilters } from "../Filter";
 
 
 

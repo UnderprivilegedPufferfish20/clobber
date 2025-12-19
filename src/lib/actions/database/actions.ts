@@ -1,12 +1,13 @@
 'use server';
 
-import { createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
+import { createFolderSchema, createQuerySchema, createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
 import { getTenantPool } from ".";
 import { getUser } from "../auth";
 import { getProjectById } from "../projects";
 import z from "zod";
 import { DATA_TYPES, FilterOperator, QueryFilters } from "@/lib/types";
 import { getPostgresCast, castFilterValue, mapPostgresType, buildWhereClause } from "@/lib/utils";
+import prisma from "@/lib/db";
 
 export async function getSchemas(projectId: string) {
   const user = await getUser()
@@ -154,7 +155,7 @@ export async function getTableData(
   page: number = 1,
   pageSize: number = 50,
   filters: QueryFilters = {},
-  sort?: { column: string; direction: "asc" | "desc" }
+  sort?: { column: string; direction: "ASC" | "DESC" }
 ) {
   const user = await getUser();
   if (!user) throw new Error("No user");
@@ -194,10 +195,6 @@ export async function getTableData(
     throw new Error(`Invalid filters: ${JSON.stringify(errors)}`);
   }
 
-  const orderBy = sort
-    ? `"${sort.column}" ${sort.direction}, "$id" DESC`
-    : '"$id" DESC';
-
   const countQuery = `
     SELECT COUNT(*) as total 
     FROM "${schema}"."${table}" ${whereClause};
@@ -213,7 +210,7 @@ export async function getTableData(
     SELECT * 
     FROM "${schema}"."${table}"
     ${whereClause}
-    ORDER BY ${orderBy}
+    ${sort && `ORDER BY ${sort.column} ${sort.direction}`}
     LIMIT $${paramCount} OFFSET $${paramCount + 1};
   `;
 
@@ -232,4 +229,66 @@ export async function getTableData(
       totalPages: Math.ceil(total / pageSize),
     },
   };
+}
+
+export async function getFolders(projectId: string) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  return await prisma.sqlFolder.findMany({
+    where: { projectId }, include: { queries: true }
+  })
+}
+
+export async function getQueries(projectId: string) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  return await prisma.sql.findMany({
+    where: { projectId }
+  })
+}
+
+export async function createFolder(form: z.infer<typeof createFolderSchema>, projectId: string) {
+  const { data, success } = createFolderSchema.safeParse(form)
+
+  if (!success) throw new Error("Invalid new folder data");
+
+  return prisma.sqlFolder.create({
+    data: {
+      projectId,
+      name: data.name
+    }
+  })
+}
+
+export async function createQuery(
+  form: z.infer<typeof createQuerySchema>,
+  projectId: string,
+  folderId?: string
+) {
+  const { data, success } = createQuerySchema.safeParse(form)
+
+  if (!success) throw new Error("Invalid new query data");
+
+  if (folderId === "") {
+    return prisma.sql.create({
+    data: {
+      name: data.name,
+      projectId,
+      query: ""
+    }
+  })
+  } else {
+    return prisma.sql.create({
+    data: {
+      name: data.name,
+      folderId,
+      projectId,
+      query: ""
+    }
+  })
+  }
+
+  
 }
