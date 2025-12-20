@@ -19,7 +19,7 @@ async function layout({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 fullheight">
         <header className="fixed top-0 left-0 right-0 z-100 bg-gray-50 border-b dark:bg-black/5 dark:text-white">
@@ -36,7 +36,7 @@ async function layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* push content below header */}
-        <div className="pt-[65px] text-accent-foreground w-full h-full overflow-x-hidden overflow-y-hidden">
+        <div className="pt-[65px] text-accent-foreground w-full h-full overflow-hidden">
           {children}
         </div>
       </div>

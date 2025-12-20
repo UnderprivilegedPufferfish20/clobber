@@ -98,7 +98,7 @@ function AddColumnSheet({
           <Button variant="outline">Add Column</Button>
         </SheetTrigger>
       )}
-      <SheetContent className="sm:max-w-md overflow-y-auto">
+      <SheetContent className="sm:max-w-md overflow-y-auto p-2 z-100">
         <SheetHeader className="mb-4">
           <CustomDialogHeader 
             icon={Columns}

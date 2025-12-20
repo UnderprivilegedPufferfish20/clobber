@@ -155,6 +155,8 @@ export async function getTableData(
   filters: QueryFilters = {},
   sort?: { column: string; direction: "ASC" | "DESC" }
 ) {
+  console.log("@@GETTABLEDATA ARGS: ", projectId, schema, table, page, pageSize, filters, sort)
+
   const user = await getUser();
   if (!user) throw new Error("No user");
 
@@ -208,7 +210,7 @@ export async function getTableData(
     SELECT * 
     FROM "${schema}"."${table}"
     ${whereClause}
-    ${sort && `ORDER BY ${sort.column} ${sort.direction}`}
+    ${sort ? `ORDER BY "${sort.column}" ${sort.direction}` : ''}
     LIMIT $${paramCount} OFFSET $${paramCount + 1};
   `;
 
@@ -430,4 +432,25 @@ export async function addRow(
   console.log("@@Cols: ", cols_to_dtype)
 
 
+}
+
+export async function getSqlQueryById(id: string, projectId: string) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  return prisma.sql.findUnique({ where: { projectId, id } })
+}
+
+export async function updateSqlQuery(id: string, projectId: string, query: string) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const q = await prisma.sql.findUnique({ where: { projectId, id } })
+
+  if (!q) throw new Error("Query not found");
+
+  return await prisma.sql.update({
+    where: { projectId, id },
+    data: { query }
+  })
 }

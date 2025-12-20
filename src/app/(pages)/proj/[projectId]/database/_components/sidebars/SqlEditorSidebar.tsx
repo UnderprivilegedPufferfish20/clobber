@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import AddFolderDialog from '../dialogs/AddFolderDialog';
 import AddQueryDialog from '../dialogs/AddQueryDialog';
+import { cn } from '@/lib/utils';
 
 
 
@@ -26,6 +27,7 @@ const SqlEditorSidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const selectedQuery = searchParams.get("query");
+  const sqlId = searchParams.get("q") || ""; // <-- query id from ?q=
   const projectId = useMemo(() => pathname.split("/")[2] ?? "", [pathname]);
 
   const {
@@ -86,7 +88,7 @@ const SqlEditorSidebar = () => {
                 <>
                   <div className="mb-2 text-sm text-muted-foreground">{filteredQueries.length} results found</div>
                   {filteredQueries.map(q => (
-                    <Query key={q.id} q={q} />
+                    <Query key={q.id} q={q} qid={sqlId} />
                   ))}
                 </>
               ) : (
@@ -96,10 +98,11 @@ const SqlEditorSidebar = () => {
                       key={f.id} 
                       name={f.name}
                       queries={f.queries}
+                      sqlId={sqlId}
                     />
                   ))}
                   {queries && queries.filter(q => !q.folderId).map(q => (
-                    <Query key={q.id} q={q} />
+                    <Query key={q.id} q={q} qid={sqlId} />
                   ))}
                 </>
               )}
@@ -114,11 +117,12 @@ const SqlEditorSidebar = () => {
 export default SqlEditorSidebar
 
 type FolderProps = {
+  sqlId: string,
   name: string,
   queries: sql[]
 }
 
-function Folder({ name, queries }: FolderProps) {
+function Folder({ name, queries, sqlId }: FolderProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -151,7 +155,7 @@ function Folder({ name, queries }: FolderProps) {
           {/* Query list */}
           <div className="flex flex-col gap-1">
             {queries.map(q => (
-              <Query key={q.id} q={q} />
+              <Query key={q.id} q={q} qid={sqlId} />
             ))}
           </div>
         </div>
@@ -205,16 +209,21 @@ function AddButton({ projectId, folders }: { projectId: string, folders: SqlFold
 }
 
 function Query({
-  q
+  q,
+  qid
 }: {
-  q: sql
+  q: sql,
+  qid: string
 }) {
   const router = useRouter()
   const pathname = usePathname()
 
   return (
     <div 
-      className='flex gap-3 items-center px-4 py-2 hover:bg-white/5 hover:cursor-pointer'
+      className={cn(
+        'flex gap-3 items-center px-4 py-2 hover:bg-white/5 hover:cursor-pointer',
+        q.id === qid ? "bg-indigo-600/20 border-l-4 border-indigo-500" : ""
+      )}
       onClick={() => {
         router.push(`${pathname}?page=sql_editor&q=${q.id}`)
       }}

@@ -52,11 +52,11 @@ const TableView = ({ projectId }: TableViewProps) => {
 
   const sortStr = searchParams.get("sort") || "";
   let sortColumn: string | undefined;
-  let sortDir: "ASC" | "DESC" | undefined;
+  let sortDir: "asc" | "desc" | undefined;
   if (sortStr) {
     const [col, dir] = sortStr.split(":");
     sortColumn = col;
-    sortDir = dir as "ASC" | "DESC";
+    sortDir = dir as "asc" | "desc";
   }
 
   const filterParam = searchParams.get("filter");
@@ -76,6 +76,9 @@ const TableView = ({ projectId }: TableViewProps) => {
   const topRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+  const headerRefs = useRef<HTMLTableCellElement[]>([]);
+  const [widths, setWidths] = useState<number[]>([]);
+  const [isMeasured, setIsMeasured] = useState(false);
 
   const prevMinPageRef = useRef(1);
   const prevHeightRef = useRef(0);
@@ -106,7 +109,7 @@ const TableView = ({ projectId }: TableViewProps) => {
         pageParam,
         pageSize,
         filters,
-        sortStr ? { column: sortColumn!, direction: sortDir! } : undefined
+        sortStr ? { column: sortColumn!, direction: sortDir!.toUpperCase() as "ASC" | "DESC" } : undefined
       ),
     initialPageParam: startPage,
     getNextPageParam: (lastPage) =>
@@ -152,6 +155,17 @@ const TableView = ({ projectId }: TableViewProps) => {
     prevMinPageRef.current = currentMin;
     prevHeightRef.current = scrollRef.current.scrollHeight;
   }, [data]);
+
+  // Measure header widths after columns are available
+  useEffect(() => {
+    if (columns.length > 0 && headerRefs.current.length === columns.length) {
+      const measuredWidths = headerRefs.current.map(
+        (el) => (el ? el.getBoundingClientRect().width : 0)
+      );
+      setWidths(measuredWidths);
+      setIsMeasured(true);
+    }
+  }, [columns]);
 
   const handleScroll = () => {
     if (isProgrammaticScroll) return;
@@ -231,6 +245,7 @@ const TableView = ({ projectId }: TableViewProps) => {
     if (np > totalPages) np = totalPages;
 
     if (np >= minPage && np <= maxPage) {
+      // Page is already loaded, scroll to it
       const rowIndex = (np - minPage) * pageSize;
       const trs = scrollRef.current?.querySelectorAll("tbody tr");
       const target = trs?.[rowIndex];
@@ -248,14 +263,25 @@ const TableView = ({ projectId }: TableViewProps) => {
         setTimeout(() => setIsProgrammaticScroll(false), 500);
       }
     } else {
-      setStartPage(np);
+      // Page not loaded, fetch it and scroll to top
+      flushSync(() => {
+        setStartPage(np);
+        setCurrentPage(np);
+      });
+      
+      // Scroll to top after data loads
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }, 100);
     }
   };
 
   const handleSort = (col: string) => {
     let newSort: string | null = null;
     if (sortColumn === col) {
-      if (sortDir === "ASC") {
+      if (sortDir === "asc") {
         newSort = `${col}:desc`;
       } else {
         newSort = null;
@@ -349,10 +375,10 @@ const TableView = ({ projectId }: TableViewProps) => {
     );
   }
 
-  return (
-    <div className="w-full h-full flex flex-col overflow-hidden">
+return (
+    <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b p-2 shrink-0">
+      <div className="flex items-center justify-between border-b p-2 shrink-0 overflow-hidden">
         <div className="flex items-center gap-2">
           <Filter 
             activeFilters={activeFilters}
@@ -393,7 +419,10 @@ const TableView = ({ projectId }: TableViewProps) => {
       </div>
 
       {/* Scrolling container */}
-      <div ref={scrollRef} className="flex-1 overflow-auto min-h-0">
+      <div
+        ref={scrollRef}
+        className="flex-1 min-h-0 overflow-auto border rounded-md"
+      >
         {hasPreviousPage && (
           <div ref={topRef} className="flex items-center justify-center h-10">
             {isFetchingPreviousPage && <Skeleton className="h-4 w-32 bg-gray-700" />}
@@ -401,21 +430,23 @@ const TableView = ({ projectId }: TableViewProps) => {
         )}
 
         {/* grid wrapper */}
-        <div className="border rounded-md overflow-hidden">
+  
           {/* sticky header */}
           <div ref={headerRef} className="sticky top-0 z-10 bg-background">
-            <Table className="table-fixed">
+            <Table className={isMeasured ? "table-fixed" : "table-auto"}>
               <TableHeader>
                 <TableRow className="bg-muted/30">
-                  {columns.map((col: any) => (
+                  {columns.map((col: any, index: number) => (
                     <TableHead
+                      ref={(el) => { headerRefs.current[index] = el!; }}
                       key={col.column_name}
+                      style={isMeasured ? { width: `${widths[index]}px` } : undefined}
                       className={[
                         "font-semibold align-bottom cursor-pointer",
                         "border-b border-border",
                         "border-r border-border last:border-r-0",
                         "px-3 py-2",
-                        "bg-background",
+                        "bg-white/5",
                       ].join(" ")}
                       onClick={() => handleSort(col.column_name)}
                     >
@@ -423,7 +454,7 @@ const TableView = ({ projectId }: TableViewProps) => {
                         <div className="flex items-center gap-2">
                           <span className="truncate">{col.column_name}</span>
                           {sortColumn === col.column_name ? (
-                            sortDir === "ASC" ? (
+                            sortDir === "asc" ? (
                               <ArrowUp size={14} />
                             ) : (
                               <ArrowDown size={14} />
@@ -444,7 +475,7 @@ const TableView = ({ projectId }: TableViewProps) => {
           </div>
 
           {/* body */}
-          <Table className="overflow-scroll">
+          <Table className={isMeasured ? "table-fixed" : ""}>
             <TableBody>
               {allRows.map((row: any, idx: number) => {
                 const rowKey = String(row.$id ?? `${minPage}-${idx}`);
@@ -453,7 +484,7 @@ const TableView = ({ projectId }: TableViewProps) => {
                     key={rowKey}
                     className="hover:bg-muted/40"
                   >
-                    {columns.map((col: any) => {
+                    {columns.map((col: any, index: number) => {
                       const colName = col.column_name;
                       const raw = row[colName];
                       const isNull = raw === null;
@@ -464,6 +495,7 @@ const TableView = ({ projectId }: TableViewProps) => {
                       return (
                         <TableCell
                           key={colName}
+                          style={isMeasured ? { width: `${widths[index]}px` } : undefined}
                           className={[
                             "px-3 py-2 align-top",
                             "border-b border-border",
@@ -509,7 +541,6 @@ const TableView = ({ projectId }: TableViewProps) => {
           </div>
         )}
       </div>
-    </div>
   );
 };
 

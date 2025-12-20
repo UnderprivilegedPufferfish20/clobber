@@ -20,7 +20,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   })
 
   return (
-    <div className="w-full h-full flex flex-col"> {/* Changed from fullscreen flex flex-col */}
+    <div className="w-full h-full flex flex-col overflow-hidden"> {/* Changed from fullscreen flex flex-col */}
       <header className="w-full h-20 min-h-20 max-h-20 flex gap-2 items-center-safe p-2 px-4">
         <span className="font-semibold text-3xl mr-8">Database</span>
         <DatabaseNavbar />
@@ -28,11 +28,11 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
 
       <Separator />
 
-      <div className="flex-1 flex overflow-hidden min-h-0"> {/* Key change: overflow-hidden on parent, min-h-0 */}
+      <div className="flex-1 flex overflow-hidden"> {/* Key change: overflow-hidden on parent, min-h-0 */}
         {(!sp["page"] || sp["page"] === 'table_editor') ? (
           <>
             <TableEditorSidebar />
-            <div className="flex-1 overflow-hidden"> {/* Container for TableView */}
+            <div className="flex-1"> {/* Container for TableView */}
               <TableView projectId={p.projectId} />
             </div>
           </>

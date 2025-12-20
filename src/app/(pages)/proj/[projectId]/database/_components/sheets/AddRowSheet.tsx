@@ -67,7 +67,7 @@ function AddRowSheet({
             <Button variant="outline">Open</Button>
         </SheetTrigger>
       )}
-      <SheetContent className="z-100 sm:max-w-[450px] flex flex-col">
+      <SheetContent className="p-2 flex flex-col overflow-y-scroll z-100">
         <SheetHeader>
           <SheetTitle>Add Row</SheetTitle>
           <SheetDescription>
