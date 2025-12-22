@@ -104,9 +104,19 @@ export type DataTypeType = {
   icon: LucideIcon
 }
 
+export enum INDEX_TYPES {
+  BTREE,
+  HASH,
+  GiST,
+  SPGiST,
+  GIN,
+  BRIN
+}
+
 export type QueryFilters = Record<string, [FilterOperator, string]>
 
 
 export type DATA_TYPE_TYPE = (typeof DATA_TYPES_LIST)[number]
+export type INDEX_TYPE = (typeof INDEX_TYPES)[number]
 
 

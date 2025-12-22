@@ -114,6 +114,63 @@ export function getPostgresCast(dataType: DATA_TYPES): string {
   }
 }
 
+export function callPostgresFunction(
+  name: string,
+  argstring: string
+): string {
+  if (!argstring.trim()) {
+    return `SELECT ${name}();`;
+  }
+
+  const args = argstring.split(",").map(a => a.trim());
+  const sqlArgs: string[] = [];
+
+  for (const arg of args) {
+    const [, ...typeParts] = arg.split(/\s+/);
+    const dtype = typeParts.join(" ").toUpperCase();
+
+    let sqlLiteral: string;
+
+    switch (dtype) {
+      case "TEXT":
+        sqlLiteral = `'a'`;
+        break;
+
+      case "INTEGER":
+        sqlLiteral = `2`;
+        break;
+
+      case "DOUBLE PRECISION":
+        sqlLiteral = `3.2`;
+        break;
+
+      case "BOOLEAN":
+        sqlLiteral = `FALSE`;
+        break;
+
+      case "TIMESTAMP":
+        sqlLiteral = `'2025-01-01 10:00:00'::timestamp`;
+        break;
+
+      case "BYTEA":
+        sqlLiteral = `'\\x01020304ff'::bytea`;
+        break;
+
+      case "JSONB":
+        sqlLiteral = `'{"g":"a"}'::jsonb`;
+        break;
+
+      default:
+        throw new Error(`Unsupported PostgreSQL type: ${dtype}`);
+    }
+
+    sqlArgs.push(sqlLiteral);
+  }
+
+  return `SELECT ${name}(${sqlArgs.join(", ")});`;
+}
+
+
 // Validate and cast a filter value based on data type
 export function castFilterValue(value: string, dataType: DATA_TYPES, operator: FilterOperator): { 
   isValid: boolean; 

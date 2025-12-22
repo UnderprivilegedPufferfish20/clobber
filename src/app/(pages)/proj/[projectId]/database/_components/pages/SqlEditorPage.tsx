@@ -21,6 +21,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
 import { executeQuery } from "@/lib/actions/database";
 import { getSqlQueryById, updateSqlQuery } from "@/lib/actions/database/actions";
+import { useSavePreselection } from "@/hooks/useSavePreselection";
 // ✅ you implement these (server actions or api wrappers)
 
 
@@ -35,7 +36,7 @@ export default function SqlEditorPage() {
 
   const [query, setQuery] = useState("");
   const [savedQuery, setSavedQuery] = useState("");
-
+  useSavePreselection(projectId)
   // -----------------------------
   // Load saved SQL by id (?q=)
   // -----------------------------

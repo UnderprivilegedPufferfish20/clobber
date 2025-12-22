@@ -1,12 +1,12 @@
 'use server';
 
-import { createColumnSchema, createFolderSchema, createQuerySchema, createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
+import { createColumnSchema, createFolderSchema, createFunctionSchema, createQuerySchema, createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
 import { getTenantPool } from ".";
 import { getUser } from "../auth";
 import { getProjectById } from "../projects";
 import z from "zod";
 import { DATA_TYPES, FilterOperator, QueryFilters } from "@/lib/types";
-import { getPostgresCast, castFilterValue, mapPostgresType, buildWhereClause, getPostgresType } from "@/lib/utils";
+import { getPostgresCast, castFilterValue, mapPostgresType, buildWhereClause, getPostgresType, callPostgresFunction } from "@/lib/utils";
 import prisma from "@/lib/db";
 
 export async function getSchemas(projectId: string) {
@@ -454,3 +454,126 @@ export async function updateSqlQuery(id: string, projectId: string, query: strin
     data: { query }
   })
 }
+
+export async function getFunctions(projectId: string, schema: string) {
+  const user = await getUser()
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const result = await pool.query(`
+    SELECT
+        n.nspname                                 AS schema_name,
+        p.proname                                AS function_name,
+        r.routine_type                           AS function_type,
+        r.data_type                              AS data_type,
+        pg_catalog.pg_get_function_arguments(p.oid) AS arguments
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n
+        ON n.oid = p.pronamespace
+    JOIN information_schema.routines r
+        ON r.routine_name = p.proname
+      AND r.routine_schema = n.nspname
+    WHERE
+        r.routine_type = 'FUNCTION'
+        AND n.nspname = '${schema}';
+
+    `);
+
+  return result.rows
+}
+
+export async function createFunction(
+  form: z.infer<typeof createFunctionSchema>,
+  projectId: string, 
+) {
+  const { data, success } = createFunctionSchema.safeParse(form);
+  if (!success) throw new Error("Invalid form data");
+
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const argument_string = data.args
+    .map(({ name, dtype }) => `${name} ${getPostgresType(dtype)}`)
+    .join(", ");
+
+  await pool.query(`
+    CREATE FUNCTION ${data.name}(${argument_string})
+    RETURNS ${getPostgresType(data.returnType)} AS $$
+    BEGIN
+      ${data.definition}
+    END;
+    $$ LANGUAGE plpgsql;
+  `)
+
+}
+
+export async function getIndexes(
+  projectId: string,
+  schema: string
+) {
+  const user = await getUser()
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const result = await pool.query(`
+    SELECT
+    n.nspname AS schema_name,
+    t.relname AS table_name,
+    i.relname AS index_name,
+    am.amname AS access_method,
+    pg_get_indexdef(idx.indexrelid) AS index_definition,
+    -- A more complex join is needed to list columns individually (see description below)
+    -- This simply shows the full definition which includes the columns/expressions
+    idx.indisunique AS is_unique,
+    idx.indisprimary AS is_primary
+FROM
+    pg_catalog.pg_class i
+JOIN
+    pg_catalog.pg_index idx ON i.oid = idx.indexrelid
+JOIN
+    pg_catalog.pg_class t ON idx.indrelid = t.oid
+JOIN
+    pg_catalog.pg_namespace n ON n.oid = t.relnamespace
+JOIN
+    pg_catalog.pg_am am ON am.oid = i.relam
+WHERE
+    n.nspname = '${schema}}' -- Replace with your schema name, e.g., 'public'
+ORDER BY
+    schema_name,
+    table_name,
+    index_name;
+
+    `);
+
+  return result.rows
+}
+
+

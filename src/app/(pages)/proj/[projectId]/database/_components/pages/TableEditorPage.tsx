@@ -35,6 +35,7 @@ import Filter, { parseFiltersParam, stringifyFilters } from "../Filter";
 import AddRowSheet from "../sheets/AddRowSheet";
 import AddColumnSheet from "../sheets/AddColumnSheet";
 import { Button } from "@/components/ui/button";
+import { useSavePreselection } from "@/hooks/useSavePreselection";
 
 
 
@@ -45,6 +46,7 @@ function toCellString(v: any) {
 }
 
 const TableView = ({ projectId }: TableViewProps) => {
+  useSavePreselection(projectId)
   const router = useRouter();
   const searchParams = useSearchParams();
   const table = searchParams.get("table");

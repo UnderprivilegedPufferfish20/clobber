@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { DATA_TYPE_TYPE } from '..'
+import { INDEX_TYPES, type DATA_TYPE_TYPE } from '..'
 import { DATA_TYPES_LIST } from '@/lib/constants'
 
 export const createDatabaseSchema = z.object({
@@ -37,6 +37,21 @@ export const createColumnSchema = z.object({
   isPkey: z.boolean(),
   isUnique: z.boolean(),
   isNullable: z.boolean()
+})
+
+export const createFunctionSchema = z.object({
+  name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
+  schema: z.string(),
+  returnType: z.enum(DATA_TYPES_LIST),
+  args: z.array(z.object({ name: z.string(), dtype: z.enum(DATA_TYPES_LIST) })),
+  definition: z.string()
+})
+
+export const createIndexSchema = z.object({
+  schema: z.string(),
+  table: z.string(),
+  cols: z.array(z.string()),
+  type: z.enum(INDEX_TYPES)
 })
 
 

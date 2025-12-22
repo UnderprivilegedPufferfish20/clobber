@@ -63,7 +63,7 @@ const SchemaPicker = ({ schemas, value, onChange }: SchemaPickerProps) => {
         />
       </PopoverTrigger>
 
-      <PopoverContent className="w-[260px] p-0 z-50" align="start">
+      <PopoverContent className="w-[260px] p-0 z-200" align="start">
         <Command>
           <CommandInput placeholder="Search schema..." className="h-9" />
           <CommandList>
