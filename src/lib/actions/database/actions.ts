@@ -1,6 +1,6 @@
 'use server';
 
-import { createColumnSchema, createFolderSchema, createFunctionSchema, createQuerySchema, createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
+import { createColumnSchema, createFolderSchema, createFunctionSchema, createIndexSchema, createQuerySchema, createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
 import { getTenantPool } from ".";
 import { getUser } from "../auth";
 import { getProjectById } from "../projects";
@@ -565,11 +565,99 @@ JOIN
 JOIN
     pg_catalog.pg_am am ON am.oid = i.relam
 WHERE
-    n.nspname = '${schema}}' -- Replace with your schema name, e.g., 'public'
+    n.nspname = '${schema}' -- Replace with your schema name, e.g., 'public'
 ORDER BY
     schema_name,
     table_name,
     index_name;
+
+    `);
+
+  return result.rows
+}
+
+export async function createIndex(
+  form: z.infer<typeof createIndexSchema>,
+  projectId: string,
+) {
+  const { data, success } = createIndexSchema.safeParse(form);
+  if (!success) throw new Error("Invalid form data");
+
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const query = `
+    CREATE INDEX "${data.table}_${data.cols.map(c => c.value).join("_")}_idx" ON "${data.schema}"."${data.table}" USING ${data.type.toString().toLowerCase()} (${data.cols.map(c => c.value).join(", ")});
+  `
+
+  console.log("@QUERY: ", query)
+
+  await pool.query(query)
+}
+
+export async function getTablesForSchema(
+  schema: string,
+  projectId: string
+) {
+  const user = await getUser()
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const result = await pool.query(`
+    SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = '${schema}'
+  AND table_type = 'BASE TABLE';
+
+
+    `);
+
+  return result.rows
+}
+
+export async function getColsForTable(
+  schema: string,
+  table: string,
+  projectId: string
+) {
+  const user = await getUser()
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const result = await pool.query(`
+    SELECT column_name
+FROM information_schema.columns
+WHERE table_name = '${table}'
+  AND table_schema = '${schema}';
+
 
     `);
 

@@ -48,10 +48,18 @@ export const createFunctionSchema = z.object({
 })
 
 export const createIndexSchema = z.object({
-  schema: z.string(),
-  table: z.string(),
-  cols: z.array(z.string()),
-  type: z.enum(INDEX_TYPES)
-})
+  schema: z.string().min(1, "Pick a schema"),
+  table: z.string().min(1, "Pick a table"),
+
+  // ✅ field-array friendly: cols is [{ value: "col" }, ...]
+  cols: z
+    .array(z.object({ value: z.string().min(1, "Pick a column") }))
+    .min(1, "Add at least one column"),
+
+  type: z.enum(INDEX_TYPES),
+});
+
+
+
 
 

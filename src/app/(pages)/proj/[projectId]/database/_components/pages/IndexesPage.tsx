@@ -9,8 +9,8 @@ import SchemaPicker from "../SchemaPicker";
 import { Input } from "@/components/ui/input";
 import AddFunctionSheet from "../sheets/AddFunctionSheet";
 import Loader from "@/components/Loader";
-import { InboxIcon, Search, FunctionSquare } from "lucide-react";
-import { DATA_TYPES } from "@/lib/types";
+import { InboxIcon, Search, FunctionSquare, ListTreeIcon } from "lucide-react";
+import { DATA_TYPES, INDEX_TYPE, INDEX_TYPES } from "@/lib/types";
 import { mapPostgresType } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -152,13 +152,13 @@ const IndexesPage = ({ projectId }: Props) => {
             "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           )}
         >
-          {filteredIndexes.map((f: any) => (
-            <FunctionCard
-              key={`${f.function_name}:${f.arguments ?? ""}`}
-              name={f.function_name}
-              returnType={mapPostgresType(f.data_type)}
-              args={f.arguments}
-              schema={schema}
+          {filteredIndexes.map((i: any) => (
+            <IndexCard
+              definition={i.index_definition}
+              method={i.access_method as INDEX_TYPES}
+              name={i.index_name}
+              schema={i.schema_name}
+              table={i.table_name}
             />
           ))}
         </div>
@@ -169,18 +169,19 @@ const IndexesPage = ({ projectId }: Props) => {
 
 export default IndexesPage;
 
-const FunctionCard = ({
+const IndexCard = ({
   name,
-  returnType,
-  args,
+  table,
+  method,
   schema,
+  definition
 }: {
   name: string;
-  returnType: DATA_TYPES;
-  args: string;
-  schema?: string;
+  table: string;
+  method: INDEX_TYPES;
+  definition: string;
+  schema: string
 }) => {
-  const sig = `${name}(${args || ""})`;
 
   return (
     <div
@@ -194,12 +195,12 @@ const FunctionCard = ({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <FunctionSquare className="h-4 w-4 text-muted-foreground" />
+            <ListTreeIcon className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-semibold text-base truncate">{name}</h3>
           </div>
 
           <p className="text-xs text-muted-foreground mt-1 truncate">
-            <span className="font-mono">{returnType}</span>
+            <span className="text-muted-foreground">{schema}.<span className="text-black dark:text-white">{table}</span></span>
           </p>
         </div>
 
@@ -210,14 +211,14 @@ const FunctionCard = ({
             "group-hover:text-foreground group-hover:border-foreground/20"
           )}
         >
-          RETURNS {returnType}
+          {method.toString()}
         </span>
       </div>
 
       <div className="mt-3">
-        <p className="text-xs text-muted-foreground">Signature</p>
+        <p className="text-xs text-muted-foreground">Preview</p>
         <p className="mt-1 font-mono text-xs text-foreground/90 truncate">
-          {sig}
+          {definition}
         </p>
       </div>
     </div>

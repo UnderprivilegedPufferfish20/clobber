@@ -23,9 +23,6 @@ const routes = [
   "Triggers",
   "Enums",
   "Indexes",
-  "Extensions",
-  "Backups",
-  "Replication",
   "Settings"
 ]
 
