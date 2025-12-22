@@ -154,6 +154,7 @@ const IndexesPage = ({ projectId }: Props) => {
         >
           {filteredIndexes.map((i: any) => (
             <IndexCard
+              key={i.index_name}
               definition={i.index_definition}
               method={i.access_method as INDEX_TYPES}
               name={i.index_name}
