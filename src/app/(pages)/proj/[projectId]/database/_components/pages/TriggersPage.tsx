@@ -2,7 +2,7 @@
 
 import { Separator } from "@/components/ui/separator";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { getFunctions, getIndexes, getSchemas } from "@/lib/actions/database/actions";
+import { getFunctions, getIndexes, getSchemas, getTriggers } from "@/lib/actions/database/actions";
 import { useQuery } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
 import SchemaPicker from "../SchemaPicker";
@@ -15,12 +15,14 @@ import { mapPostgresType } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import AddIndexSheet from "../sheets/AddIndexSheet";
+import AddTriggerSheet from "../sheets/AddTriggerSheet";
+import { StringFormatParams } from "zod/v4/core";
 
 type Props = {
   projectId: string;
 };
 
-const IndexesPage = ({ projectId }: Props) => {
+const TriggersPage = ({ projectId }: Props) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -47,36 +49,36 @@ const IndexesPage = ({ projectId }: Props) => {
     }
   }, [schemas, schema, setSchema]);
 
-  const { data: indexes, isLoading: indexesLoading } = useQuery({
-    queryKey: ["indexes", projectId, schema],
-    queryFn: () => getIndexes(projectId, schema),
+  const { data: triggers, isLoading: triggersLoading } = useQuery({
+    queryKey: ["triggers", projectId, schema],
+    queryFn: () => getTriggers(projectId, schema),
     enabled: !!projectId && !!schema,
   });
 
-  const filteredIndexes = useMemo(() => {
-    if (!indexes) return [];
+  const filteredTriggers = useMemo(() => {
+    if (!triggers) return [];
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return indexes;
+    if (!q) return triggers;
 
-    return indexes.filter((i: any) =>
+    return triggers.filter((i: any) =>
       i.function_name.toLowerCase().includes(q)
     );
-  }, [searchTerm, indexes]);
+  }, [searchTerm, triggers]);
 
-  const showEmptySchemaState = !indexesLoading && !searchTerm && (indexes?.length ?? 0) === 0;
-  const showNoMatchesState = !indexesLoading && !!searchTerm && filteredIndexes.length === 0;
+  const showEmptySchemaState = !triggersLoading && !searchTerm && (triggers?.length ?? 0) === 0;
+  const showNoMatchesState = !triggersLoading && !!searchTerm && filteredTriggers.length === 0;
 
   return (
     <div className="fullscreen flex flex-col p-8 overflow-y-auto">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-bold text-3xl">Indexes</h1>
+          <h1 className="font-bold text-3xl">Triggers</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Indexes are organized lists on columns that help the computer quickly find exactly where information is stored, so it doesn't have to look through everything every single time. 
+            Triggers are functions that run when an event happens.
           </p>
         </div>
 
-        <AddIndexSheet
+        <AddTriggerSheet
           open={open}
           onOpenChange={setOpen}
           projectId={projectId}
@@ -91,7 +93,7 @@ const IndexesPage = ({ projectId }: Props) => {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9 w-full sm:w-72"
-              placeholder="Search indexes"
+              placeholder="Search triggers"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -101,14 +103,14 @@ const IndexesPage = ({ projectId }: Props) => {
         </div>
 
         <div className="text-xs text-muted-foreground">
-          {indexesLoading ? "Loading…" : `${filteredIndexes.length} indexes${filteredIndexes.length === 1 ? "" : "s"}`}
+          {triggersLoading ? "Loading…" : `${filteredTriggers.length} triggers${filteredTriggers.length === 1 ? "" : "s"}`}
         </div>
       </div>
 
       <Separator className="mb-6" />
 
       {/* CONTENT */}
-      {indexesLoading ? (
+      {triggersLoading ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader sz={86} />
         </div>
@@ -116,13 +118,13 @@ const IndexesPage = ({ projectId }: Props) => {
         <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
           <InboxIcon size={96} className="text-muted-foreground" />
           <div className="space-y-1">
-            <h2 className="text-2xl font-semibold">No indexes in “{schema}”</h2>
+            <h2 className="text-2xl font-semibold">No triggers in “{schema}”</h2>
             <p className="text-muted-foreground text-sm">
-              Create your first index to speed up searching.
+              Create your first trigger to automate routine tasks.
             </p>
           </div>
 
-          <AddIndexSheet
+          <AddTriggerSheet
             open={open}
             onOpenChange={setOpen}
             projectId={projectId}
@@ -136,7 +138,7 @@ const IndexesPage = ({ projectId }: Props) => {
           <div className="space-y-1">
             <h2 className="text-xl font-semibold">No matches</h2>
             <p className="text-muted-foreground text-sm">
-              No indexes match “{searchTerm.trim()}”.
+              No triggers match “{searchTerm.trim()}”.
             </p>
           </div>
           <Button
@@ -152,35 +154,37 @@ const IndexesPage = ({ projectId }: Props) => {
             "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           )}
         >
-          {filteredIndexes.map((i: any) => (
-            <IndexCard
-              key={i.index_name}
-              definition={i.index_definition}
-              method={i.access_method as INDEX_TYPES}
-              name={i.index_name}
+          {filteredTriggers.map((i: any) => {
+            console.log("@ trigger: ", i)
+            return (
+            <TriggerCard
+              key={Math.random()}
+              events={i.events}
+              func={i.function_name}
+              name={i.name}
               schema={i.schema_name}
               table={i.table_name}
             />
-          ))}
+          )})}
         </div>
       )}
     </div>
   );
 };
 
-export default IndexesPage;
+export default TriggersPage;
 
-const IndexCard = ({
+const TriggerCard = ({
   name,
   table,
-  method,
+  func,
   schema,
-  definition
+  events
 }: {
   name: string;
   table: string;
-  method: INDEX_TYPES;
-  definition: string;
+  func: string;
+  events: string;
   schema: string
 }) => {
 
@@ -212,14 +216,14 @@ const IndexCard = ({
             "group-hover:text-foreground group-hover:border-foreground/20"
           )}
         >
-          {method.toString()}
+          {func}
         </span>
       </div>
 
       <div className="mt-3">
-        <p className="text-xs text-muted-foreground">Preview</p>
+        <p className="text-xs text-muted-foreground">Events</p>
         <p className="mt-1 font-mono text-xs text-foreground/90 truncate">
-          {definition}
+          {events}
         </p>
       </div>
     </div>

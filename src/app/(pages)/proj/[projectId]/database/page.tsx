@@ -8,6 +8,7 @@ import { PreselectionHandler } from "./_components/PreselectionHandler";
 import prisma from "@/lib/db";
 import FunctionsPage from "./_components/pages/FunctionsPage";
 import IndexesPage from "./_components/pages/IndexesPage";
+import TriggersPage from "./_components/pages/TriggersPage";
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database">) => {
   const p = await params;
@@ -53,6 +54,8 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
           <FunctionsPage projectId={p.projectId} />
         ) : (sp['page'] === "indexes") ? (
           <IndexesPage projectId={p.projectId}/>
+        ) : (sp['page'] === "triggers") ? (
+          <TriggersPage projectId={p.projectId} />
         ) : (
           <p>Not Implemented</p>
         )}

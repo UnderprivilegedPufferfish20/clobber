@@ -13,6 +13,19 @@ export const DATA_TYPES_LIST = [
   "JSON"
 ] as const
 
+export const FUNCTION_RETURN_TYPES_LIST = [
+  'string',
+  'integer',
+  'float',
+  'boolean',
+  'datetime',
+  "bytes",
+  "JSON",
+  "void",
+  "record",
+  "TRIGGER"
+] as const
+
 export const SidebarRoutes = [
   {
     href: "",

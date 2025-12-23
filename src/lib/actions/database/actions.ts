@@ -1,6 +1,6 @@
 'use server';
 
-import { createColumnSchema, createFolderSchema, createFunctionSchema, createIndexSchema, createQuerySchema, createSchemaScheam, createTableSchema } from "@/lib/types/schemas";
+import { createColumnSchema, createFolderSchema, createFunctionSchema, createIndexSchema, createQuerySchema, createSchemaScheam, createTableSchema, createTriggerSchema } from "@/lib/types/schemas";
 import { getTenantPool } from ".";
 import { getUser } from "../auth";
 import { getProjectById } from "../projects";
@@ -517,7 +517,7 @@ export async function createFunction(
 
   await pool.query(`
     CREATE FUNCTION ${data.name}(${argument_string})
-    RETURNS ${getPostgresType(data.returnType)} AS $$
+    RETURNS ${data.returnType} AS $$
     BEGIN
       ${data.definition}
     END;
@@ -662,6 +662,117 @@ WHERE table_name = '${table}'
     `);
 
   return result.rows
+}
+
+export async function getTriggers(
+  projectId: string,
+  schema: string
+) {
+  const user = await getUser()
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const result = await pool.query(`
+SELECT 
+    t.trigger_name AS name, 
+    t.event_object_table AS table_name, 
+    t.event_object_schema AS schema_name, 
+    p.proname AS function_name, 
+    string_agg(t.event_manipulation, ', ') AS events, -- Aggregates events into a list
+    t.action_timing AS timing, 
+    t.action_orientation AS orientation 
+FROM information_schema.triggers t 
+JOIN pg_catalog.pg_class c ON c.relname = t.event_object_table 
+JOIN pg_catalog.pg_namespace n_schema ON n_schema.oid = c.relnamespace 
+JOIN pg_catalog.pg_trigger tr ON tr.tgrelid = c.oid AND tr.tgname = t.trigger_name 
+JOIN pg_catalog.pg_proc p ON p.oid = tr.tgfoid 
+WHERE t.event_object_schema = '${schema}' 
+GROUP BY 
+    t.trigger_name, t.event_object_table, t.event_object_schema, 
+    p.proname, t.action_timing, t.action_orientation
+ORDER BY schema_name, table_name, name;
+
+
+
+    `);
+
+  return result.rows
+}
+
+export async function createTrigger(
+  form: z.infer<typeof createTriggerSchema>,
+  projectId: string
+) {
+  const { data, success } = createTriggerSchema.safeParse(form);
+  if (!success) throw new Error("Invalid form data");
+
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const query = `
+    CREATE TRIGGER ${data.name}
+    ${data.type} ${data.event.join(" OR ")} ON "${data.schema}"."${data.table}"
+    FOR EACH ${data.orientation}
+    EXECUTE FUNCTION ${data.functionSchema}.${data.functionName}();
+  `
+
+  console.log("@@QUERY: ", query)
+
+  await pool.query(query)
+}
+
+export async function getFunctionsForSchema(
+  projectId: string,
+  schema: string
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const reult = await pool.query(`
+  SELECT
+    p.proname AS function_name,
+    n.nspname AS schema_name
+FROM
+    pg_proc p
+JOIN
+    pg_namespace n ON p.pronamespace = n.oid
+WHERE
+    p.prorettype = 'trigger'::regtype AND
+    n.nspname = '${schema}';
+
+    `)
+  
+
+  return reult.rows
 }
 
 

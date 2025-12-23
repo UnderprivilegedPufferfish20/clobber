@@ -38,7 +38,7 @@ import {
 import { createFunctionSchema } from "@/lib/types/schemas";
 import { createFunction } from "@/lib/actions/database/actions";
 import CustomDialogHeader from "@/components/CustomDialogHeader";
-import { DATA_TYPES_LIST } from "@/lib/constants";
+import { DATA_TYPES_LIST, FUNCTION_RETURN_TYPES_LIST } from "@/lib/constants";
 import SchemaPicker from "../SchemaPicker";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { DATA_TYPES } from "@/lib/types";
@@ -201,7 +201,7 @@ function AddFunctionSheet({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="z-110">
-                      {DATA_TYPES_LIST.map((type) => (
+                      {FUNCTION_RETURN_TYPES_LIST.map((type) => (
                         <SelectItem key={type} value={type}>
                           {type.toUpperCase()}
                         </SelectItem>
