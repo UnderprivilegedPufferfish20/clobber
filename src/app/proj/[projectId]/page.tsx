@@ -1,13 +1,8 @@
-import { Button } from '@/components/ui/button'
 import { getUser, getUserById } from '@/lib/actions/auth'
-import { HouseIcon, Users2Icon } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import React from 'react'
 import InviteUsersDialog from './_components/InviteDialog'
 import { Separator } from '@/components/ui/separator'
-import { getProjectById } from '@/lib/actions/projects'
-
-
+import { getProjectById } from '@/lib/actions/database/getActions'
 
 const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
 

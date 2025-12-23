@@ -70,6 +70,11 @@ export const createTriggerSchema = z.object({
   functionName: z.string()
 })
 
+export const createEnumSchema = z.object({
+  name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
+  values: z.array(z.string())
+})
+
 
 
 

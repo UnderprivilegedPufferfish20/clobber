@@ -31,10 +31,10 @@ const AnimatedBackground = () => {
           key={i}
           className="absolute w-2 h-2 bg-indigo-400/30 rounded-full animate-float"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 10}s`,
-            animationDuration: `${8 + Math.random() * 4}s`
+            left: `${5}%`,
+            top: `${12}%`,
+            animationDelay: `${44}s`,
+            animationDuration: `${12}s`
           }}
         ></div>
       ))}

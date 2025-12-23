@@ -1,10 +1,10 @@
-import BreadcrumbHeader from '@/app/(pages)/proj/_components/BreadcrumbHeader'
+
 import Sidebar from './_components/Sidebar'
-import { ModeToggle } from '@/app/(pages)/proj/_components/ThemeModeToggle'
-import { Separator } from '@/components/ui/separator'
 import UserButton from './_components/UserButton'
 import React from 'react'
 import { getUser, getUserById } from '@/lib/actions/auth'
+import BreadcrumbHeader from './_components/BreadcrumbHeader'
+import { ModeToggle } from './_components/ThemeModeToggle'
 
 async function layout({ children }: { children: React.ReactNode }) {
 

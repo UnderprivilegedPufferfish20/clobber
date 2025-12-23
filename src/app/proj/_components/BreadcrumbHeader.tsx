@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { MobileSidebar } from '@/app/(pages)/proj/_components/Sidebar';
 import { Database, Project } from '@/lib/db/generated';
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,12 +11,13 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, 
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Separator } from '../../../../components/ui/separator';
-import CreateProjectDialog from '@/app/(pages)/proj/_components/CreateProjectDialog';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
-import { getProjectById } from '@/lib/actions/projects';
+import { getProjectById } from '@/lib/actions/database/getActions';
+import { MobileSidebar } from './Sidebar';
+import { Separator } from '@/components/ui/separator';
+import CreateProjectDialog from './CreateProjectDialog';
 
 type Props = { 
   projects: ProjectWithDatabases[], 

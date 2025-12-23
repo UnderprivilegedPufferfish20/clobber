@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '@/lib/db';
-import createProject from '@/lib/actions/projects';
 import { getTenantPool } from '@/lib/actions/database';
 import { Project } from '@/lib/db/generated';
+import createProject from '@/lib/actions/database/actions';
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,

@@ -47,10 +47,8 @@ import {
   TRIGGER_ORIENTATION,
   TRIGGER_TYPE,
 } from "@/lib/types"; // adjust import if your enums live elsewhere
-import { createTrigger, getFunctionsForSchema } from "@/lib/actions/database/actions";
-
-// ✅ your server actions
-import { getTablesForSchema } from "@/lib/actions/database/actions";
+import { createTrigger } from "@/lib/actions/database/actions";
+import { getFunctionsForSchema, getTables } from "@/lib/actions/database/getActions";
 
 type FormValues = z.infer<typeof createTriggerSchema>;
 
@@ -119,7 +117,7 @@ function AddTriggerSheet({
   // tables dropdown
   const tablesQuery = useQuery({
     queryKey: ["tables", projectId, selectedSchema],
-    queryFn: async () => getTablesForSchema(selectedSchema, projectId),
+    queryFn: async () => getTables(selectedSchema, projectId),
     enabled: Boolean(projectId && selectedSchema),
     staleTime: 30_000,
   });

@@ -4,10 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton';
-import { getFolders, getQueries } from '@/lib/actions/database/actions';
-import { sql, SqlFolder } from '@/lib/db/generated';
-import { useQuery } from '@tanstack/react-query';
-import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, EllipsisVerticalIcon, FileSpreadsheetIcon, FolderIcon, FolderOpenIcon, PlusIcon } from 'lucide-react';
+import { Prisma, sql, SqlFolder } from '@/lib/db/generated';
+import { ChevronDownIcon, ChevronRightIcon, FileSpreadsheetIcon, FolderIcon, FolderOpenIcon, PlusIcon } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
@@ -22,7 +20,13 @@ import { cn } from '@/lib/utils';
 
 
 
-const SqlEditorSidebar = () => {
+const SqlEditorSidebar = ({
+  folders,
+  queries
+}: {
+  folders: Prisma.SqlFolderGetPayload<{include: { queries: true }}>[],
+  queries: sql[]
+}) => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -30,27 +34,6 @@ const SqlEditorSidebar = () => {
   const sqlId = searchParams.get("q") || ""; // <-- query id from ?q=
   const projectId = useMemo(() => pathname.split("/")[2] ?? "", [pathname]);
 
-  const {
-    data: folders,
-    isLoading: foldersLoading,
-    isError: foldersError,
-    error: foldersErrorObject,
-  } = useQuery({
-    queryKey: ["folders", projectId],
-    queryFn: () => getFolders(projectId),
-    enabled: !!projectId,
-  });
-
-  const {
-    data: queries,
-    isLoading: queriesLoading,
-    isError: queriesError,
-    error: queriesErrorObj,
-  } = useQuery({
-    queryKey: ["queries", projectId],
-    queryFn: () => getQueries(projectId),
-    enabled: !!projectId,
-  });
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -67,13 +50,6 @@ const SqlEditorSidebar = () => {
         <Separator className="pt-0!" />
 
         <div className='flex flex-col mt-2'>
-          {queriesLoading || foldersLoading ? (
-            <>
-              <Skeleton className="h-8 w-32 bg-gray-700" />
-              <Skeleton className="h-8 w-12 bg-gray-700" />
-              <Skeleton className="h-8 w-12 bg-gray-700" />
-            </>
-          ) : (
             <div className='mt-4 px-2'>
               <div className='flex items-center gap-2 mb-4'>
                 <Input 
@@ -107,7 +83,6 @@ const SqlEditorSidebar = () => {
                 </>
               )}
             </div>
-          )}
         </div>
       </div>
     </div>

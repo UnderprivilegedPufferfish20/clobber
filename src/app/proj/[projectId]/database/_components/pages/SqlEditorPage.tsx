@@ -18,11 +18,12 @@ import Editor from "@monaco-editor/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-
 import { executeQuery } from "@/lib/actions/database";
-import { getSqlQueryById, updateSqlQuery } from "@/lib/actions/database/actions";
+import { updateSqlQuery } from "@/lib/actions/database/actions";
 import { useSavePreselection } from "@/hooks/useSavePreselection";
-// ✅ you implement these (server actions or api wrappers)
+import { getSqlQueryById } from "@/lib/actions/database/getActions";
+
+
 
 
 export default function SqlEditorPage() {

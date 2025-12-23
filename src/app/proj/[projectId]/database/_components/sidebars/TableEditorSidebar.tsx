@@ -3,8 +3,6 @@
 import { Separator } from "@/components/ui/separator";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SchemaPicker from "../SchemaPicker";
-import { useQuery } from "@tanstack/react-query";
-import { getSchemas, getTables } from "@/lib/actions/database/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SlidersHorizontal, Table2Icon } from "lucide-react";
 import { useEffect, useMemo } from "react";
@@ -12,24 +10,19 @@ import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { cn } from "@/lib/utils";
 import AddTableDialog from "../dialogs/AddTableDialog";
 
-const TableEditorSidebar = () => {
+const TableEditorSidebar = ({
+  schemas,
+  tables
+}: {
+  schemas: string[],
+  tables: string[]
+}) => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const selectedTable = searchParams.get("table");
   const projectId = useMemo(() => pathname.split("/")[2] ?? "", [pathname]);
 
-  // 1) Schemas
-  const {
-    data: schemas,
-    isLoading: schemasLoading,
-    isError: schemasError,
-    error: schemasErrObj,
-  } = useQuery({
-    queryKey: ["schemas", projectId],
-    queryFn: () => getSchemas(projectId),
-    enabled: !!projectId,
-  });
 
   const { schema, setSchema, isReady } = useSelectedSchema({
     projectId,
@@ -43,17 +36,6 @@ const TableEditorSidebar = () => {
     }
   }, [schemas, schema, setSchema]);
 
-  // 3) Tables (only fetch when schema is ready)
-  const {
-    data: tables,
-    isLoading: tablesLoading,
-    isError: tablesError,
-    error: tablesErrObj
-  } = useQuery({
-    queryKey: ["tables", projectId, schema],
-    queryFn: () => getTables(projectId, schema as string),
-    enabled: !!projectId && !!schema,
-  });
 
   const handleTableClick = (tableName: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -64,24 +46,13 @@ const TableEditorSidebar = () => {
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  // ---- Render states
-  if (schemasError) {
-    return (
-      <aside className="fullheight w-74 min-w-74 max-w-74 flex flex-col items-center border-r-2">
-        <div className="p-4 text-sm">
-          Failed to load schemas: {(schemasErrObj as Error)?.message ?? "Unknown error"}
-        </div>
-      </aside>
-    );
-  }
-
   return (
     <aside className="sidebar">
       <div className="fullwidth flex flex-col">
         <h1 className="text-2xl font-semibold m-4">Table Editor</h1>
         <Separator className="pt-0!" />
 
-        {schemasLoading || !isReady ? (
+        {!isReady ? (
           <div className="flex flex-col p-2">
             <div className="flex items-center gap-2 mb-2 justify-evenly">
               <Skeleton className="h-8 w-32 bg-gray-700" />
@@ -102,11 +73,7 @@ const TableEditorSidebar = () => {
               <SlidersHorizontal />
             </div>
 
-            {tablesError ? (
-              <div className="p-4 text-sm">
-                Failed to load tables: {(tablesErrObj as Error)?.message ?? "Unknown error"}
-              </div>
-            ) : tablesLoading || !tables ? (
+            {!tables ? (
               <div className="fullwidth p-2">
                 <Skeleton className="h-6 fullwidth bg-gray-700 mb-2" />
                 <Skeleton className="h-6 fullwidth bg-gray-700 mb-2" />

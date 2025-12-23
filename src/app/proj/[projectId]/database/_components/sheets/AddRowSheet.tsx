@@ -14,7 +14,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { addRow, getCols } from "@/lib/actions/database/actions";
+import { addRow } from "@/lib/actions/database/actions";
+import { getCols } from "@/lib/actions/database/getActions"
 import { useQuery } from "@tanstack/react-query"
 import { ScrollArea } from "@/components/ui/scroll-area"
 

@@ -1,16 +1,14 @@
 'use server';
 
 import { getUser } from "../auth";
-import prisma from "@/lib/db";
 import { ExecuteQuery } from "@/lib/types";
-import { getProjectById } from "../projects";
-import pg from 'pg';
-import { Connector, IpAddressTypes } from '@google-cloud/cloud-sql-connector';
+import { getProjectById } from "./getActions";
 import { 
   SqlUsersServiceClient,
   SqlDatabasesServiceClient,
   SqlOperationsServiceClient
  } from '@google-cloud/sql';
+import { getTenantPool } from "./tennantPool";
 
 const projectId = process.env.GCP_PROJECT_ID!;
 const instanceId = process.env.CLOUD_SQL_INSTANCE_ID!;
@@ -263,80 +261,6 @@ export async function applyTenantGrants(opts: {
     console.log('✅ === APPLY TENANT GRANTS COMPLETED ===\n');
   } catch (error) {
     console.error('❌ Failed to apply grants:', error);
-    throw error;
-  }
-}
-
-const g = globalThis as unknown as {
-  __connector?: Connector;
-  __pools?: Map<string, pg.Pool>;
-};
-
-function connector() {
-  if (!g.__connector) {
-    console.log('🔌 Initializing Cloud SQL Connector...');
-    g.__connector = new Connector();
-  }
-  return g.__connector;
-}
-
-function pools() {
-  if (!g.__pools) {
-    console.log('💾 Initializing connection pool cache...');
-    g.__pools = new Map();
-  }
-  return g.__pools;
-}
-
-export async function getTenantPool(opts: {
-  connectionName: string;
-  user: string;
-  password: string;
-  database: string;
-}) {
-  const key = `${opts.connectionName}:${opts.database}:${opts.user}`;
-  const existing = pools().get(key);
-  
-  if (existing) {
-    console.log('♻️  Reusing existing pool:', key);
-    return existing;
-  }
-
-  console.log('🆕 Creating new connection pool:', {
-    connectionName: opts.connectionName,
-    database: opts.database,
-    user: opts.user,
-  });
-
-  const ipTypeEnv = (process.env.CLOUD_SQL_IP_TYPE || 'PUBLIC').toUpperCase();
-  const ipType =
-    ipTypeEnv === 'PRIVATE'
-      ? IpAddressTypes.PRIVATE
-      : ipTypeEnv === 'PSC'
-        ? IpAddressTypes.PSC
-        : IpAddressTypes.PUBLIC;
-
-  console.log(`🌐 Using IP type: ${ipTypeEnv}`);
-
-  try {
-    const clientOpts = await connector().getOptions({
-      instanceConnectionName: opts.connectionName,
-      ipType,
-    });
-
-    const pool = new pg.Pool({
-      ...clientOpts,
-      user: opts.user,
-      password: opts.password,
-      database: opts.database,
-      max: 5,
-    });
-
-    pools().set(key, pool);
-    console.log('✅ Connection pool created and cached');
-    return pool;
-  } catch (error) {
-    console.error('❌ Failed to create connection pool:', error);
     throw error;
   }
 }

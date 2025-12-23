@@ -1,22 +1,18 @@
 "use client"
 
-import * as React from "react"
-import Link from "next/link"
-import { CircleCheckIcon, CircleHelpIcon, CircleIcon } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
   NavigationMenu,
-  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 const routes = [
+  "Schema Editor",
   "Table Editor",
   "SQL Editor",
   "Functions",

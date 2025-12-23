@@ -44,7 +44,7 @@ import { createIndex } from "@/lib/actions/database/actions";
 import { INDEX_TYPES } from "@/lib/types";
 
 // ✅ your server actions (or wherever you export them from)
-import { getTablesForSchema, getColsForTable } from "@/lib/actions/database/actions";
+import { getTables, getColsForTable } from "@/lib/actions/database/getActions";
 
 type FormValues = z.infer<typeof createIndexSchema>;
 
@@ -107,7 +107,7 @@ function AddIndexSheet({
   // ✅ tables dropdown
   const tablesQuery = useQuery({
     queryKey: ["tables", projectId, selectedSchema],
-    queryFn: async () => getTablesForSchema(selectedSchema, projectId),
+    queryFn: async () => getTables(selectedSchema, projectId),
     enabled: Boolean(projectId && selectedSchema),
     staleTime: 30_000,
   });

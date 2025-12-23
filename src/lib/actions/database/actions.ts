@@ -1,41 +1,81 @@
 'use server';
 
-import { createColumnSchema, createFolderSchema, createFunctionSchema, createIndexSchema, createQuerySchema, createSchemaScheam, createTableSchema, createTriggerSchema } from "@/lib/types/schemas";
-import { getTenantPool } from ".";
+import { createColumnSchema, createEnumSchema, createFolderSchema, createFunctionSchema, createIndexSchema, createProjectSchema, createQuerySchema, createSchemaScheam, createTableSchema, createTriggerSchema, inviteUsersSchema } from "@/lib/types/schemas";
+import { applyTenantGrants, createTenantDatabase } from ".";
+import { getTenantPool } from "./tennantPool";
 import { getUser } from "../auth";
-import { getProjectById } from "../projects";
 import z from "zod";
-import { DATA_TYPES, FilterOperator, QueryFilters } from "@/lib/types";
-import { getPostgresCast, castFilterValue, mapPostgresType, buildWhereClause, getPostgresType, callPostgresFunction } from "@/lib/utils";
+import { DATA_TYPES, QueryFilters } from "@/lib/types";
+import { mapPostgresType, buildWhereClause, getPostgresType, t, generateProjectPassword } from "@/lib/utils";
 import prisma from "@/lib/db";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { getProjectById } from "./getActions";
 
-export async function getSchemas(projectId: string) {
-  const user = await getUser()
+export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, projectId: string) {
+    const user = await getUser()
+    
+    if (!user) {
+        throw new Error("No user authenticated");
+    }
 
-  if (!user) throw new Error("No user");
+    const { success, data } = inviteUsersSchema.safeParse(form)
 
-  const project = await getProjectById(projectId);
+    if (!success) {
+        throw new Error("Invalid form data"); 
+    }
 
-  if (!project) throw new Error("No project found");
+    const invitedUser = await prisma.user.findUnique({
+        where: {
+            email: data.email
+        },
+        select: { id: true } 
+    })
 
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  })
+    if (!invitedUser) {
+        throw new Error("User not found"); 
+    }
 
-  const result = await pool.query(`
-    SELECT schema_name 
-    FROM information_schema.schemata 
-    WHERE SCHEMA_NAME NOT IN ('pg_catalog', 'information_schema', 'google_vacuum_mgmt')
-    ORDER BY schema_name;
-  `);
+    if (invitedUser.id === user.id) throw new Error("You're the owner");
 
-  console.log("@@ GET SCHEMAS: ", result);
 
-  return result.rows.map(row => row.schema_name);
+    const project = await prisma.project.findUnique({
+        where: {
+            id: projectId
+        },
+        include: {
+            collaborators: {
+                select: { id: true }
+            }
+        }
+    })
+
+    if (!project) {
+        throw new Error("Project not found");
+    }
+
+    const isAlreadyCollaborator = project.collaborators.some(c => c.id === invitedUser.id);
+    if (isAlreadyCollaborator) {
+        throw new Error("User is already a collaborator");
+    }
+
+    // --- The finished part ---
+    await prisma.project.update({
+        where: {
+            id: projectId
+        },
+        data: {
+            collaborators: {
+                connect: {
+                    id: invitedUser.id,
+                }
+            }
+        }
+    });
+
+
+    revalidatePath(`/dashboard/projects/${projectId}`); 
 }
+
 
 export async function addSchema(projectId: string, form: z.infer<typeof createSchemaScheam>) {
   const user = await getUser()
@@ -46,7 +86,7 @@ export async function addSchema(projectId: string, form: z.infer<typeof createSc
 
   if (!project) throw new Error("No project found");
 
-  const { success, data } = createTableSchema.safeParse(form)
+  const { success, data } = createSchemaScheam.safeParse(form)
 
   if (!success) throw new Error("Invalid form data");
 
@@ -62,37 +102,11 @@ export async function addSchema(projectId: string, form: z.infer<typeof createSc
   `);
 
   console.log("@@ CREATE SCHEMA: ", result);
+
+  revalidateTag(t("schemas", projectId), "max")
 }
 
-export async function getTables(projectId: string, schemaName: string) {
-  console.log("@@GET TABLES: schema: ", schemaName)
 
-  const user = await getUser()
-
-  if (!user) throw new Error("No user");
-
-  const project = await getProjectById(projectId);
-
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  })
-
-  const result = await pool.query(`
-    SELECT table_name 
-    FROM information_schema.tables 
-    WHERE table_schema = '${schemaName}'
-    AND table_type = 'BASE TABLE';
-  `);
-
-  console.log("@@ GET TABLES: ", result);
-
-  return result.rows.map(row => row.table_name);
-}
 
 export async function addTable(
   form: z.infer<typeof createTableSchema>, 
@@ -143,6 +157,9 @@ export async function addTable(
   `);
 
   console.log("@@ CREATE TABLE: ", result);
+
+  revalidateTag(t("tables", projectId, schema), "max")
+  revalidateTag(t("tables-for-schema", projectId, schema), "max")
 }
 
 
@@ -231,35 +248,23 @@ export async function getTableData(
   };
 }
 
-export async function getFolders(projectId: string) {
-  const user = await getUser();
-  if (!user) throw new Error("No user");
 
-  return await prisma.sqlFolder.findMany({
-    where: { projectId }, include: { queries: true }
-  })
-}
-
-export async function getQueries(projectId: string) {
-  const user = await getUser();
-  if (!user) throw new Error("No user");
-
-  return await prisma.sql.findMany({
-    where: { projectId }
-  })
-}
 
 export async function createFolder(form: z.infer<typeof createFolderSchema>, projectId: string) {
   const { data, success } = createFolderSchema.safeParse(form)
 
   if (!success) throw new Error("Invalid new folder data");
 
-  return prisma.sqlFolder.create({
+  const result = prisma.sqlFolder.create({
     data: {
       projectId,
       name: data.name
     }
   })
+
+  revalidateTag(t("folders", projectId), "max")
+
+  return result
 }
 
 export async function createQuery(
@@ -271,8 +276,10 @@ export async function createQuery(
 
   if (!success) throw new Error("Invalid new query data");
 
+  let result;
+
   if (folderId === "") {
-    return prisma.sql.create({
+    result = prisma.sql.create({
     data: {
       name: data.name,
       projectId,
@@ -280,7 +287,7 @@ export async function createQuery(
     }
   })
   } else {
-    return prisma.sql.create({
+    result = prisma.sql.create({
     data: {
       name: data.name,
       folderId,
@@ -289,6 +296,10 @@ export async function createQuery(
     }
   })
   }
+
+  revalidateTag(t("queries", projectId), "max")
+
+  return result
 
   
 }
@@ -360,41 +371,11 @@ export async function addColumn(
   } finally {
     client.release();
   }
+
+  revalidateTag(t("columns", projectId, schema, table), 'max')
 }
 
-export async function getCols(
-  schema: string,
-  projectId: string,
-  table: string
-) {
-  const user = await getUser();
-  if (!user) throw new Error("No user");
 
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  });
-
-  const col_details = await pool.query(`
-    SELECT *
-    FROM information_schema.columns
-    WHERE table_schema = '${schema.toLowerCase()}'
-      AND table_name = '${table.toLowerCase()}';
-  `)
-
-  const cols_to_dtype: Record<string, DATA_TYPES> = {}
-
-  for (let i = 0; i < col_details.rows.length; i++) {
-    cols_to_dtype[col_details.rows[i].column_name] = mapPostgresType(col_details.rows[i].data_type)
-  }
-
-  return cols_to_dtype
-}
 
 export async function addRow(
   schema: string,
@@ -434,12 +415,7 @@ export async function addRow(
 
 }
 
-export async function getSqlQueryById(id: string, projectId: string) {
-  const user = await getUser();
-  if (!user) throw new Error("No user");
 
-  return prisma.sql.findUnique({ where: { projectId, id } })
-}
 
 export async function updateSqlQuery(id: string, projectId: string, query: string) {
   const user = await getUser();
@@ -449,47 +425,17 @@ export async function updateSqlQuery(id: string, projectId: string, query: strin
 
   if (!q) throw new Error("Query not found");
 
-  return await prisma.sql.update({
+  const result = await prisma.sql.update({
     where: { projectId, id },
     data: { query }
   })
+
+  revalidateTag(t("query", projectId, id), 'max')
+
+  return result
 }
 
-export async function getFunctions(projectId: string, schema: string) {
-  const user = await getUser()
-  if (!user) throw new Error("No user");
 
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  });
-
-  const result = await pool.query(`
-    SELECT
-        n.nspname                                 AS schema_name,
-        p.proname                                AS function_name,
-        r.routine_type                           AS function_type,
-        r.data_type                              AS data_type,
-        pg_catalog.pg_get_function_arguments(p.oid) AS arguments
-    FROM pg_catalog.pg_proc p
-    JOIN pg_catalog.pg_namespace n
-        ON n.oid = p.pronamespace
-    JOIN information_schema.routines r
-        ON r.routine_name = p.proname
-      AND r.routine_schema = n.nspname
-    WHERE
-        r.routine_type = 'FUNCTION'
-        AND n.nspname = '${schema}';
-
-    `);
-
-  return result.rows
-}
 
 export async function createFunction(
   form: z.infer<typeof createFunctionSchema>,
@@ -523,58 +469,11 @@ export async function createFunction(
     END;
     $$ LANGUAGE plpgsql;
   `)
-
+  revalidateTag(t("functions", projectId, data.schema), "max")
+  revalidateTag(t("functions-for-schema", projectId, data.schema), 'max')
 }
 
-export async function getIndexes(
-  projectId: string,
-  schema: string
-) {
-  const user = await getUser()
-  if (!user) throw new Error("No user");
 
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  });
-
-  const result = await pool.query(`
-    SELECT
-    n.nspname AS schema_name,
-    t.relname AS table_name,
-    i.relname AS index_name,
-    am.amname AS access_method,
-    pg_get_indexdef(idx.indexrelid) AS index_definition,
-    -- A more complex join is needed to list columns individually (see description below)
-    -- This simply shows the full definition which includes the columns/expressions
-    idx.indisunique AS is_unique,
-    idx.indisprimary AS is_primary
-FROM
-    pg_catalog.pg_class i
-JOIN
-    pg_catalog.pg_index idx ON i.oid = idx.indexrelid
-JOIN
-    pg_catalog.pg_class t ON idx.indrelid = t.oid
-JOIN
-    pg_catalog.pg_namespace n ON n.oid = t.relnamespace
-JOIN
-    pg_catalog.pg_am am ON am.oid = i.relam
-WHERE
-    n.nspname = '${schema}' -- Replace with your schema name, e.g., 'public'
-ORDER BY
-    schema_name,
-    table_name,
-    index_name;
-
-    `);
-
-  return result.rows
-}
 
 export async function createIndex(
   form: z.infer<typeof createIndexSchema>,
@@ -603,110 +502,15 @@ export async function createIndex(
   console.log("@QUERY: ", query)
 
   await pool.query(query)
+
+  revalidateTag(t("indexes", projectId, data.schema), 'max')
 }
 
-export async function getTablesForSchema(
-  schema: string,
-  projectId: string
-) {
-  const user = await getUser()
-  if (!user) throw new Error("No user");
-
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  });
-
-  const result = await pool.query(`
-    SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = '${schema}'
-  AND table_type = 'BASE TABLE';
-
-
-    `);
-
-  return result.rows
-}
-
-export async function getColsForTable(
-  schema: string,
-  table: string,
-  projectId: string
-) {
-  const user = await getUser()
-  if (!user) throw new Error("No user");
-
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  });
-
-  const result = await pool.query(`
-    SELECT column_name
-FROM information_schema.columns
-WHERE table_name = '${table}'
-  AND table_schema = '${schema}';
-
-
-    `);
-
-  return result.rows
-}
-
-export async function getTriggers(
-  projectId: string,
-  schema: string
-) {
-  const user = await getUser()
-  if (!user) throw new Error("No user");
-
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  });
-
-  const result = await pool.query(`
-SELECT 
-    t.trigger_name AS name, 
-    t.event_object_table AS table_name, 
-    t.event_object_schema AS schema_name, 
-    p.proname AS function_name, 
-    string_agg(t.event_manipulation, ', ') AS events, -- Aggregates events into a list
-    t.action_timing AS timing, 
-    t.action_orientation AS orientation 
-FROM information_schema.triggers t 
-JOIN pg_catalog.pg_class c ON c.relname = t.event_object_table 
-JOIN pg_catalog.pg_namespace n_schema ON n_schema.oid = c.relnamespace 
-JOIN pg_catalog.pg_trigger tr ON tr.tgrelid = c.oid AND tr.tgname = t.trigger_name 
-JOIN pg_catalog.pg_proc p ON p.oid = tr.tgfoid 
-WHERE t.event_object_schema = '${schema}' 
-GROUP BY 
-    t.trigger_name, t.event_object_table, t.event_object_schema, 
-    p.proname, t.action_timing, t.action_orientation
-ORDER BY schema_name, table_name, name;
 
 
 
-    `);
 
-  return result.rows
-}
+
 
 export async function createTrigger(
   form: z.infer<typeof createTriggerSchema>,
@@ -738,12 +542,20 @@ export async function createTrigger(
   console.log("@@QUERY: ", query)
 
   await pool.query(query)
+
+  revalidateTag(t("triggers", projectId, data.schema), 'max')
 }
 
-export async function getFunctionsForSchema(
+
+
+export async function createEnum(
+  form: z.infer<typeof createEnumSchema>,
   projectId: string,
   schema: string
 ) {
+  const { data, success } = createEnumSchema.safeParse(form);
+  if (!success) throw new Error("Invalid form data");
+
   const user = await getUser();
   if (!user) throw new Error("No user");
 
@@ -757,22 +569,133 @@ export async function getFunctionsForSchema(
     database: project.db_name,
   });
 
-  const reult = await pool.query(`
-  SELECT
-    p.proname AS function_name,
-    n.nspname AS schema_name
-FROM
-    pg_proc p
-JOIN
-    pg_namespace n ON p.pronamespace = n.oid
-WHERE
-    p.prorettype = 'trigger'::regtype AND
-    n.nspname = '${schema}';
+  const query = `
+    CREATE TYPE ${schema}.${data.name} AS ENUM (${data.values.map(v => `'${v}'`).join(", ")});
+  `
 
-    `)
-  
+  console.log("@@QUERY: ", query)
 
-  return reult.rows
+  await pool.query(query)
+
+  revalidateTag(t("enums", projectId, schema), "max")
+}
+
+export default async function createProject(
+  form: z.infer<typeof createProjectSchema>,
+  ownerId: string
+) {
+  console.log('\n🎯 === CREATE PROJECT STARTED ===');
+  console.log('Owner ID:', ownerId);
+  console.log('Project name:', form.name);
+
+  const user = await getUser();
+  if (!user) {
+    console.error('❌ No active user found');
+    throw new Error('No active user');
+  }
+  console.log('✅ User authenticated:', user.id);
+
+  const parsed = createProjectSchema.safeParse(form);
+  if (!parsed.success) {
+    console.error('❌ Invalid form data:', parsed.error);
+    throw new Error('Invalid form data');
+  }
+
+  const password = generateProjectPassword();
+  console.log('✅ Generated project password (length:', password.length, ')');
+
+  // Validate environment variables before proceeding
+  const connectionName = process.env.CLOUD_SQL_CONNECTION_NAME;
+  const adminUser = process.env.CLOUD_SQL_ADMIN_USER;
+  const adminPassword = process.env.CLOUD_SQL_ADMIN_PASSWORD;
+
+  console.log('🔍 Checking environment variables:', {
+    hasConnectionName: !!connectionName,
+    hasAdminUser: !!adminUser,
+    hasAdminPassword: !!adminPassword,
+    connectionName: connectionName || 'MISSING',
+    adminUser: adminUser || 'MISSING',
+  });
+
+  if (!connectionName || !adminUser || !adminPassword) {
+    const missing = [
+      !connectionName && 'CLOUD_SQL_CONNECTION_NAME',
+      !adminUser && 'CLOUD_SQL_ADMIN_USER',
+      !adminPassword && 'CLOUD_SQL_ADMIN_PASSWORD',
+    ].filter(Boolean);
+    
+    console.error('❌ Missing environment variables:', missing);
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+
+  // create project first to get a stable uuid for db/user names
+  console.log('\n📝 Creating Prisma project record...');
+  const project = await prisma.project.create({
+    data: {
+      ownerId,
+      name: parsed.data.name,
+      db_name: 'PENDING',
+      db_user: 'PENDING',
+      db_pwd: password,
+    },
+  });
+  console.log('✅ Prisma project created:', {
+    id: project.id,
+    name: project.name,
+  });
+
+  try {
+    console.log('\n🏗️  Creating tenant database...');
+    const { dbName, dbUser } = await createTenantDatabase({
+      projectUuid: project.id,
+      projectName: project.name,
+      password,
+    });
+
+    console.log('✅ Tenant database created:', { dbName, dbUser });
+
+    console.log('\n🔐 Applying tenant grants...');
+    await applyTenantGrants({
+      connectionName,
+      adminUser,
+      adminPassword,
+      dbName,
+      dbUser,
+    });
+
+    console.log('✅ Grants applied successfully');
+
+    console.log('\n💾 Updating Prisma project with database credentials...');
+    const updatedProject = await prisma.project.update({
+      where: { id: project.id },
+      data: {
+        db_name: dbName,
+        db_user: dbUser,
+        db_pwd: password,
+      },
+    });
+
+    console.log('✅ Project updated with credentials');
+    console.log('✅ === CREATE PROJECT COMPLETED ===\n');
+    
+    return updatedProject;
+  } catch (error) {
+    console.error('\n❌ === CREATE PROJECT FAILED ===');
+    console.error('Error details:', error);
+    
+    console.log('🧹 Cleaning up pending project...');
+    try {
+      await prisma.project.delete({
+        where: { id: project.id },
+      });
+      console.log('✅ Pending project cleaned up');
+    } catch (cleanupError) {
+      console.error('❌ Failed to clean up project:', cleanupError);
+    }
+    
+    console.log('❌ === CREATE PROJECT CLEANUP COMPLETED ===\n');
+    throw error;
+  }
 }
 
 

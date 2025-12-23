@@ -2,37 +2,23 @@
 
 import { Separator } from "@/components/ui/separator";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { getFunctions, getSchemas } from "@/lib/actions/database/actions";
-import { useQuery } from "@tanstack/react-query";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SchemaPicker from "../SchemaPicker";
 import { Input } from "@/components/ui/input";
-import AddFunctionSheet from "../sheets/AddFunctionSheet";
-import Loader from "@/components/Loader";
-import { InboxIcon, Search, FunctionSquare } from "lucide-react";
-import { DATA_TYPES } from "@/lib/types";
-import { mapPostgresType } from "@/lib/utils";
+import { InboxIcon, Search, BookTypeIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import AddEnumSheet from "../sheets/AddEnumSheet";
 
 type Props = {
   projectId: string;
+  enums: any[];
+  schemas: any[]
 };
 
-const FunctionsPage = ({ projectId }: Props) => {
+const EnumsPage = ({ projectId, schemas, enums }: Props) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
-
-  const {
-    data: schemas,
-    isLoading: schemasLoading,
-    isError: schemasError,
-    error: schemasErrObj,
-  } = useQuery({
-    queryKey: ["schemas", projectId],
-    queryFn: () => getSchemas(projectId),
-    enabled: !!projectId,
-  });
 
   const { schema, setSchema } = useSelectedSchema({
     projectId,
@@ -46,36 +32,31 @@ const FunctionsPage = ({ projectId }: Props) => {
     }
   }, [schemas, schema, setSchema]);
 
-  const { data: functions, isLoading: functionsLoading } = useQuery({
-    queryKey: ["functions", projectId, schema],
-    queryFn: () => getFunctions(projectId, schema),
-    enabled: !!projectId && !!schema,
-  });
 
-  const filteredFuncs = useMemo(() => {
-    if (!functions) return [];
+  const filteredEnums = useMemo(() => {
+    if (!enums) return [];
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return functions;
+    if (!q) return enums;
 
-    return functions.filter((f) =>
+    return enums.filter((f) =>
       f.function_name.toLowerCase().includes(q)
     );
-  }, [searchTerm, functions]);
+  }, [searchTerm, enums]);
 
-  const showEmptySchemaState = !functionsLoading && !searchTerm && (functions?.length ?? 0) === 0;
-  const showNoMatchesState = !functionsLoading && !!searchTerm && filteredFuncs.length === 0;
+  const showEmptySchemaState = !searchTerm && (enums?.length ?? 0) === 0;
+  const showNoMatchesState = !!searchTerm && filteredEnums.length === 0;
 
   return (
     <div className="fullscreen flex flex-col p-8 overflow-y-auto">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-bold text-3xl">Functions</h1>
+          <h1 className="font-bold text-3xl">Enumerated Types</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Functions are reusable bits of code that do a specific job.
+            Enums are lists of possible values for a data point.
           </p>
         </div>
 
-        <AddFunctionSheet
+        <AddEnumSheet
           open={open}
           onOpenChange={setOpen}
           projectId={projectId}
@@ -90,7 +71,7 @@ const FunctionsPage = ({ projectId }: Props) => {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9 w-full sm:w-72"
-              placeholder="Search functions"
+              placeholder="Search enums"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -100,28 +81,24 @@ const FunctionsPage = ({ projectId }: Props) => {
         </div>
 
         <div className="text-xs text-muted-foreground">
-          {functionsLoading ? "Loading…" : `${filteredFuncs.length} function${filteredFuncs.length === 1 ? "" : "s"}`}
+          {`${filteredEnums.length} enums${filteredEnums.length === 1 ? "" : "s"}`}
         </div>
       </div>
 
       <Separator className="mb-6" />
 
       {/* CONTENT */}
-      {functionsLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader sz={86} />
-        </div>
-      ) : showEmptySchemaState ? (
+      {showEmptySchemaState ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
           <InboxIcon size={96} className="text-muted-foreground" />
           <div className="space-y-1">
-            <h2 className="text-2xl font-semibold">No functions in “{schema}”</h2>
+            <h2 className="text-2xl font-semibold">No enums in “{schema}”</h2>
             <p className="text-muted-foreground text-sm">
-              Create your first function to start adding server-side logic.
+              Create your first enum to apply static typing in your databases
             </p>
           </div>
 
-          <AddFunctionSheet
+          <AddEnumSheet
             open={open}
             onOpenChange={setOpen}
             projectId={projectId}
@@ -135,7 +112,7 @@ const FunctionsPage = ({ projectId }: Props) => {
           <div className="space-y-1">
             <h2 className="text-xl font-semibold">No matches</h2>
             <p className="text-muted-foreground text-sm">
-              No functions match “{searchTerm.trim()}”.
+              No enums match “{searchTerm.trim()}”.
             </p>
           </div>
           <Button
@@ -151,13 +128,12 @@ const FunctionsPage = ({ projectId }: Props) => {
             "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           )}
         >
-          {filteredFuncs.map((f: any) => (
-            <FunctionCard
-              key={`${f.function_name}:${f.arguments ?? ""}`}
-              name={f.function_name}
-              returnType={mapPostgresType(f.data_type)}
-              args={f.arguments}
-              schema={schema}
+          {filteredEnums.map((f: any) => (
+            <EnumCard
+              key={Math.random()}
+              name={f.enum_name}
+              values={f.enum_values}
+              schema={f.enum_schema}
             />
           ))}
         </div>
@@ -166,20 +142,17 @@ const FunctionsPage = ({ projectId }: Props) => {
   );
 };
 
-export default FunctionsPage;
+export default EnumsPage;
 
-const FunctionCard = ({
+const EnumCard = ({
   name,
-  returnType,
-  args,
-  schema,
+  values,
+  schema
 }: {
   name: string;
-  returnType: DATA_TYPES;
-  args: string;
-  schema?: string;
+  values: string;
+  schema: string;
 }) => {
-  const sig = `${name}(${args || ""})`;
 
   return (
     <div
@@ -193,13 +166,9 @@ const FunctionCard = ({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <FunctionSquare className="h-4 w-4 text-muted-foreground" />
+            <BookTypeIcon className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-semibold text-base truncate">{name}</h3>
           </div>
-
-          <p className="text-xs text-muted-foreground mt-1 truncate">
-            <span className="font-mono">{returnType}</span>
-          </p>
         </div>
 
         <span
@@ -209,14 +178,14 @@ const FunctionCard = ({
             "group-hover:text-foreground group-hover:border-foreground/20"
           )}
         >
-          RETURNS {returnType}
+          {schema}
         </span>
       </div>
 
       <div className="mt-3">
-        <p className="text-xs text-muted-foreground">Signature</p>
+        <p className="text-xs text-muted-foreground">Values</p>
         <p className="mt-1 font-mono text-xs text-foreground/90 truncate">
-          {sig}
+          {values}
         </p>
       </div>
     </div>

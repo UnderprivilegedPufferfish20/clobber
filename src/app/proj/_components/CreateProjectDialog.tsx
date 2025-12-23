@@ -2,9 +2,10 @@
 
 import CustomDialogHeader from '@/components/CustomDialogHeader';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, UserPlusIcon, Users2Icon } from 'lucide-react';
-import { useCallback, useState } from 'react'
+import { Dialog } from '@/components/ui/dialog';
+import { DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Loader2, Plus, ServerIcon } from 'lucide-react';
+import React, { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form';
 import {z} from 'zod'
 import {zodResolver} from '@hookform/resolvers/zod'
@@ -20,45 +21,45 @@ import {
 import { Input } from '@/components/ui/input';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { inviteUsersSchema } from '@/lib/types/schemas';
-import { addCollaborator } from '@/lib/actions/projects';
+import { createProjectSchema } from '@/lib/types/schemas';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/providers/AuthProvider';
+import createProject from '@/lib/actions/database/actions';
 
-const InviteUsersDialog = ({ 
-  triggerText, 
-  projectId 
-}: {
-  triggerText?: string;
-  projectId: string;
-}) => {
+const CreateProjectDialog = ({ triggerText }: {triggerText?: string }) => {
+  const r = useRouter()
+
+  const { user } = useAuth()
+
   const [open, setOpen] = useState(false);
 
-  const form = useForm<z.infer<typeof inviteUsersSchema>>({
-    resolver: zodResolver(inviteUsersSchema),
+  const form = useForm<z.infer<typeof createProjectSchema>>({
+    resolver: zodResolver(createProjectSchema),
     defaultValues: {}
   })
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (form: z.infer<typeof inviteUsersSchema>) => 
-      addCollaborator(form, projectId),
-    onSuccess: () => {
-      toast.success("Collaborator Added", { id:"invite-user" });
+    mutationFn: (form: z.infer<typeof createProjectSchema>) => createProject(form, user.id),
+    onSuccess: ({ id }) => {
+      toast.success("Project Created", { id:"create-credential" });
+      r.push(`/proj/${id}`)
       form.reset()
       setOpen(false);
     },
     onError: (error) => {
       console.log("Error details:", error);
       if (error.message === 'NEXT_REDIRECT') {
-        toast.success("Colaborator Added", { id:"invite-user" });
+        toast.success("Project Created", { id:"create-credential" });
         setOpen(false);
         return;
       }
-      toast.error("Failed to Find User", { id:"invite-user" })
+      toast.error("Failed to create project", { id:"create-credential" })
     }
   })
 
   const onSubmit = useCallback(
-    (values: z.infer<typeof inviteUsersSchema>) => {
-      toast.loading("Inviting...", { id:"invite-user" });
+    (values: z.infer<typeof createProjectSchema>) => {
+      toast.loading("Creating project...", { id:"create-credential" });
       mutate(values)
     },
     [mutate]
@@ -66,19 +67,16 @@ const InviteUsersDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-            className='text-black bg-white flex items-center justify-baseline border-2'
-            variant={"ghost"}
-        >
-            <Users2Icon />
-            {triggerText ?? "Invite"}
-        </Button> 
+      <DialogTrigger asChild className='w-full'>
+        <div className='flex items-center justify-start'>
+          <Plus size={12} className="mr-2" />
+          <p>{triggerText}</p>
+        </div>
       </DialogTrigger>
       <DialogContent className='px-0'>
         <CustomDialogHeader 
-          icon={UserPlusIcon}
-          title={'Invite Collaborator'}
+          icon={ServerIcon}
+          title={'Create Project'}
         />
         <div className="p-6">
           <Form {...form}>
@@ -89,18 +87,18 @@ const InviteUsersDialog = ({
 
               <FormField
                 control={form.control}
-                name='email'
+                name='name'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className='flex gap-1 items-center'>
-                      User Email
+                      Name
                       <p className="text-xs text-primary">(required)</p>
                     </FormLabel>
                     <FormControl>
                       <Input {...field}/>
                     </FormControl>
                     <FormDescription>
-                      Enter the Email of the user you want to invite.
+                      Choose a descriptive and unique name.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -118,4 +116,4 @@ const InviteUsersDialog = ({
   )
 }
 
-export default InviteUsersDialog;
+export default CreateProjectDialog

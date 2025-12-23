@@ -2,38 +2,28 @@
 
 import { Separator } from "@/components/ui/separator";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { getFunctions, getIndexes, getSchemas } from "@/lib/actions/database/actions";
 import { useQuery } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
 import SchemaPicker from "../SchemaPicker";
 import { Input } from "@/components/ui/input";
 import AddFunctionSheet from "../sheets/AddFunctionSheet";
 import Loader from "@/components/Loader";
-import { InboxIcon, Search, FunctionSquare, ListTreeIcon } from "lucide-react";
-import { DATA_TYPES, INDEX_TYPE, INDEX_TYPES } from "@/lib/types";
+import { InboxIcon, Search, FunctionSquare } from "lucide-react";
+import { DATA_TYPES } from "@/lib/types";
 import { mapPostgresType } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import AddIndexSheet from "../sheets/AddIndexSheet";
 
 type Props = {
   projectId: string;
+  schemas: string[];
+  functions: any[]
 };
 
-const IndexesPage = ({ projectId }: Props) => {
+const FunctionsPage = ({ projectId, schemas, functions }: Props) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
 
-  const {
-    data: schemas,
-    isLoading: schemasLoading,
-    isError: schemasError,
-    error: schemasErrObj,
-  } = useQuery({
-    queryKey: ["schemas", projectId],
-    queryFn: () => getSchemas(projectId),
-    enabled: !!projectId,
-  });
 
   const { schema, setSchema } = useSelectedSchema({
     projectId,
@@ -47,36 +37,30 @@ const IndexesPage = ({ projectId }: Props) => {
     }
   }, [schemas, schema, setSchema]);
 
-  const { data: indexes, isLoading: indexesLoading } = useQuery({
-    queryKey: ["indexes", projectId, schema],
-    queryFn: () => getIndexes(projectId, schema),
-    enabled: !!projectId && !!schema,
-  });
-
-  const filteredIndexes = useMemo(() => {
-    if (!indexes) return [];
+  const filteredFuncs = useMemo(() => {
+    if (!functions) return [];
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return indexes;
+    if (!q) return functions;
 
-    return indexes.filter((i: any) =>
-      i.function_name.toLowerCase().includes(q)
+    return functions.filter((f) =>
+      f.function_name.toLowerCase().includes(q)
     );
-  }, [searchTerm, indexes]);
+  }, [searchTerm, functions]);
 
-  const showEmptySchemaState = !indexesLoading && !searchTerm && (indexes?.length ?? 0) === 0;
-  const showNoMatchesState = !indexesLoading && !!searchTerm && filteredIndexes.length === 0;
+  const showEmptySchemaState = !searchTerm && (functions?.length ?? 0) === 0;
+  const showNoMatchesState = !!searchTerm && filteredFuncs.length === 0;
 
   return (
     <div className="fullscreen flex flex-col p-8 overflow-y-auto">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-bold text-3xl">Indexes</h1>
+          <h1 className="font-bold text-3xl">Functions</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Indexes are organized lists on columns that help the computer quickly find exactly where information is stored, so it doesn't have to look through everything every single time. 
+            Functions are reusable bits of code that do a specific job.
           </p>
         </div>
 
-        <AddIndexSheet
+        <AddFunctionSheet
           open={open}
           onOpenChange={setOpen}
           projectId={projectId}
@@ -91,7 +75,7 @@ const IndexesPage = ({ projectId }: Props) => {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9 w-full sm:w-72"
-              placeholder="Search indexes"
+              placeholder="Search functions"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -101,28 +85,24 @@ const IndexesPage = ({ projectId }: Props) => {
         </div>
 
         <div className="text-xs text-muted-foreground">
-          {indexesLoading ? "Loading…" : `${filteredIndexes.length} indexes${filteredIndexes.length === 1 ? "" : "s"}`}
+          {`${filteredFuncs.length} function${filteredFuncs.length === 1 ? "" : "s"}`}
         </div>
       </div>
 
       <Separator className="mb-6" />
 
       {/* CONTENT */}
-      {indexesLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader sz={86} />
-        </div>
-      ) : showEmptySchemaState ? (
+      {showEmptySchemaState ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
           <InboxIcon size={96} className="text-muted-foreground" />
           <div className="space-y-1">
-            <h2 className="text-2xl font-semibold">No indexes in “{schema}”</h2>
+            <h2 className="text-2xl font-semibold">No functions in “{schema}”</h2>
             <p className="text-muted-foreground text-sm">
-              Create your first index to speed up searching.
+              Create your first function to start adding server-side logic.
             </p>
           </div>
 
-          <AddIndexSheet
+          <AddFunctionSheet
             open={open}
             onOpenChange={setOpen}
             projectId={projectId}
@@ -136,7 +116,7 @@ const IndexesPage = ({ projectId }: Props) => {
           <div className="space-y-1">
             <h2 className="text-xl font-semibold">No matches</h2>
             <p className="text-muted-foreground text-sm">
-              No indexes match “{searchTerm.trim()}”.
+              No functions match “{searchTerm.trim()}”.
             </p>
           </div>
           <Button
@@ -152,14 +132,13 @@ const IndexesPage = ({ projectId }: Props) => {
             "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           )}
         >
-          {filteredIndexes.map((i: any) => (
-            <IndexCard
-              key={i.index_name}
-              definition={i.index_definition}
-              method={i.access_method as INDEX_TYPES}
-              name={i.index_name}
-              schema={i.schema_name}
-              table={i.table_name}
+          {filteredFuncs.map((f: any) => (
+            <FunctionCard
+              key={`${f.function_name}:${f.arguments ?? ""}`}
+              name={f.function_name}
+              returnType={f.data_type}
+              args={f.arguments}
+              schema={schema}
             />
           ))}
         </div>
@@ -168,21 +147,20 @@ const IndexesPage = ({ projectId }: Props) => {
   );
 };
 
-export default IndexesPage;
+export default FunctionsPage;
 
-const IndexCard = ({
+const FunctionCard = ({
   name,
-  table,
-  method,
+  returnType,
+  args,
   schema,
-  definition
 }: {
   name: string;
-  table: string;
-  method: INDEX_TYPES;
-  definition: string;
-  schema: string
+  returnType: string;
+  args: string;
+  schema?: string;
 }) => {
+  const sig = `${name}(${args || ""})`;
 
   return (
     <div
@@ -196,12 +174,12 @@ const IndexCard = ({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <ListTreeIcon className="h-4 w-4 text-muted-foreground" />
+            <FunctionSquare className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-semibold text-base truncate">{name}</h3>
           </div>
 
           <p className="text-xs text-muted-foreground mt-1 truncate">
-            <span className="text-muted-foreground">{schema}.<span className="text-black dark:text-white">{table}</span></span>
+            <span className="font-mono">{returnType}</span>
           </p>
         </div>
 
@@ -212,14 +190,14 @@ const IndexCard = ({
             "group-hover:text-foreground group-hover:border-foreground/20"
           )}
         >
-          {method.toString()}
+          RETURNS {returnType}
         </span>
       </div>
 
       <div className="mt-3">
-        <p className="text-xs text-muted-foreground">Preview</p>
+        <p className="text-xs text-muted-foreground">Signature</p>
         <p className="mt-1 font-mono text-xs text-foreground/90 truncate">
-          {definition}
+          {sig}
         </p>
       </div>
     </div>

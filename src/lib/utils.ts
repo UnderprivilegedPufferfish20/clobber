@@ -114,6 +114,10 @@ export function getPostgresCast(dataType: DATA_TYPES): string {
   }
 }
 
+
+export const t = (...parts: (string | number)[]) => parts.join(":");
+
+
 export function callPostgresFunction(
   name: string,
   argstring: string
