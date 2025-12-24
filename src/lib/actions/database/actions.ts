@@ -11,6 +11,35 @@ import prisma from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { getProjectById } from "./getActions";
 
+export async function addSchema(projectId: string, form: z.infer<typeof createSchemaScheam>) {
+  const user = await getUser()
+
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+
+  if (!project) throw new Error("No project found");
+
+  const { success, data } = createSchemaScheam.safeParse(form)
+
+  if (!success) throw new Error("Invalid form data");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  })
+
+  const result = await pool.query(`
+    CREATE SCHEMA ${data.name} AUTHORIZATION ${project.db_user};
+  `);
+
+  console.log("@@ CREATE SCHEMA: ", result);
+
+  revalidateTag(t("schemas", projectId), "max")
+}
+
 export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, projectId: string) {
     const user = await getUser()
     
@@ -77,37 +106,6 @@ export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, p
 }
 
 
-export async function addSchema(projectId: string, form: z.infer<typeof createSchemaScheam>) {
-  const user = await getUser()
-
-  if (!user) throw new Error("No user");
-
-  const project = await getProjectById(projectId);
-
-  if (!project) throw new Error("No project found");
-
-  const { success, data } = createSchemaScheam.safeParse(form)
-
-  if (!success) throw new Error("Invalid form data");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  })
-
-  const result = await pool.query(`
-    CREATE SCHEMA ${data.name} AUTHORIZATION ${project.db_user};
-  `);
-
-  console.log("@@ CREATE SCHEMA: ", result);
-
-  revalidateTag(t("schemas", projectId), "max")
-}
-
-
-
 export async function addTable(
   form: z.infer<typeof createTableSchema>, 
   projectId: string,
@@ -159,7 +157,6 @@ export async function addTable(
   console.log("@@ CREATE TABLE: ", result);
 
   revalidateTag(t("tables", projectId, schema), "max")
-  revalidateTag(t("tables-for-schema", projectId, schema), "max")
 }
 
 
@@ -247,8 +244,6 @@ export async function getTableData(
     },
   };
 }
-
-
 
 export async function createFolder(form: z.infer<typeof createFolderSchema>, projectId: string) {
   const { data, success } = createFolderSchema.safeParse(form)
@@ -375,8 +370,6 @@ export async function addColumn(
   revalidateTag(t("columns", projectId, schema, table), 'max')
 }
 
-
-
 export async function addRow(
   schema: string,
   projectId: string,
@@ -415,8 +408,6 @@ export async function addRow(
 
 }
 
-
-
 export async function updateSqlQuery(id: string, projectId: string, query: string) {
   const user = await getUser();
   if (!user) throw new Error("No user");
@@ -434,8 +425,6 @@ export async function updateSqlQuery(id: string, projectId: string, query: strin
 
   return result
 }
-
-
 
 export async function createFunction(
   form: z.infer<typeof createFunctionSchema>,
@@ -462,19 +451,15 @@ export async function createFunction(
     .join(", ");
 
   await pool.query(`
-    CREATE FUNCTION ${data.name}(${argument_string})
-    RETURNS ${data.returnType} AS $$
+    CREATE FUNCTION ${data.schema}.${data.name}(${argument_string})
+    RETURNS ${getPostgresType(data.returnType)} AS $$
     BEGIN
       ${data.definition}
     END;
     $$ LANGUAGE plpgsql;
   `)
   revalidateTag(t("functions", projectId, data.schema), "max")
-  revalidateTag(t("functions-for-schema", projectId, data.schema), 'max')
 }
-
-
-
 export async function createIndex(
   form: z.infer<typeof createIndexSchema>,
   projectId: string,
@@ -496,7 +481,7 @@ export async function createIndex(
   });
 
   const query = `
-    CREATE INDEX "${data.table}_${data.cols.map(c => c.value).join("_")}_idx" ON "${data.schema}"."${data.table}" USING ${data.type.toString().toLowerCase()} (${data.cols.map(c => c.value).join(", ")});
+    CREATE INDEX "${data.table}_${data.cols.map(c => c.name).join("_")}_idx" ON "${data.schema}"."${data.table}" USING ${data.type.toString().toLowerCase()} (${data.cols.map(c => c.name).join(", ")});
   `
 
   console.log("@QUERY: ", query)
@@ -505,12 +490,6 @@ export async function createIndex(
 
   revalidateTag(t("indexes", projectId, data.schema), 'max')
 }
-
-
-
-
-
-
 
 export async function createTrigger(
   form: z.infer<typeof createTriggerSchema>,
@@ -545,7 +524,6 @@ export async function createTrigger(
 
   revalidateTag(t("triggers", projectId, data.schema), 'max')
 }
-
 
 
 export async function createEnum(
@@ -697,5 +675,6 @@ export default async function createProject(
     throw error;
   }
 }
+
 
 

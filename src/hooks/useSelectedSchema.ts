@@ -1,6 +1,7 @@
 // /lib/hooks/useSelectedSchema.ts
 "use client";
 
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
 const keyFor = (projectId: string) => `selected_schema:${projectId}`;
@@ -19,6 +20,9 @@ export function useSelectedSchema({
   persist = true,
 }: UseSelectedSchemaArgs) {
   const [schema, _setSchema] = React.useState<string | null>(null);
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
 
   // Initialize from localStorage (optional) or from schemas[0]
   React.useEffect(() => {
@@ -56,6 +60,9 @@ export function useSelectedSchema({
       _setSchema(next);
       if (persist && projectId) {
         localStorage.setItem(keyFor(projectId), next);
+        const params = new URLSearchParams(searchParams)
+        params.set("schema", next)
+        router.push(`${pathname}?${params}`)
       }
     },
     [persist, projectId]

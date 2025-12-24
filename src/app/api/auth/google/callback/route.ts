@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '@/lib/db';
-import { getTenantPool } from '@/lib/actions/database';
+import { getTenantPool } from '@/lib/actions/database/tennantPool';
 import { Project } from '@/lib/db/generated';
 import createProject from '@/lib/actions/database/actions';
 

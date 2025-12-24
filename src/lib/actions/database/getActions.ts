@@ -2,8 +2,7 @@
 
 import prisma from "@/lib/db";
 import { getTenantPool } from "./tennantPool";
-import { DATA_TYPES } from "@/lib/types";
-import { mapPostgresType, t } from "@/lib/utils";
+import { t } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 
 export async function getProjectById(id: string) {
@@ -41,13 +40,19 @@ export async function getSchemas(projectId: string) {
     ORDER BY schema_name;
   `);
 
-  console.log("@@ GET SCHEMAS: ", result);
-
   return result.rows.map(row => row.schema_name);
 }
 
-export async function getTables(projectId: string, schemaName: string) {
-  cacheTag(t("tables", projectId, schemaName))
+export async function getFolders(projectId: string) {
+  cacheTag(t("folders", projectId))
+
+  return await prisma.sqlFolder.findMany({
+    where: { projectId }, include: { queries: true }
+  })
+}
+
+export async function getTables(schemaName: string, projectId: string) {
+  cacheTag(t("tables", projectId,schemaName))
 
   const project = await getProjectById(projectId);
 
@@ -67,25 +72,7 @@ export async function getTables(projectId: string, schemaName: string) {
     AND table_type = 'BASE TABLE';
   `);
 
-  console.log("@@ GET TABLES: ", result);
-
   return result.rows.map(row => row.table_name);
-}
-
-export async function getFolders(projectId: string) {
-  cacheTag(t("folders", projectId))
-
-  return await prisma.sqlFolder.findMany({
-    where: { projectId }, include: { queries: true }
-  })
-}
-
-export async function getQueries(projectId: string) {
-  cacheTag(t("queries", projectId))
-
-  return await prisma.sql.findMany({
-    where: { projectId }
-  })
 }
 
 export async function getCols(
@@ -94,8 +81,6 @@ export async function getCols(
   table: string
 ) {
   cacheTag(t("columns", projectId, schema, table))
-
-
   const project = await getProjectById(projectId);
   if (!project) throw new Error("No project found");
 
@@ -113,16 +98,25 @@ export async function getCols(
       AND table_name = '${table.toLowerCase()}';
   `)
 
-  const cols_to_dtype: Record<string, DATA_TYPES> = {}
+  const returnval = col_details.rows.map(r => ({ name: r.column_name, dtype: r.data_type }))
 
-  for (let i = 0; i < col_details.rows.length; i++) {
-    cols_to_dtype[col_details.rows[i].column_name] = mapPostgresType(col_details.rows[i].data_type)
-  }
+  console.log("@@getCols final: ", returnval)
 
-  return cols_to_dtype
+  return returnval
 }
 
+export async function getQueries(projectId: string) {
+  cacheTag(t("queries", projectId))
+
+  return await prisma.sql.findMany({
+    where: { projectId }
+  })
+}
+
+
+
 export async function getSqlQueryById(id: string, projectId: string) {
+  cacheTag(t("query", projectId, id))
   return prisma.sql.findUnique({ where: { projectId, id } })
 }
 
@@ -213,36 +207,6 @@ ORDER BY
   return result.rows
 }
 
-export async function getColsForTable(
-  schema: string,
-  table: string,
-  projectId: string
-) {
-  cacheTag(t("cols-for-table", projectId, schema, table))
-
-
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name
-  });
-
-  const result = await pool.query(`
-    SELECT column_name
-FROM information_schema.columns
-WHERE table_name = '${table}'
-  AND table_schema = '${schema}';
-
-
-    `);
-
-  return result.rows
-}
-
 export async function getTriggers(
   projectId: string,
   schema: string
@@ -285,42 +249,6 @@ ORDER BY schema_name, table_name, name;
     `);
 
   return result.rows
-}
-
-
-export async function getFunctionsForSchema(
-  projectId: string,
-  schema: string
-) {
-  cacheTag(t("functions-for-schema", projectId, schema))
-
-
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name,
-  });
-
-  const reult = await pool.query(`
-  SELECT
-    p.proname AS function_name,
-    n.nspname AS schema_name
-FROM
-    pg_proc p
-JOIN
-    pg_namespace n ON p.pronamespace = n.oid
-WHERE
-    p.prorettype = 'trigger'::regtype AND
-    n.nspname = '${schema}';
-
-    `)
-  
-
-  return reult.rows
 }
 
 export async function getEnums(

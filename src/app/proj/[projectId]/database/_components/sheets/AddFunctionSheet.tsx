@@ -15,7 +15,6 @@ import {
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
@@ -39,8 +38,6 @@ import { createFunctionSchema } from "@/lib/types/schemas";
 import { createFunction } from "@/lib/actions/database/actions";
 import CustomDialogHeader from "@/components/CustomDialogHeader";
 import { DATA_TYPES_LIST, FUNCTION_RETURN_TYPES_LIST } from "@/lib/constants";
-import SchemaPicker from "../SchemaPicker";
-import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { DATA_TYPES } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -61,36 +58,18 @@ function AddFunctionSheet({
 }) {
   const queryClient = useQueryClient();
 
-  const { schema, setSchema } = useSelectedSchema({
-    projectId,
-    schemas,
-    persist: true,
-  });
-
   const form = useForm<z.infer<typeof createFunctionSchema>>({
     resolver: zodResolver(createFunctionSchema),
     defaultValues: {
       name: "",
-      schema: schema ?? (schemas?.[0] ?? "public"),
+      schema: schemas?.[0] ?? "public",
       returnType: DATA_TYPES.STRING,
       args: [],
       definition: "",
     },
   });
 
-  // Keep form.schema in sync with selected schema picker
-  useEffect(() => {
-    const next = schema ?? (schemas?.[0] ?? "public");
-    form.setValue("schema", next, { shouldValidate: true, shouldDirty: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schema, schemas]);
-
-  // Ensure a schema is selected initially (picker state)
-  useEffect(() => {
-    if (!schema && schemas && schemas.length > 0) {
-      setSchema(schemas[0]);
-    }
-  }, [schemas, schema, setSchema]);
+  const selectedSchema = form.watch("schema");
 
   const argsArray = useFieldArray({
     control: form.control,
@@ -98,19 +77,21 @@ function AddFunctionSheet({
   });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (values: z.infer<typeof createFunctionSchema>) =>
-      createFunction(values, projectId),
+    mutationFn: (values: z.infer<typeof createFunctionSchema>) => {
+      console.log("Values being passed to createFunction:", values);
+      return createFunction(values, projectId)
+    },
     onSuccess: () => {
       toast.success("Function added successfully", { id: "add-function" });
       form.reset({
         name: "",
-        schema: schema ?? (schemas?.[0] ?? "public"),
+        schema: selectedSchema,
         returnType: DATA_TYPES.STRING,
         args: [],
         definition: "",
       });
       onOpenChange(false);
-      queryClient.invalidateQueries(["functions", projectId, schema] as any);
+      queryClient.invalidateQueries(["functions", projectId, selectedSchema] as any);
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to add function", {
@@ -169,16 +150,20 @@ function AddFunctionSheet({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Schema</FormLabel>
-                  <FormControl>
-                    <SchemaPicker
-                      schemas={schemas ?? []}
-                      value={schema}
-                      onChange={(v) => {
-                        setSchema(v);
-                        field.onChange(v);
-                      }}
-                    />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select schema" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="z-200">
+                      {(schemas ?? []).map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -215,7 +200,7 @@ function AddFunctionSheet({
 
             <Separator />
 
-            {/* ✅ Arguments UI (replaces the empty name="" field) */}
+            {/* Arguments UI */}
             <FormField
               control={form.control}
               name="args"
@@ -324,7 +309,7 @@ function AddFunctionSheet({
                     </div>
                   )}
 
-                  {/* A little “signature preview” for intuition */}
+                  {/* Signature preview */}
                   <div className="mt-3 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
                     Signature preview:{" "}
                     <span className="font-mono text-foreground">

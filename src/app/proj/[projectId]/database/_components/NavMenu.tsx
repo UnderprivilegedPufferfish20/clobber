@@ -30,8 +30,9 @@ export function DatabaseNavbar() {
   const searchParams = useSearchParams()
 
   const setPageParam = (val: string) => {
-    router.replace(pathname, { scroll: false })
-    router.push(`${pathname}?page=${val}`)
+    const params = new URLSearchParams(searchParams)
+    params.set('page', val)
+    router.push(`${pathname}?${params}`)
   }
 
   const isActive = (val: string) => {

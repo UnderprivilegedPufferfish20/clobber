@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { DATA_TYPE_TYPE, DATA_TYPES, FilterOperator, QueryFilters } from "./types";
+import { DATA_TYPE_TYPE, DATA_TYPES, FilterOperator, FUNCTION_RETURN_TYPE_TYPE, FUNCTION_RETURN_TYPES, QueryFilters } from "./types";
 
 
 export function cn(...inputs: ClassValue[]) {
@@ -72,7 +72,7 @@ export function mapPostgresType(pgType: string): DATA_TYPES {
   return DATA_TYPES.STRING; // default fallback
 }
 
-export function getPostgresType(type: DATA_TYPE_TYPE): string {
+export function getPostgresType(type: DATA_TYPE_TYPE | FUNCTION_RETURN_TYPE_TYPE): string {
   switch (type) {
     case 'string':
       return 'TEXT'; // 'VARCHAR' is also valid, but 'TEXT' is preferred in Postgres for arbitrary lengths.
@@ -89,8 +89,7 @@ export function getPostgresType(type: DATA_TYPE_TYPE): string {
     case 'JSON':
       return 'JSONB'; // 'JSONB' is generally preferred over 'JSON' for efficiency and indexing.
     default:
-      const exhaustCheck: never = type;
-      throw new Error(`Unhandled data type: ${exhaustCheck}`);
+      return type
   }
 }
 

@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import React, { useCallback, useEffect, useMemo } from "react";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, ListTreeIcon } from "lucide-react";
+import { Loader2, Trash2, ListTreeIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -35,22 +34,14 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-
 import CustomDialogHeader from "@/components/CustomDialogHeader";
-import SchemaPicker from "../SchemaPicker";
-import { useSelectedSchema } from "@/hooks/useSelectedSchema";
+
 import { createIndexSchema } from "@/lib/types/schemas";
 import { createIndex } from "@/lib/actions/database/actions";
 import { INDEX_TYPES } from "@/lib/types";
-
-// ✅ your server actions (or wherever you export them from)
-import { getTables, getColsForTable } from "@/lib/actions/database/getActions";
+import { getCols, getTables } from "@/lib/actions/database/getActions";
 
 type FormValues = z.infer<typeof createIndexSchema>;
-
-// field array friendly UI shape
-type ColRow = { value: string };
-type FormUiValues = Omit<FormValues, "cols"> & { cols: ColRow[] };
 
 function AddIndexSheet({
   projectId,
@@ -67,16 +58,10 @@ function AddIndexSheet({
 }) {
   const queryClient = useQueryClient();
 
-  const { schema, setSchema } = useSelectedSchema({
-    projectId,
-    schemas,
-    persist: true,
-  });
-
-  const form = useForm<FormUiValues>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(createIndexSchema as any),
     defaultValues: {
-      schema: schema ?? (schemas?.[0] ?? "public"),
+      schema: schemas?.[0] ?? "public",
       table: "",
       type: INDEX_TYPES.BTREE,
       cols: [],
@@ -89,107 +74,101 @@ function AddIndexSheet({
     name: "cols",
   });
 
-  // keep schema in sync with picker
+  const selectedSchema = useWatch({ control: form.control, name: "schema" });
+  const selectedTable = useWatch({ control: form.control, name: "table" });
+  const selectedType = useWatch({ control: form.control, name: "type" });
+  const watchedCols = useWatch({ control: form.control, name: "cols" }) ?? [];
+
+  // Keep schema valid if prop changes
   useEffect(() => {
-    const next = schema ?? (schemas?.[0] ?? "public");
-    form.setValue("schema", next, { shouldValidate: true, shouldDirty: true });
+    if (!schemas?.length) return;
+    const current = form.getValues("schema");
+    if (!current || !schemas.includes(current)) {
+      form.setValue("schema", schemas[0], { shouldValidate: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schema, schemas]);
+  }, [schemas]);
 
-  // ensure initial schema
+  // Reset dependent fields when schema changes
   useEffect(() => {
-    if (!schema && schemas?.length) setSchema(schemas[0]);
-  }, [schema, schemas, setSchema]);
-
-  const selectedSchema = form.watch("schema");
-  const selectedTable = form.watch("table");
-
-  // ✅ tables dropdown
-  const tablesQuery = useQuery({
-    queryKey: ["tables", projectId, selectedSchema],
-    queryFn: async () => getTables(selectedSchema, projectId),
-    enabled: Boolean(projectId && selectedSchema),
-    staleTime: 30_000,
-  });
-
-  const tables = useMemo(() => {
-    return (tablesQuery.data ?? [])
-      .map((r: any) => r.table_name as string)
-      .filter(Boolean)
-      .sort();
-  }, [tablesQuery.data]);
-
-  // ✅ columns dropdown (depends on schema+table)
-  const colsQuery = useQuery({
-    queryKey: ["columns", projectId, selectedSchema, selectedTable],
-    queryFn: async () => getColsForTable(selectedSchema, selectedTable, projectId),
-    enabled: Boolean(projectId && selectedSchema && selectedTable),
-    staleTime: 30_000,
-  });
-
-  const availableColumns = useMemo(() => {
-    return (colsQuery.data ?? [])
-      .map((r: any) => r.column_name as string)
-      .filter(Boolean)
-      .sort();
-  }, [colsQuery.data]);
-
-  const existingCols = useMemo(() => {
-    return (form.watch("cols") ?? [])
-      .map((r) => r?.value?.trim())
-      .filter(Boolean);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.watch("cols")]);
-
-  const addColumn = useCallback(
-    (col: string) => {
-      const v = col.trim();
-      if (!v) return;
-
-      if (existingCols.includes(v)) {
-        toast.error("That column is already added.");
-        return;
-      }
-
-      colsArray.append({ value: v });
-    },
-    [colsArray, existingCols]
-  );
-
-  // when schema changes, reset table & cols
-  useEffect(() => {
-    form.setValue("table", "");
+    form.setValue("table", "", { shouldValidate: true });
     colsArray.replace([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSchema]);
 
-  // when table changes, reset cols
+  // Reset cols when table changes
   useEffect(() => {
     colsArray.replace([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTable]);
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: (values: FormValues) => {
-    const payload = {
-      schema: values.schema,
-      table: values.table,
-      type: values.type,
-      cols: values.cols.map(c => ({ value: c.value.trim()})).filter(Boolean), // ✅ strings for server
-    };
+  const tablesQuery = useQuery({
+    queryKey: ["tables", projectId, selectedSchema],
+    queryFn: () => getTables(selectedSchema, projectId),
+    enabled: Boolean(projectId && selectedSchema),
+    staleTime: 30_000,
+  });
 
-    return createIndex(payload, projectId);
-  },
+  // normalize tables to string[]
+  const tables = useMemo(() => {
+    const raw = tablesQuery.data ?? [];
+    return raw
+      .map((t: any) => (typeof t === "string" ? t : t?.table_name))
+      .filter(Boolean) as string[];
+  }, [tablesQuery.data]);
+
+  const colsQuery = useQuery({
+    queryKey: ["cols", projectId, selectedSchema, selectedTable],
+    queryFn: () => getCols(selectedSchema, projectId, selectedTable),
+    enabled: Boolean(projectId && selectedSchema && selectedTable),
+    staleTime: 30_000,
+  });
+
+  // getCols returns: { name, dtype }[]
+  const availableCols = colsQuery.data ?? [];
+
+  const existingColNames = useMemo(() => {
+    return watchedCols.map((c) => c?.name?.trim()).filter(Boolean);
+  }, [watchedCols]);
+
+  const addColumnByName = useCallback(
+    (colName: string) => {
+      const name = (colName ?? "").trim();
+      if (!name) return;
+
+      if (existingColNames.includes(name)) {
+        toast.error("That column is already added.");
+        return;
+      }
+
+      const found = availableCols.find((c: any) => c.name === name);
+      if (!found) {
+        toast.error("Column not found.");
+        return;
+      }
+
+      colsArray.append({ name: found.name, dtype: found.dtype });
+    },
+    [availableCols, colsArray, existingColNames]
+  );
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (values: FormValues) => createIndex(values, projectId),
     onSuccess: () => {
       toast.success("Index created", { id: "add-index" });
+
       form.reset({
         schema: selectedSchema,
         table: "",
         type: INDEX_TYPES.BTREE,
         cols: [],
       });
+
       onOpenChange(false);
-      queryClient.invalidateQueries({ queryKey: ["indexes", projectId, selectedSchema] });
+
+      queryClient.invalidateQueries({
+        queryKey: ["indexes", projectId, selectedSchema],
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to create index", { id: "add-index" });
@@ -197,19 +176,14 @@ function AddIndexSheet({
   });
 
   const onSubmit = useCallback(
-    (values: FormUiValues) => {
-      const finalCols = (values.cols ?? [])
-        .map((r) => r.value?.trim())
-        .filter(Boolean);
-
-      if (!values.table) return toast.error("Pick a table.");
-      if (finalCols.length === 0) return toast.error("Add at least one column.");
-
+    (values: FormValues) => {
       toast.loading("Creating index...", { id: "add-index" });
       mutate(values);
     },
     [mutate]
   );
+
+  const previewCols = existingColNames.join(", ");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -239,21 +213,25 @@ function AddIndexSheet({
                 <FormItem>
                   <FormLabel>Schema</FormLabel>
                   <FormControl>
-                    <SchemaPicker
-                      schemas={schemas ?? []}
-                      value={schema}
-                      onChange={(v) => {
-                        setSchema(v);
-                        field.onChange(v);
-                      }}
-                    />
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a schema" />
+                      </SelectTrigger>
+                      <SelectContent className="z-200">
+                        {schemas.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Table dropdown */}
+            {/* Table */}
             <FormField
               control={form.control}
               name="table"
@@ -280,6 +258,7 @@ function AddIndexSheet({
                         />
                       </SelectTrigger>
                     </FormControl>
+
                     <SelectContent className="z-200">
                       {tables.map((t) => (
                         <SelectItem key={t} value={t}>
@@ -290,9 +269,7 @@ function AddIndexSheet({
                   </Select>
 
                   {tablesQuery.isError && (
-                    <p className="text-sm text-destructive">
-                      Failed to load tables.
-                    </p>
+                    <p className="text-sm text-destructive">Failed to load tables.</p>
                   )}
 
                   <FormMessage />
@@ -313,7 +290,7 @@ function AddIndexSheet({
                         <SelectValue placeholder="Select an index type" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent  className="z-200">
+                    <SelectContent className="z-200">
                       {Object.values(INDEX_TYPES).map((t) => (
                         <SelectItem key={t} value={t}>
                           {t.toUpperCase()}
@@ -328,60 +305,59 @@ function AddIndexSheet({
 
             <Separator />
 
-            {/* Columns dropdown + list */}
+            {/* Columns */}
             <FormField
               control={form.control}
               name="cols"
               render={() => (
                 <FormItem>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <FormLabel>Columns</FormLabel>
-                      <FormDescription>
-                        Add one or more columns to include in the index.
-                      </FormDescription>
-                    </div>
-                  </div>
+                  <FormLabel>Columns</FormLabel>
+                  <FormDescription>
+                    Select one or more columns to include in the index.
+                  </FormDescription>
 
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3">
                     <Select
-                      onValueChange={(v) => addColumn(v)}
-                      disabled={!selectedTable || colsQuery.isLoading || availableColumns.length === 0}
+                      onValueChange={addColumnByName}
+                      disabled={
+                        !selectedTable || colsQuery.isLoading || availableCols.length === 0
+                      }
                     >
-                      <SelectTrigger className="flex-1">
+                      <SelectTrigger className="w-full">
                         <SelectValue
                           placeholder={
                             !selectedTable
                               ? "Pick a table first"
                               : colsQuery.isLoading
                               ? "Loading columns..."
-                              : availableColumns.length === 0
+                              : availableCols.length === 0
                               ? "No columns found"
-                              : "Select a column"
+                              : "Select a column to add"
                           }
                         />
                       </SelectTrigger>
-                      <SelectContent  className="z-200">
-                        {availableColumns.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
+
+                      <SelectContent className="z-200">
+                        {availableCols.map((c: any) => (
+                          <SelectItem
+                            key={c.name}
+                            value={c.name}
+                            className="flex items-center justify-between"
+                          >
+                            <span>{c.name}</span>
+                            <span className="ml-2 text-muted-foreground">
+                              {c.dtype}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={!selectedTable || availableColumns.length === 0}
-                      onClick={() => {
-                        // optional: do nothing; columns added via dropdown selection
-                        toast.message("Pick a column from the dropdown to add it.");
-                      }}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add
-                    </Button>
+                    {colsQuery.isError && (
+                      <p className="mt-2 text-sm text-destructive">
+                        Failed to load columns.
+                      </p>
+                    )}
                   </div>
 
                   {colsArray.fields.length === 0 ? (
@@ -390,29 +366,38 @@ function AddIndexSheet({
                     </div>
                   ) : (
                     <div className="mt-3 space-y-2">
-                      {colsArray.fields.map((row, index) => (
-                        <div
-                          key={row.id}
-                          className={cn(
-                            "rounded-md border bg-background p-2",
-                            "flex items-center justify-between gap-2"
-                          )}
-                        >
-                          <div className="font-mono text-sm truncate">
-                            {form.watch(`cols.${index}.value`) || "column"}
-                          </div>
-
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => colsArray.remove(index)}
-                            aria-label="Remove column"
+                      {colsArray.fields.map((row, index) => {
+                        const name = watchedCols?.[index]?.name ?? row.name ?? "column";
+                        const dtype = watchedCols?.[index]?.dtype ?? row.dtype ?? "";
+                        return (
+                          <div
+                            key={row.id}
+                            className={cn(
+                              "rounded-md border bg-background p-2",
+                              "flex items-center justify-between gap-2"
+                            )}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="min-w-0">
+                              <div className="font-mono text-sm truncate">{name}</div>
+                              {dtype ? (
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {dtype}
+                                </div>
+                              ) : null}
+                            </div>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => colsArray.remove(index)}
+                              aria-label="Remove column"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -421,12 +406,8 @@ function AddIndexSheet({
                     <span className="font-mono text-foreground">
                       CREATE INDEX ON {selectedSchema || "schema"}.
                       {selectedTable || "table"} USING{" "}
-                      {(form.watch("type") || INDEX_TYPES.BTREE).toLowerCase()} (
-                      {(form.watch("cols") ?? [])
-                        .map((r) => r.value?.trim())
-                        .filter(Boolean)
-                        .join(", ")}
-                      );
+                      {(selectedType || INDEX_TYPES.BTREE).toLowerCase()} (
+                      {previewCols || "col"} );
                     </span>
                   </div>
 

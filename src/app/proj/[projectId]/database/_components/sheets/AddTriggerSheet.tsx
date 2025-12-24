@@ -38,17 +38,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
 import CustomDialogHeader from "@/components/CustomDialogHeader";
-import SchemaPicker from "../SchemaPicker";
-import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 
 import { createTriggerSchema } from "@/lib/types/schemas";
 import {
   TRIGGER_EVENTS,
   TRIGGER_ORIENTATION,
   TRIGGER_TYPE,
-} from "@/lib/types"; // adjust import if your enums live elsewhere
+} from "@/lib/types";
 import { createTrigger } from "@/lib/actions/database/actions";
-import { getFunctionsForSchema, getTables } from "@/lib/actions/database/getActions";
+import { getFunctions, getTables } from "@/lib/actions/database/getActions";
 
 type FormValues = z.infer<typeof createTriggerSchema>;
 
@@ -72,47 +70,23 @@ function AddTriggerSheet({
 }) {
   const queryClient = useQueryClient();
 
-  const { schema, setSchema } = useSelectedSchema({
-    projectId,
-    schemas,
-    persist: true,
-  });
-
   const form = useForm<FormValues>({
     resolver: zodResolver(createTriggerSchema),
     defaultValues: {
       name: "",
-      schema: schema ?? (schemas?.[0] ?? "public"),
+      schema: schemas?.[0] ?? "public",
       table: "",
       event: [],
       type: TRIGGER_TYPE.BEFORE,
       orientation: TRIGGER_ORIENTATION.ROW,
-      functionSchema: schema ?? (schemas?.[0] ?? "public"),
+      functionSchema: schemas?.[0] ?? "public",
       functionName: "",
     },
     mode: "onChange",
   });
 
-  // keep schema in sync with picker
-  useEffect(() => {
-    const next = schema ?? (schemas?.[0] ?? "public");
-    form.setValue("schema", next, { shouldValidate: true, shouldDirty: true });
-
-    // nice default: keep functionSchema aligned unless user already changed it
-    const currentFnSchema = form.getValues("functionSchema");
-    if (!currentFnSchema) {
-      form.setValue("functionSchema", next, { shouldValidate: true, shouldDirty: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schema, schemas]);
-
-  // ensure initial schema
-  useEffect(() => {
-    if (!schema && schemas?.length) setSchema(schemas[0]);
-  }, [schema, schemas, setSchema]);
-
   const selectedSchema = form.watch("schema");
-  const selectedTable = form.watch("table");
+  const selectedFnSchema = form.watch("functionSchema");
 
   // tables dropdown
   const tablesQuery = useQuery({
@@ -124,33 +98,29 @@ function AddTriggerSheet({
 
   const tables = useMemo(() => {
     return (tablesQuery.data ?? [])
-      .map((r: any) => r.table_name as string)
       .filter(Boolean)
       .sort();
   }, [tablesQuery.data]);
 
-  const selectedFnSchema = form.watch("functionSchema");
+  const functionsQuery = useQuery({
+    queryKey: ["functions", projectId, selectedFnSchema],
+    queryFn: async () => getFunctions(projectId, selectedFnSchema),
+    enabled: Boolean(projectId && selectedFnSchema),
+    staleTime: 30_000,
+  });
 
-const functionsQuery = useQuery({
-  queryKey: ["functions", projectId, selectedFnSchema],
-  queryFn: async () => getFunctionsForSchema(projectId, selectedFnSchema),
-  enabled: Boolean(projectId && selectedFnSchema),
-  staleTime: 30_000,
-});
+  const availableFunctions = useMemo(() => {
+    return (functionsQuery.data ?? [])
+      .map((r: any) => r.function_name as string)
+      .filter(Boolean)
+      .sort();
+  }, [functionsQuery.data]);
 
-const availableFunctions = useMemo(() => {
-  return (functionsQuery.data ?? [])
-    .map((r: any) => r.function_name as string)
-    .filter(Boolean)
-    .sort();
-}, [functionsQuery.data]);
-
-// when function schema changes, reset function name
-useEffect(() => {
-  form.setValue("functionName", "", { shouldValidate: true, shouldDirty: true });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [selectedFnSchema]);
-
+  // when function schema changes, reset function name
+  useEffect(() => {
+    form.setValue("functionName", "", { shouldValidate: true, shouldDirty: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFnSchema]);
 
   // when schema changes, reset table
   useEffect(() => {
@@ -174,7 +144,6 @@ useEffect(() => {
       });
       onOpenChange(false);
 
-      // invalidate anything you use to list triggers
       queryClient.invalidateQueries({ queryKey: ["triggers", projectId, selectedSchema] });
     },
     onError: (error: any) => {
@@ -241,16 +210,20 @@ useEffect(() => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Table Schema</FormLabel>
-                  <FormControl>
-                    <SchemaPicker
-                      schemas={schemas ?? []}
-                      value={schema}
-                      onChange={(v) => {
-                        setSchema(v);
-                        field.onChange(v);
-                      }}
-                    />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select schema" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="z-200">
+                      {(schemas ?? []).map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -475,7 +448,6 @@ useEffect(() => {
                 </FormItem>
               )}
             />
-
 
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending ? (

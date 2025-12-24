@@ -1,6 +1,6 @@
 import { LucideIcon } from "lucide-react";
 import { User } from "../db/generated";
-import { DATA_TYPES_LIST } from "../constants";
+import { DATA_TYPES_LIST, FUNCTION_RETURN_TYPES_LIST } from "../constants";
 
 export interface AuthContextType {
   user: User | null;
@@ -145,6 +145,7 @@ export enum TRIGGER_ORIENTATION {
 export type QueryFilters = Record<string, [FilterOperator, string]>
 
 
+export type FUNCTION_RETURN_TYPE_TYPE = (typeof FUNCTION_RETURN_TYPES_LIST)[number]
 export type DATA_TYPE_TYPE = (typeof DATA_TYPES_LIST)[number]
 export type INDEX_TYPE = (typeof INDEX_TYPES)
 export type TRIGGER_EVENT_TYPE = (typeof TRIGGER_EVENTS)

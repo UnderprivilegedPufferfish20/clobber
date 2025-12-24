@@ -53,7 +53,7 @@ export const createIndexSchema = z.object({
 
   // ✅ field-array friendly: cols is [{ value: "col" }, ...]
   cols: z
-    .array(z.object({ value: z.string().min(1, "Pick a column") }))
+    .array(z.object({ name: z.string().min(1, "Pick a column"), dtype: z.string() }))
     .min(1, "Add at least one column"),
 
   type: z.enum(INDEX_TYPES),

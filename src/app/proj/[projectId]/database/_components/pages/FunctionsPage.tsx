@@ -179,7 +179,7 @@ const FunctionCard = ({
           </div>
 
           <p className="text-xs text-muted-foreground mt-1 truncate">
-            <span className="font-mono">{returnType}</span>
+            <span className="font-mono">{schema}</span>
           </p>
         </div>
 

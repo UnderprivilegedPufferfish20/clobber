@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Columns, Plus, Trash2, BookTypeIcon } from "lucide-react";
+import { Loader2, Plus, Trash2, BookTypeIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,6 @@ import {
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
@@ -27,12 +26,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { createEnumSchema } from "@/lib/types/schemas";
 import { createEnum } from "@/lib/actions/database/actions";
 import CustomDialogHeader from "@/components/CustomDialogHeader";
-import SchemaPicker from "../SchemaPicker";
-import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -51,12 +55,9 @@ function AddEnumSheet({
 }) {
   const queryClient = useQueryClient();
 
-  // schema is selected/persisted outside the zod schema (passed into the action)
-  const { schema, setSchema } = useSelectedSchema({
-    projectId,
-    schemas,
-    persist: true,
-  });
+  const [selectedSchema, setSelectedSchema] = React.useState<string>(
+    schemas?.[0] ?? "public"
+  );
 
   const form = useForm<z.infer<typeof createEnumSchema>>({
     resolver: zodResolver(createEnumSchema),
@@ -74,12 +75,12 @@ function AddEnumSheet({
 
   const { mutate, isPending } = useMutation({
     mutationFn: (payload: z.infer<typeof createEnumSchema>) =>
-      createEnum(payload, projectId, schema),
+      createEnum(payload, projectId, selectedSchema),
     onSuccess: () => {
       toast.success("Enum added successfully", { id: "add-enum" });
       form.reset({ name: "", values: [""] });
       onOpenChange(false);
-      queryClient.invalidateQueries(["enums", projectId, schema] as any);
+      queryClient.invalidateQueries(["enums", projectId, selectedSchema] as any);
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to add enum", { id: "add-enum" });
@@ -138,16 +139,26 @@ function AddEnumSheet({
               )}
             />
 
-            {/* Schema (not part of zod schema; still required for where to create it) */}
+            {/* Schema */}
             <FormItem>
               <FormLabel>Schema</FormLabel>
-              <FormControl>
-                <SchemaPicker
-                  schemas={schemas ?? []}
-                  value={schema}
-                  onChange={setSchema}
-                />
-              </FormControl>
+              <Select
+                onValueChange={setSelectedSchema}
+                value={selectedSchema}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select schema" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="z-200">
+                  {(schemas ?? []).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormDescription>
                 The enum will be created inside this schema.
               </FormDescription>
@@ -230,7 +241,7 @@ function AddEnumSheet({
               <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
                 Preview:{" "}
                 <span className="font-mono text-foreground">
-                  {schema || "schema"}.{form.watch("name") || "enum_name"} = [
+                  {selectedSchema || "schema"}.{form.watch("name") || "enum_name"} = [
                   {(form.watch("values") ?? [])
                     .map((v) => v?.trim())
                     .filter(Boolean)
