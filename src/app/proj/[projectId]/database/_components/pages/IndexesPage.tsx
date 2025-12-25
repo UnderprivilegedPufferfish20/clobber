@@ -6,12 +6,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import SchemaPicker from "../SchemaPicker";
 import { Input } from "@/components/ui/input";
-import Loader from "@/components/Loader";
-import { InboxIcon, Search, ListTreeIcon } from "lucide-react";
+import { InboxIcon, Search, ListTreeIcon, EllipsisVerticalIcon } from "lucide-react";
 import { INDEX_TYPES } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import AddIndexSheet from "../sheets/AddIndexSheet";
+import { deleteIndex } from "@/lib/actions/database/deleteActions";
+import { usePathname } from "next/navigation";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import DeleteDialog from "../dialogs/DeleteDialog";
 
 type Props = {
   projectId: string;
@@ -163,6 +166,11 @@ const IndexCard = ({
   definition: string;
   schema: string
 }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
+  const pathname = usePathname();
+
+  const projectId = pathname.split("/")[2]
 
   return (
     <div
@@ -180,20 +188,45 @@ const IndexCard = ({
             <h3 className="font-semibold text-base truncate">{name}</h3>
           </div>
 
+
+          
           <p className="text-xs text-muted-foreground mt-1 truncate">
             <span className="text-muted-foreground">{schema}.<span className="text-black dark:text-white">{table}</span></span>
           </p>
         </div>
 
-        <span
-          className={cn(
-            "shrink-0 rounded-md border px-2 py-1 text-[11px] font-mono",
-            "text-muted-foreground bg-muted/30",
-            "group-hover:text-foreground group-hover:border-foreground/20"
-          )}
-        >
-          {method.toString()}
-        </span>
+        <div className="flex items-center gap-2">
+          
+          <span
+            className={cn(
+              "shrink-0 rounded-md border px-2 py-1 text-[11px] font-mono",
+              "text-muted-foreground bg-muted/30",
+              "group-hover:text-foreground group-hover:border-foreground/20"
+            )}
+          >
+            {method.toString()}
+          </span>
+
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant={"ghost"}><EllipsisVerticalIcon /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onSelect={e => {
+                e.preventDefault()
+              }}>
+                <DeleteDialog
+                  toBeDeleted="Index"
+                  deleteFunction={deleteIndex} 
+                  name={name}
+                  projectId={projectId}
+                  schema={schema}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
       </div>
 
       <div className="mt-3">

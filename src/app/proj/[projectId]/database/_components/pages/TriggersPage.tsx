@@ -2,15 +2,18 @@
 
 import { Separator } from "@/components/ui/separator";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { useQuery } from "@tanstack/react-query";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import DeleteDialog from "../dialogs/DeleteDialog";
 import { useEffect, useMemo, useState } from "react";
 import SchemaPicker from "../SchemaPicker";
 import { Input } from "@/components/ui/input";
 import Loader from "@/components/Loader";
-import { InboxIcon, Search, PlayCircleIcon } from "lucide-react";
+import { InboxIcon, Search, PlayCircleIcon, EllipsisVerticalIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import AddTriggerSheet from "../sheets/AddTriggerSheet";
+import { usePathname } from "next/navigation";
+import { deleteTrigger } from "@/lib/actions/database/deleteActions";
 
 type Props = {
   projectId: string;
@@ -164,6 +167,11 @@ const TriggerCard = ({
   schema: string
 }) => {
 
+  const pathname = usePathname()
+  const projectId = pathname.split("/")[2]
+  
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
   return (
     <div
       className={cn(
@@ -185,15 +193,37 @@ const TriggerCard = ({
           </p>
         </div>
 
-        <span
-          className={cn(
-            "shrink-0 rounded-md border px-2 py-1 text-[11px] font-mono",
-            "text-muted-foreground bg-muted/30",
-            "group-hover:text-foreground group-hover:border-foreground/20"
-          )}
-        >
-          {func}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "shrink-0 rounded-md border px-2 py-1 text-[11px] font-mono",
+              "text-muted-foreground bg-muted/30",
+              "group-hover:text-foreground group-hover:border-foreground/20"
+            )}
+          >
+            {func}
+          </span>
+
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant={"ghost"}><EllipsisVerticalIcon /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onSelect={e => {
+                e.preventDefault()
+              }}>
+                <DeleteDialog
+                  toBeDeleted="Trigger"
+                  deleteFunction={deleteTrigger} 
+                  name={name}
+                  projectId={projectId}
+                  schema={schema}
+                  table={table}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="mt-3">

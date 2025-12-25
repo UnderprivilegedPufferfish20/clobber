@@ -4,15 +4,19 @@ import { Separator } from "@/components/ui/separator";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { useQuery } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import DeleteDialog from "../dialogs/DeleteDialog";
 import SchemaPicker from "../SchemaPicker";
 import { Input } from "@/components/ui/input";
 import AddFunctionSheet from "../sheets/AddFunctionSheet";
 import Loader from "@/components/Loader";
-import { InboxIcon, Search, FunctionSquare } from "lucide-react";
+import { InboxIcon, Search, FunctionSquare, EllipsisVerticalIcon } from "lucide-react";
 import { DATA_TYPES } from "@/lib/types";
 import { mapPostgresType } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
+import { deleteFunction } from "@/lib/actions/database/deleteActions";
 
 type Props = {
   projectId: string;
@@ -158,9 +162,14 @@ const FunctionCard = ({
   name: string;
   returnType: string;
   args: string;
-  schema?: string;
+  schema: string;
 }) => {
   const sig = `${name}(${args || ""})`;
+
+  const pathname = usePathname()
+  const projectId = pathname.split("/")[2]
+  
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   return (
     <div
@@ -183,15 +192,36 @@ const FunctionCard = ({
           </p>
         </div>
 
-        <span
-          className={cn(
-            "shrink-0 rounded-md border px-2 py-1 text-[11px] font-mono",
-            "text-muted-foreground bg-muted/30",
-            "group-hover:text-foreground group-hover:border-foreground/20"
-          )}
-        >
-          RETURNS {returnType}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "shrink-0 rounded-md border px-2 py-1 text-[11px] font-mono",
+              "text-muted-foreground bg-muted/30",
+              "group-hover:text-foreground group-hover:border-foreground/20"
+            )}
+          >
+            RETURNS {returnType}
+          </span>
+
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant={"ghost"}><EllipsisVerticalIcon /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onSelect={e => {
+                e.preventDefault()
+              }}>
+                <DeleteDialog
+                  toBeDeleted="Function"
+                  deleteFunction={deleteFunction} 
+                  name={sig}
+                  projectId={projectId}
+                  schema={schema}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="mt-3">
