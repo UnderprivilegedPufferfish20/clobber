@@ -105,7 +105,6 @@ export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, p
     revalidatePath(`/dashboard/projects/${projectId}`); 
 }
 
-
 export async function addTable(
   form: z.infer<typeof createTableSchema>, 
   projectId: string,
@@ -430,7 +429,12 @@ export async function createFunction(
   form: z.infer<typeof createFunctionSchema>,
   projectId: string, 
 ) {
-  const { data, success } = createFunctionSchema.safeParse(form);
+  const { data, success, error } = createFunctionSchema.safeParse(form);
+
+  if (error) {
+    console.log("@@createFunction form parse errror: ", error)
+  }
+
   if (!success) throw new Error("Invalid form data");
 
   const user = await getUser();
@@ -451,7 +455,7 @@ export async function createFunction(
     .join(", ");
 
   await pool.query(`
-    CREATE FUNCTION ${data.schema}.${data.name}(${argument_string})
+    CREATE OR REPLACE FUNCTION ${data.schema}.${data.name}(${argument_string})
     RETURNS ${getPostgresType(data.returnType)} AS $$
     BEGIN
       ${data.definition}
@@ -460,6 +464,169 @@ export async function createFunction(
   `)
   revalidateTag(t("functions", projectId, data.schema), "max")
 }
+
+export async function renameFunction(
+  projectId: string,
+  schema: string,
+  sig: string,
+  newName: string
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const [funcName, args] = sig.split("(")
+  let argPart = "(" + args.split(/,\s*/).map(i => i.split(" ")[1]).join(", ")
+
+  if (args === ")") argPart = "()";
+
+  const query = `
+    ALTER FUNCTION ${schema}.${funcName + argPart} RENAME TO ${newName};
+  `
+
+  console.log("@@Query: ", query)
+
+  await pool.query(query)
+
+  revalidateTag(t("functions", projectId, schema), 'max')
+
+}
+
+export async function changeFunctionSchema(
+  projectId: string,
+  schema: string,
+  sig: string,
+  newSchema: string 
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const [funcName, args] = sig.split("(")
+  let argPart = "(" + args.split(/,\s*/).map(i => i.split(" ")[1]).join(", ")
+
+  if (args === ")") argPart = "()";
+
+  const query = `
+    ALTER FUNCTION ${schema}.${funcName + argPart} SET SCHEMA ${newSchema};
+  `
+
+  console.log("@@Query: ", query)
+
+  await pool.query(query)
+
+  revalidateTag(t("functions", projectId, schema), 'max')
+}
+
+export async function renameEnum(
+  projectId: string,
+  schema: string,
+  name: string,
+  newName: string
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const query = `
+    ALTER TYPE ${schema}.${name} RENAME TO ${newName};
+  `
+
+  console.log("@@QUERY: ", query)
+
+  await pool.query(query)
+
+  revalidateTag(t("enums", projectId, schema), "max")
+}
+
+export async function renameEnumValue(
+  projectId: string,
+  schema: string,
+  name: string,
+  valName: string,
+  newValName: string
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const query = `
+    ALTER TYPE ${schema}.${name} RENAME VALUE '${valName}' TO '${newValName}';
+  `
+
+  console.log("@@QUERY: ", query)
+
+  await pool.query(query)
+
+  revalidateTag(t("enums", projectId, schema), "max")
+}
+
+export async function addValueToEnum(
+  projectId: string,
+  schema: string,
+  name: string,
+  newValName: string
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const query = `
+    ALTER TYPE ${schema}.${name} ADD VALUE '${newValName}';
+  `
+
+  console.log("@@QUERY: ", query)
+
+  await pool.query(query)
+
+  revalidateTag(t("enums", projectId, schema), "max")
+}
+
 export async function createIndex(
   form: z.infer<typeof createIndexSchema>,
   projectId: string,

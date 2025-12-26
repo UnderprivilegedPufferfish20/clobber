@@ -42,7 +42,10 @@ export const createColumnSchema = z.object({
 export const createFunctionSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
   schema: z.string(),
-  returnType: z.enum(FUNCTION_RETURN_TYPES_LIST),
+  returnType: z.union([
+    z.enum(FUNCTION_RETURN_TYPES_LIST),
+    z.string()
+  ]),
   args: z.array(z.object({ name: z.string(), dtype: z.enum(DATA_TYPES_LIST) })),
   definition: z.string()
 })

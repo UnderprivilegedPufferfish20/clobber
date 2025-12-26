@@ -56,7 +56,6 @@ export async function deleteEnum(
   revalidateTag(t("enums", projectId, schema), 'max')
 }
 
-
 export async function deleteFunction(
   projectId: string,
   schema: string,
@@ -76,10 +75,17 @@ export async function deleteFunction(
   });
 
   const [funcName, args] = name.split("(")
+  let argPart = "(" + args.split(/,\s*/).map(i => i.split(" ")[1]).join(", ")
 
-  await pool.query(`
-    DROP FUNCTION ${schema}.${funcName + "(" + args.split(/,\s*/).map(i => i.split(" ")[1]).join(", ") + ")"} RESTRICT;
-  `)
+  if (args === ")") argPart = "()";
+
+  const query = `
+    DROP FUNCTION ${schema}.${funcName + argPart} RESTRICT;
+  `
+
+  console.log("@@Query: ", query)
+
+  await pool.query(query)
 
   revalidateTag(t("functions", projectId, schema), 'max')
 }

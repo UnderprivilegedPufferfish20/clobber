@@ -2,10 +2,10 @@
 
 import { Separator } from "@/components/ui/separator";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SchemaPicker from "../SchemaPicker";
 import { Input } from "@/components/ui/input";
-import { InboxIcon, Search, BookTypeIcon, EllipsisVerticalIcon } from "lucide-react";
+import { InboxIcon, Search, BookTypeIcon, EllipsisVerticalIcon, PencilIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import AddEnumSheet from "../sheets/AddEnumSheet";
@@ -13,6 +13,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import DeleteDialog from "../dialogs/DeleteDialog";
 import { usePathname } from "next/navigation";
 import { deleteEnum } from "@/lib/actions/database/deleteActions";
+import { addValueToEnum, createEnum, renameEnum, renameEnumValue } from "@/lib/actions/database/actions";
+import { toast } from "sonner";
 
 type Props = {
   projectId: string;
@@ -151,16 +153,90 @@ export default EnumsPage;
 const EnumCard = ({
   name,
   values,
-  schema
+  schema,
 }: {
   name: string;
   values: string;
   schema: string;
 }) => {
-  const pathname = usePathname()
-  const projectId = pathname.split("/")[2]
+  const pathname = usePathname();
+  const projectId = pathname.split("/")[2];
 
-  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(name);
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!nameInputRef.current) return;
+    nameInputRef.current.focus();
+  }, [isEditingName]);
+
+  // ---------------------------
+  // Values UI state
+  // ---------------------------
+  const parsedValues = useMemo(() => {
+    // supports "a, b, c" and also "{a,b,c}" style if you ever pass that
+    const raw = values.trim();
+    const cleaned =
+      raw.startsWith("{") && raw.endsWith("}")
+        ? raw.slice(1, -1)
+        : raw;
+
+    return cleaned
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }, [values]);
+
+  // map original -> current edited text
+  const [editedMap, setEditedMap] = useState<Record<string, string>>({});
+
+  // new value input
+  const [newValue, setNewValue] = useState("");
+
+  // initialize / refresh map when values change externally
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    for (const v of parsedValues) next[v] = v;
+    setEditedMap(next);
+  }, [parsedValues]);
+
+  const handleSave = async (props: {
+    newName?: string;
+    addValue?: string;
+    oldValue?: string;
+    newValue?: string;
+  }) => {
+    try {
+      if (props.newName) {
+        await renameEnum(projectId, schema, name, props.newName);
+      } else if (props.oldValue && props.newValue) {
+        await renameEnumValue(projectId, schema, name, props.oldValue, props.newValue);
+      } else if (props.addValue) {
+        await addValueToEnum(projectId, schema, name, props.addValue);
+      } else {
+        throw new Error("Invalid handleSave props");
+      }
+
+      toast.success("Enum updated successfully", { id: "update-enum" });
+    } catch (error) {
+      toast.error(
+        `Failed to update ${name}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        { id: "update-enum" }
+      );
+    }
+  };
+
+  const anyRenameChanges = useMemo(() => {
+    return parsedValues.some((v) => (editedMap[v] ?? v) !== v);
+  }, [parsedValues, editedMap]);
+
+  const canAdd = newValue.trim().length > 0 && !parsedValues.includes(newValue.trim());
 
   return (
     <div
@@ -173,34 +249,57 @@ const EnumCard = ({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <BookTypeIcon className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-semibold text-base truncate">{name}</h3>
+          <div className="group flex items-center gap-2">
+            <BookTypeIcon className="h-6 w-6 text-muted-foreground" />
+            {isEditingName ? (
+              <Input
+                ref={nameInputRef}
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onBlur={() => {
+                  setIsEditingName(false);
+                  setEditedName(name);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSave({ newName: editedName });
+                }}
+              />
+            ) : (
+              <h3 className="font-semibold text-2xl truncate">{name}</h3>
+            )}
+
+            <Button
+              onClick={() => setIsEditingName((p) => !p)}
+              variant={"ghost"}
+              className={`text-muted-foreground opacity-0 ${
+                !isEditingName && "group-hover:opacity-100"
+              } transition-opacity duration-200 cursor-pointer`}
+            >
+              <PencilIcon />
+            </Button>
           </div>
+
+          <p className="text-lg text-muted-foreground mt-1 truncate">
+            <span className="font-mono">{schema}</span>
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "shrink-0 rounded-md border px-2 py-1 text-[11px] font-mono",
-              "text-muted-foreground bg-muted/30",
-              "group-hover:text-foreground group-hover:border-foreground/20"
-            )}
-          >
-            {schema}
-          </span>
-
           <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
-              <Button variant={"ghost"}><EllipsisVerticalIcon /></Button>
+              <Button variant={"ghost"}>
+                <EllipsisVerticalIcon />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onSelect={e => {
-                e.preventDefault()
-              }}>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                }}
+              >
                 <DeleteDialog
                   toBeDeleted="Enum"
-                  deleteFunction={deleteEnum} 
+                  deleteFunction={deleteEnum}
                   name={name}
                   projectId={projectId}
                   schema={schema}
@@ -211,12 +310,98 @@ const EnumCard = ({
         </div>
       </div>
 
+      {/* ---------------------------
+          Values editor
+        --------------------------- */}
       <div className="mt-3">
-        <p className="text-xs text-muted-foreground">Values</p>
-        <p className="mt-1 font-mono text-xs text-foreground/90 truncate">
-          {values}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">Values</p>
+
+          {/* Save-all renames button (optional but intuitive) */}
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!anyRenameChanges}
+            onClick={async () => {
+              // rename values one-by-one (PG enum rename is per value)
+              for (const oldVal of parsedValues) {
+                const nextVal = (editedMap[oldVal] ?? oldVal).trim();
+                if (nextVal && nextVal !== oldVal) {
+                  // eslint-disable-next-line no-await-in-loop
+                  await handleSave({ oldValue: oldVal, newValue: nextVal });
+                }
+              }
+            }}
+          >
+            Save changes
+          </Button>
+        </div>
+
+        {/* Existing values (rename only) */}
+        <div className="mt-2 space-y-2">
+          {parsedValues.map((oldVal) => {
+            const current = editedMap[oldVal] ?? oldVal;
+            const changed = current.trim() !== oldVal;
+
+            return (
+              <div key={oldVal} className="flex items-center gap-2">
+                <Input
+                  value={current}
+                  onChange={(e) =>
+                    setEditedMap((m) => ({ ...m, [oldVal]: e.target.value }))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && changed) {
+                      const nextVal = current.trim();
+                      if (!nextVal) return;
+                      handleSave({ oldValue: oldVal, newValue: nextVal });
+                    }
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Add new value */}
+        <div className="mt-4">
+          <p className="text-xs text-muted-foreground">Add value</p>
+          <div className="mt-2 flex items-center gap-2">
+            <Input
+              placeholder="e.g. archived"
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canAdd) {
+                  const v = newValue.trim();
+                  handleSave({ addValue: v });
+                  setNewValue("");
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!canAdd}
+              onClick={() => {
+                const v = newValue.trim();
+                handleSave({ addValue: v });
+                setNewValue("");
+              }}
+            >
+              Add
+            </Button>
+          </div>
+
+          {/* tiny hint if they typed a duplicate */}
+          {!canAdd && newValue.trim().length > 0 && parsedValues.includes(newValue.trim()) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              That value already exists.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 };
+

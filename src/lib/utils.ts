@@ -72,7 +72,7 @@ export function mapPostgresType(pgType: string): DATA_TYPES {
   return DATA_TYPES.STRING; // default fallback
 }
 
-export function getPostgresType(type: DATA_TYPE_TYPE | FUNCTION_RETURN_TYPE_TYPE): string {
+export function getPostgresType(type: DATA_TYPE_TYPE | FUNCTION_RETURN_TYPE_TYPE | string): string {
   switch (type) {
     case 'string':
       return 'TEXT'; // 'VARCHAR' is also valid, but 'TEXT' is preferred in Postgres for arbitrary lengths.

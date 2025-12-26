@@ -167,7 +167,6 @@ export default function SqlEditorPage() {
               <Editor
                 height="100%"
                 language="sql"
-                theme="vs-dark"
                 value={query}
                 onChange={(value) => setQuery(value ?? "")}
                 options={{

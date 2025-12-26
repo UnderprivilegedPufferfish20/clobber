@@ -23,7 +23,7 @@ export const FUNCTION_RETURN_TYPES_LIST = [
   "JSON",
   "void",
   "record",
-  "TRIGGER"
+  "trigger"
 ] as const
 
 export const SidebarRoutes = [
