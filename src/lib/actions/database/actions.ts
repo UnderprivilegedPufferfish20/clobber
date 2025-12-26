@@ -5,7 +5,7 @@ import { applyTenantGrants, createTenantDatabase } from ".";
 import { getTenantPool } from "./tennantPool";
 import { getUser } from "../auth";
 import z from "zod";
-import { DATA_TYPES, QueryFilters } from "@/lib/types";
+import { DATA_TYPES, QueryFilters, SchemaEditorTable } from "@/lib/types";
 import { mapPostgresType, buildWhereClause, getPostgresType, t, generateProjectPassword } from "@/lib/utils";
 import prisma from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -367,6 +367,7 @@ export async function addColumn(
   }
 
   revalidateTag(t("columns", projectId, schema, table), 'max')
+  revalidateTag(t("schema", projectId, schema), 'max')
 }
 
 export async function addRow(

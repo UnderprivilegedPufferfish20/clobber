@@ -10,9 +10,11 @@ import TriggersPage from "./_components/pages/TriggersPage";
 import { Suspense } from "react";
 import EnumsPage from "./_components/pages/EnumsPage";
 import Loader from "@/components/Loader";
-import { getEnums, getFolders, getFunctions, getIndexes, getQueries, getSchemas, getTables, getTriggers } from "@/lib/actions/database/getActions";
+import { getEnums, getFolders, getFunctions, getIndexes, getQueries, getSchema, getSchemas, getTables, getTriggers } from "@/lib/actions/database/getActions";
+import SchemaEditorPage from "./_components/pages/SchemaEditorPage";
 
 type PageType = 
+  | 'schema_editor'
   | 'table_editor' 
   | 'sql_editor' 
   | 'functions' 
@@ -113,6 +115,18 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
       break;
     }
 
+    case "schema_editor": {
+      const schemaEditorDisplay = await getSchema(p.projectId, schema)
+      pageContent = (
+        <SchemaEditorPage 
+          projectId={p.projectId} 
+          schemas={schemas} 
+          schema={schemaEditorDisplay}
+        />
+      )
+      break
+    }
+
     default: {
       pageContent = <p>Not Implemented</p>;
     }
@@ -120,7 +134,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
 
   return (
     <Suspense fallback={<Loader sz={168} />}>
-      <div className="w-full h-full flex flex-col overflow-hidden">
+      <div className="fullscreen flex flex-col overflow-hidden">
         <header className="w-full h-20 min-h-20 max-h-20 flex gap-2 items-center-safe p-2 px-4">
           <span className="font-semibold text-3xl mr-8">Database</span>
           <DatabaseNavbar />
@@ -128,7 +142,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
 
         <Separator />
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden fullscreen">
           {pageContent}
         </div>
       </div>

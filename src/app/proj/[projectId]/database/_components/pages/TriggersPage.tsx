@@ -184,12 +184,12 @@ const TriggerCard = ({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <PlayCircleIcon className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-semibold text-base truncate">{name}</h3>
+            <PlayCircleIcon className="h-6 w-6 text-muted-foreground" />
+            <h3 className="font-semibold text-2xl truncate">{name}</h3>
           </div>
 
           <p className="text-xs text-muted-foreground mt-1 truncate">
-            <span className="text-muted-foreground">{schema}.<span className="text-black dark:text-white">{table}</span></span>
+            <span className="text-muted-foreground text-lg">{schema}.<span className="text-black dark:text-white">{table}</span></span>
           </p>
         </div>
 

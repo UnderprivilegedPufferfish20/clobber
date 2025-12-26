@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { ReactNode, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -45,7 +45,8 @@ function AddColumnSheet({
   schema, // Ensure you pass the schema name (e.g., 'public')
   open,
   onOpenChange,
-  hideTrigger
+  hideTrigger,
+  trigger
 }: {
   hideTrigger: boolean;
   tableId: string;
@@ -53,6 +54,7 @@ function AddColumnSheet({
   schema: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  trigger?: ReactNode
 }) {
   const queryClient = useQueryClient()
 
@@ -93,6 +95,11 @@ function AddColumnSheet({
       {!hideTrigger && (
         <SheetTrigger asChild>
           <Button variant="outline">Add Column</Button>
+        </SheetTrigger>
+      )}
+      {trigger && (
+        <SheetTrigger asChild>
+          {trigger}
         </SheetTrigger>
       )}
       <SheetContent className="sm:max-w-md overflow-y-auto p-2 z-100">

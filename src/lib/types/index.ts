@@ -152,4 +152,41 @@ export type TRIGGER_EVENT_TYPE = (typeof TRIGGER_EVENTS)
 export type TRIGGER_TYPE_TYPE = (typeof TRIGGER_TYPE)
 export type TRIGGER_ORIENTATION_TYPE = (typeof TRIGGER_ORIENTATION)
 
+export type SchemaEditorTable = {
+  schema: string;
+  name: string;
+  columns: SchemaEditorColumn[];
+};
 
+export type SchemaEditorColumn = {
+  name: string;
+  datatype: DATA_TYPES;
+
+  // Column constraints
+  isPrimaryKey: boolean;
+  isUnique: boolean;
+  isNullable: boolean;
+
+  // Optional extras your UI will likely want
+  defaultValue?: string;
+
+  // A column can participate in 0..n foreign keys (rare, but possible)
+  foreignKeys: SchemaEditorForeignKey[];
+};
+
+export type SchemaEditorForeignKey = {
+  name?: string; // constraint name if you have it
+
+  // local column is implied by the parent column;
+  // but you can include it if you want this object to be stand-alone:
+  // fromColumn: string;
+
+  to: {
+    schema: string;
+    table: string;
+    column: string;
+  };
+
+  onDelete?: "NO ACTION" | "RESTRICT" | "CASCADE" | "SET NULL" | "SET DEFAULT";
+  onUpdate?: "NO ACTION" | "RESTRICT" | "CASCADE" | "SET NULL" | "SET DEFAULT";
+}
