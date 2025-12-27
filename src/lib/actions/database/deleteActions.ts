@@ -5,6 +5,7 @@ import { getUser } from "../auth";
 import { getProjectById } from "./getActions";
 import { getTenantPool } from "./tennantPool";
 import { t } from "@/lib/utils";
+import prisma from "@/lib/db";
 
 export async function deleteIndex(
   projectId: string,
@@ -120,4 +121,51 @@ export async function deleteTrigger(
   `)
 
   revalidateTag(t("triggers", projectId, schema), 'max')
+}
+
+export async function deleteTable(
+  projectId: string,
+  schema: string,
+  name: string
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  await pool.query(`
+    DROP TABLE ${schema}.${name} RESTRICT;
+  `)
+
+  revalidateTag(t("table-schema", projectId, schema, name), "max")
+  revalidateTag(t("schema", projectId, schema), "max")
+  revalidateTag(t("columns", projectId, schema, name), "max")
+  revalidateTag(t("tables", projectId, schema), 'max')
+  revalidateTag(t("table-data", projectId, schema, name), "max")
+}
+
+export async function deleteQuery(
+  projectId: string,
+  id: string
+) {
+  const result = await prisma.sql.delete({
+    where: {
+      projectId,
+      id
+    }
+  })
+
+  revalidateTag(t('query', projectId, id), "max")
+  revalidateTag(t('queries', projectId), "max")
+  revalidateTag(t('folders', projectId), "max")
+
+  return result
 }

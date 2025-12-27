@@ -4,7 +4,7 @@ import CustomDialogHeader from '@/components/CustomDialogHeader';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { FilePlus2Icon, FileSpreadsheet, FolderIcon, Loader2, PlusIcon, Table2 } from 'lucide-react';
-import { Dispatch, SetStateAction, useCallback, useState } from 'react'
+import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -31,7 +31,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createQuerySchema } from '@/lib/types/schemas';
 import { addTable, createQuery } from '@/lib/actions/database/actions';
-import { SqlFolder } from '@/lib/db/generated';
+import { sql, SqlFolder } from '@/lib/db/generated';
 
 const AddQueryDialog = ({ 
   projectId, open, onOpenChange, hideTrigger, folders
@@ -40,7 +40,7 @@ const AddQueryDialog = ({
 }) => {
   const queryClient = useQueryClient()
 
-  const [folderId, setFolderId] = useState<string>("")
+  const [folderId, setFolderId] = useState<string>("root")
 
 
   const form = useForm<z.infer<typeof createQuerySchema>>({
@@ -50,7 +50,7 @@ const AddQueryDialog = ({
 
   const { mutate, isPending } = useMutation({
     mutationFn: (form: z.infer<typeof createQuerySchema>) => 
-      createQuery(form, projectId, folderId),
+      createQuery(form, projectId, folderId === 'root' ? "" : folderId),
     onSuccess: () => {
       toast.success("Query Added", { id:"create-Query" });
       form.reset()
@@ -148,14 +148,55 @@ export default AddQueryDialog;
 
 
 export function FolderSelect({
+  query,
   folders,
   folderId,
   setFolderId,
 }: {
+  query?: sql;
   folders: SqlFolder[];
   folderId: string;
   setFolderId: Dispatch<SetStateAction<string>>;
 }) {
+  const options = useMemo(() => {
+    const root: Pick<SqlFolder, "id" | "name"> = {
+      id: "root",
+      name: "No folder (Root of Editor)",
+    };
+
+    const filtered = folders.filter((f) => f.id !== "root");
+
+    // Optional: de-dupe by id just in case
+    const seen = new Set<string>();
+    const deduped = filtered.filter((f) => {
+      if (seen.has(f.id)) return false;
+      seen.add(f.id);
+      return true;
+    });
+
+    return [root, ...deduped];
+  }, [folders]);
+
+  // The "current folder" for an existing query (normalized to "root")
+  const currentFolderId = query?.folderId ? query.folderId : "root";
+
+  // ✅ Set default folderId:
+  // - if query exists: default to its current folder (or root)
+  // - else: default to root
+  useEffect(() => {
+    // If folderId isn't set yet, initialize it appropriately
+    if (!folderId) {
+      setFolderId(query ? currentFolderId : "root");
+      return;
+    }
+
+    // If folderId is set but isn't a valid option anymore, fall back
+    const isValid = options.some((o) => o.id === folderId);
+    if (!isValid) {
+      setFolderId(query ? currentFolderId : "root");
+    }
+  }, [folderId, setFolderId, query, currentFolderId, options]);
+
   return (
     <Select value={folderId} onValueChange={setFolderId}>
       <SelectTrigger className="w-full">
@@ -166,14 +207,27 @@ export function FolderSelect({
         <SelectGroup>
           <SelectLabel>Folders</SelectLabel>
 
-          {folders.map((f) => (
-            <SelectItem key={f.id} value={f.id} className="flex gap-2 items-center">
-              <FolderIcon className="h-4 w-4" />
-              {f.name}
-            </SelectItem>
-          ))}
+          {options.map((f) => {
+            const isCurrent = !!query && currentFolderId === f.id;
+
+            return (
+              <SelectItem
+                key={f.id}
+                value={f.id}
+                className="flex gap-2 items-center"
+              >
+                <FolderIcon className="h-4 w-4" />
+                <span>
+                  {f.name}
+                  {isCurrent ? " (Current)" : ""}
+                </span>
+              </SelectItem>
+            );
+          })}
         </SelectGroup>
       </SelectContent>
     </Select>
   );
 }
+
+

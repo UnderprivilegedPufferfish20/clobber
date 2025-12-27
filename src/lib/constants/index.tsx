@@ -1,4 +1,4 @@
-import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon } from "lucide-react";
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
 import { DATA_TYPES, DataTypeType } from "../types";
 
@@ -38,9 +38,9 @@ export const SidebarRoutes = [
     icon: DatabaseIcon,
   },
   {
-    href: "/buckets",
-    label: "Buckets",
-    icon: ShoppingBasketIcon,
+    href: "/storage",
+    label: "Storage",
+    icon: FolderSymlinkIcon,
   },
   {
     href: "/functions",

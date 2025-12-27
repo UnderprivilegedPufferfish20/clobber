@@ -158,92 +158,6 @@ export async function addTable(
   revalidateTag(t("tables", projectId, schema), "max")
 }
 
-
-export async function getTableData(
-  projectId: string,
-  schema: string,
-  table: string,
-  page: number = 1,
-  pageSize: number = 50,
-  filters: QueryFilters = {},
-  sort?: { column: string; direction: "ASC" | "DESC" }
-) {
-  console.log("@@GETTABLEDATA ARGS: ", projectId, schema, table, page, pageSize, filters, sort)
-
-  const user = await getUser();
-  if (!user) throw new Error("No user");
-
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name,
-  });
-
-  // First, get column types
-  const columnsResult = await pool.query(
-    `
-    SELECT column_name, data_type, is_nullable
-    FROM information_schema.columns
-    WHERE table_schema = $1 AND table_name = $2
-    ORDER BY ordinal_position;
-  `,
-    [schema, table]
-  );
-
-  // Build column type map
-  const columnTypes = new Map<string, DATA_TYPES>();
-  for (const col of columnsResult.rows) {
-    columnTypes.set(col.column_name, mapPostgresType(col.data_type));
-  }
-
-  // Build WHERE clause with type safety
-  const { whereClause, whereParams, errors } = buildWhereClause(filters, columnTypes);
-
-  // Return errors if any filters are invalid
-  if (Object.keys(errors).length > 0) {
-    throw new Error(`Invalid filters: ${JSON.stringify(errors)}`);
-  }
-
-  const countQuery = `
-    SELECT COUNT(*) as total 
-    FROM "${schema}"."${table}" ${whereClause};
-  `;
-
-  const countResult = await pool.query(countQuery, whereParams);
-  const total = parseInt(countResult.rows[0].total);
-
-  const offset = (page - 1) * pageSize;
-  const paramCount = whereParams.length + 1;
-
-  const dataQuery = `
-    SELECT * 
-    FROM "${schema}"."${table}"
-    ${whereClause}
-    ${sort ? `ORDER BY "${sort.column}" ${sort.direction}` : ''}
-    LIMIT $${paramCount} OFFSET $${paramCount + 1};
-  `;
-
-  const dataResult = await pool.query(dataQuery, [...whereParams, pageSize, offset]);
-
-  return {
-    rows: dataResult.rows,
-    columns: columnsResult.rows.map(col => ({
-      ...col,
-      data_type_enum: mapPostgresType(col.data_type)
-    })),
-    pagination: {
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-    },
-  };
-}
-
 export async function createFolder(form: z.infer<typeof createFolderSchema>, projectId: string) {
   const { data, success } = createFolderSchema.safeParse(form)
 
@@ -296,6 +210,29 @@ export async function createQuery(
   return result
 
   
+}
+
+export async function moveQueryIntoFolder(
+  projectId: string,
+  queryId: string,
+  folderId: string
+) {
+  await prisma.sql.update({
+    where: {
+      id: queryId
+    },
+    data: {
+      folder: {
+        connect: {
+          id: folderId
+        }
+      }
+    }
+  })
+
+  revalidateTag(t('query', projectId, queryId), "max")
+  revalidateTag(t('queries', projectId), "max")
+  revalidateTag(t('folders', projectId), "max")
 }
 
 export async function addColumn(
@@ -368,6 +305,7 @@ export async function addColumn(
 
   revalidateTag(t("columns", projectId, schema, table), 'max')
   revalidateTag(t("schema", projectId, schema), 'max')
+  revalidateTag(t("table-schema", projectId, schema, table), 'max')
 }
 
 export async function addRow(
@@ -691,6 +629,28 @@ export async function createTrigger(
   await pool.query(query)
 
   revalidateTag(t("triggers", projectId, data.schema), 'max')
+}
+
+export async function renameQuery(
+  projectId: string,
+  id: string,
+  newName: string
+) {
+  const result = await prisma.sql.update({
+    where: {
+      projectId,
+      id
+    },
+    data: {
+      name: newName
+    }
+  })
+
+  revalidateTag(t('query', projectId, id), "max")
+  revalidateTag(t('queries', projectId), "max")
+  revalidateTag(t('folders', projectId), "max")
+
+  return result
 }
 
 

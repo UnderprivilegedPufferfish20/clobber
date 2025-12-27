@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { getTableData } from "@/lib/actions/database/actions";
+import { getTableData } from "@/lib/actions/database/getActions";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
