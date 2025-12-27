@@ -4,18 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator'
 import { Prisma, sql, SqlFolder } from '@/lib/db/generated';
-import { ArrowUpRightFromSquareIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, DownloadIcon, EditIcon, EllipsisVerticalIcon, FileSpreadsheetIcon, FolderIcon, FolderOpenIcon, Loader2, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react';
+import { ArrowUpRightFromSquareIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, DownloadIcon, EditIcon, EllipsisVerticalIcon, FilePlus, FileSpreadsheetIcon, FolderIcon, FolderOpenIcon, Loader2, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -23,21 +19,18 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { toast } from "sonner";
 import AddFolderDialog from '../dialogs/AddFolderDialog';
 import AddQueryDialog, { FolderSelect } from '../dialogs/AddQueryDialog';
 import { cn } from '@/lib/utils';
-import { deleteQuery } from '@/lib/actions/database/deleteActions';
+import { deleteFolder, deleteQuery } from '@/lib/actions/database/deleteActions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CustomDialogHeader from '@/components/CustomDialogHeader';
 import { useMutation } from '@tanstack/react-query';
-import { moveQueryIntoFolder, renameQuery } from '@/lib/actions/database/actions';
+import { createQuery, moveQueryIntoFolder, moveQueryToRoot, renameFolder, renameQuery } from '@/lib/actions/database/actions';
 
 
 
@@ -91,7 +84,8 @@ const SqlEditorSidebar = ({
                 <>
                   {folders && folders.map(f => (
                     <Folder
-                      key={f.id} 
+                      key={f.id}
+                      id={f.id} 
                       name={f.name}
                       queries={f.queries}
                       sqlId={sqlId}
@@ -114,56 +108,12 @@ const SqlEditorSidebar = ({
 export default SqlEditorSidebar
 
 type FolderProps = {
+  id: string,
   projectId: string,
   sqlId: string,
   name: string,
   queries: sql[],
   folders: SqlFolder[]
-}
-
-function Folder({ name, queries, sqlId, projectId, folders }: FolderProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div 
-      onClick={() => setIsOpen(p => !p)} 
-      className={`fullwidth ${isOpen ? "" : "hover:bg-white/5"} flex flex-col p-2 hover:cursor-pointer`}
-    >
-      <div className='flex items-center gap-2'>
-        <button className='flex items-center'>
-          {isOpen ? (
-            <ChevronDownIcon className='stroke-black dark:stroke-white h-5 w-5' />
-          ) : (
-            <ChevronRightIcon className='stroke-black dark:stroke-white h-5 w-5'/>
-          )}
-        </button>
-
-        {isOpen ? (
-          <FolderOpenIcon className='stroke-black dark:stroke-white h-5 w-5' />
-        ) : (
-          <FolderIcon className='stroke-black dark:stroke-white h-5 w-5'/>
-        )}
-        <div className='font-semibold flex gap-2 items-center'>
-          {name}
-          {queries.map(q => q.id).includes(sqlId) && <CircleIcon className='rounded-full h-2 w-2 bg-indigo-400 stroke-indigo-400'/>}
-        </div>
-      </div>
-
-      {isOpen && queries.length > 0 && (
-        <div className="flex ml-2 mt-2 fullwidth" onClick={(e) => e.stopPropagation()}>
-          {/* Vertical separator */}
-          <div className="w-1.5 bg-white/10 mr-2 rounded-sm" style={{ minHeight: `${queries.length * 40}px` }} />
-
-          {/* Query list */}
-          <div className="flex flex-1 flex-col gap-1">
-            {queries.map(q => (
-              <Query key={q.id} q={q} qid={sqlId} projectId={projectId} folders={folders} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 function AddButton({ projectId, folders }: { projectId: string, folders: SqlFolder[] }) {
@@ -231,6 +181,235 @@ const downloadQueryTxt = (name: string, body: string) => {
   URL.revokeObjectURL(url);
 };
 
+function Folder({ name, queries, sqlId, projectId, folders, id }: FolderProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [createQueryDialog, setCreateQueryDialog] = useState(false);
+  const [editedName, setEditedName] = useState(name)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [queryName, setQueryName] = useState("");
+
+  const { mutate: rename, isPending: isRenamePending } = useMutation({
+    mutationFn: () => renameFolder(projectId, id, editedName),
+    onSuccess: () => {
+      setIsEditingName(false)
+      toast.success("Folder renamed", { id:"renamed-Folder" });
+      setIsEditingName(false);
+    },
+    onError: (error) => {
+      setEditedName(name)
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Folder renamed", { id:"renamed-Folder" });
+        return;
+      }
+      toast.error(`Failed to rename Folder: ${error}`, { id:"renamed-Folder" })
+    }
+  })
+
+  const { mutate: createQueryInFolder, isPending: isCreatePending } = useMutation({
+    mutationFn: () => createQuery({
+      name: queryName
+    },
+    projectId,
+    id
+    ),
+    onSuccess: () => {
+      setIsEditingName(false)
+      toast.success("Query created", { id:"create-query" });
+      setCreateQueryDialog(false);
+      setQueryName("")
+    },
+    onError: (error) => {
+      setEditedName(name)
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Query created", { id:"create-query" });
+        return;
+      }
+      toast.error(`Failed to create query: ${error}`, { id:"create-query" })
+    }
+  })
+
+  return (
+    <>
+    <div 
+      onClick={() => setIsOpen(p => !p)} 
+      className={`fullwidth ${isOpen ? "" : "hover:bg-white/5"} flex flex-col p-2 hover:cursor-pointer`}
+    >
+      <ContextMenu>
+        <ContextMenuTrigger>
+
+          <div className='flex items-center gap-2'>
+            <button className='flex items-center'>
+              {isOpen ? (
+                <ChevronDownIcon className='stroke-black dark:stroke-white h-5 w-5' />
+              ) : (
+                <ChevronRightIcon className='stroke-black dark:stroke-white h-5 w-5'/>
+              )}
+            </button>
+
+            {isOpen ? (
+              <FolderOpenIcon className='stroke-black dark:stroke-white h-5 w-5' />
+            ) : (
+              <FolderIcon className='stroke-black dark:stroke-white h-5 w-5'/>
+            )}
+            <div className='font-semibold flex gap-2 items-center'>
+              {name}
+              {queries.map(q => q.id).includes(sqlId) && <CircleIcon className='rounded-full h-2 w-2 bg-indigo-400 stroke-indigo-400'/>}
+            </div>
+          </div>
+
+        </ContextMenuTrigger>
+
+        <ContextMenuContent className="w-48">
+          <ContextMenuItem
+            className="flex gap-2 items-center"
+            onSelect={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsEditingName(true);
+            }}
+          >
+            <EditIcon className="h-4 w-4" />
+            Rename
+          </ContextMenuItem>
+
+          <ContextMenuItem
+            className="flex gap-2 items-center"
+            onSelect={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setCreateQueryDialog(true);
+            }}
+          >
+            <PlusIcon className="h-4 w-4" />
+            Create Query
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          <ContextMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDeleteDialogOpen(true);
+            }}
+            className="flex gap-2 items-center"
+          >
+            <Trash2Icon className="h-4 w-4" />
+            Delete
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+        {isOpen && queries.length > 0 && (
+          <div className="flex ml-2 mt-2 fullwidth" onClick={(e) => e.stopPropagation()}>
+            {/* Vertical separator */}
+            <div className="w-1.5 bg-white/10 mr-2 rounded-sm" style={{ minHeight: `${queries.length * 40}px` }} />
+
+            {/* Query list */}
+            <div className="flex flex-1 flex-col gap-1">
+              {queries.map(q => (
+                <Query key={q.id} q={q} qid={sqlId} projectId={projectId} folders={folders} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <FolderDeleteDialog 
+        name={name}
+        id={id}
+        open={deleteDialogOpen}
+        setOpen={setDeleteDialogOpen}
+        projectId={projectId}
+      />
+
+      <Dialog
+        open={isEditingName}
+        onOpenChange={setIsEditingName}
+      >
+        <DialogContent>
+          <CustomDialogHeader 
+            icon={EditIcon}
+            title={'Rename'}
+          />
+
+          <form 
+            className='space-y-8 w-full p-4'
+            onSubmit={(e) => {
+              e.preventDefault()
+              rename()
+            }}
+          >
+            <Input 
+              value={editedName}
+              onChange={e => setEditedName(e.target.value)}
+              placeholder={name}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  rename()
+                }
+              }}
+            />
+
+
+            <Button type='submit' className='w-full' disabled={isRenamePending || editedName === "" || editedName === name}>
+              {!isRenamePending && "Proceed"}
+              {isRenamePending && <Loader2 className='animate-spin' />}
+            </Button>
+          </form>
+          
+
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={createQueryDialog}
+        onOpenChange={setCreateQueryDialog}
+      >
+        <DialogContent>
+          <CustomDialogHeader 
+            icon={FilePlus}
+            title={'Create query'}
+          />
+
+          <form 
+            className='space-y-8 w-full p-4'
+            onSubmit={(e) => {
+              e.preventDefault()
+              createQueryInFolder()
+            }}
+          >
+            <Input 
+              value={queryName}
+              onChange={e => setQueryName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  createQueryInFolder()
+                }
+              }}
+            />
+
+
+            <Button type='submit' className='w-full' disabled={isCreatePending || queryName === ""}>
+              {!isRenamePending && "Proceed"}
+              {isRenamePending && <Loader2 className='animate-spin' />}
+            </Button>
+          </form>
+          
+
+        </DialogContent>
+      </Dialog>
+    </>
+
+  );
+}
+
+
+
 
 function Query({
   q,
@@ -252,8 +431,14 @@ function Query({
   const [editedName, setEditedName] = useState(q.name)
   const [folderId, setFolderId] = useState("root")
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: () => moveQueryIntoFolder(projectId, q.id, folderId),
+  const { mutate: move, isPending: isMovePending } = useMutation({
+    mutationFn: () => {
+      if (folderId === 'root') {
+        return moveQueryToRoot(projectId, q.id)
+      } else {
+        return moveQueryIntoFolder(projectId, q.id, folderId)
+      }
+    },
     onSuccess: () => {
       setFolderId("")
       toast.success("Query Moved", { id:"move-Query" });
@@ -271,14 +456,26 @@ function Query({
     }
   })
 
+  const { mutate: rename, isPending: isRenamePending } = useMutation({
+    mutationFn: () => renameQuery(projectId, q.id, editedName),
+    onSuccess: () => {
+      setIsEditingName(false)
+      toast.success("Query renamed", { id:"renamed-Query" });
+      setMoveToFolderDialogOpen(false);
+    },
+    onError: (error) => {
+      setEditedName(q.name)
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Query renamed", { id:"renamed-Query" });
+        setMoveToFolderDialogOpen(false);
+        return;
+      }
+      toast.error(`Failed to rename Query: ${error}`, { id:"renamed-Query" })
+    }
+  })
 
-  const nameEditRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (!nameEditRef.current) return;
-
-    nameEditRef.current.focus()
-  }, [isEditingName])
 
   return (
     <>
@@ -286,7 +483,7 @@ function Query({
         <ContextMenuTrigger>
           <div 
             className={cn(
-              'group flex gap-3 items-center justify-between px-4 py-2 hover:bg-white/5 hover:cursor-pointer',
+              'group flex gap-3 items-center justify-between p-2 hover:bg-white/5 hover:cursor-pointer',
               q.id === qid ? 
                   'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
                   : 'text-black hover:bg-white/5! dark:text-white dark:hover:text-white!'
@@ -297,33 +494,7 @@ function Query({
           >
             <div className='flex items-center gap-2'>
               <FileSpreadsheetIcon className='h-5 w-5'/>
-              {isEditingName ? (
-                <Input
-                  ref={nameEditRef} 
-                  value={editedName}
-                  onChange={e => setEditedName(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={async e => {
-                    if (e.key === "Enter") {
-                      setIsEditingName(false)
-
-                      try {
-                        await renameQuery(projectId, q.id, editedName)
-                        toast.success("Query renamed sucessfully", { id: "rename-query" })
-                      } catch (error) {
-                        toast.error(`Failed to rename query: ${error}`, { id:"rename-query" })
-                      }
-                    } 
-                  }}
-                  className='w-38 min-w-38 max-w-38 p-0! font-semibold text-2xl'
-                  onBlur={() => {
-                    setIsEditingName(false)
-                    setEditedName(q.name)
-                  }}
-                />
-              ) : (
-                <h1 className='font-semibold'>{editedName}</h1>
-              )}
+              <h1 className='font-semibold'>{q.name}</h1>
             </div>
 
             <QueryDropdown
@@ -421,7 +592,7 @@ function Query({
             className='space-y-8 w-full p-4'
             onSubmit={(e) => {
               e.preventDefault()
-              mutate()
+              move()
             }}
           >
             <FolderSelect 
@@ -431,11 +602,51 @@ function Query({
               query={q}
             />
 
-            <Button type='submit' className='w-full' disabled={isPending || folderId === ""}>
-              {!isPending && "Proceed"}
-              {isPending && <Loader2 className='animate-spin' />}
+            <Button type='submit' className='w-full' disabled={isMovePending || folderId === ""}>
+              {!isMovePending && "Proceed"}
+              {isMovePending && <Loader2 className='animate-spin' />}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isEditingName}
+        onOpenChange={setIsEditingName}
+      >
+        <DialogContent>
+          <CustomDialogHeader 
+            icon={EditIcon}
+            title={'Rename'}
+          />
+
+          <form 
+            className='space-y-8 w-full p-4'
+            onSubmit={(e) => {
+              e.preventDefault()
+              rename()
+            }}
+          >
+            <Input 
+              value={editedName}
+              onChange={e => setEditedName(e.target.value)}
+              placeholder={q.name}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  rename()
+                }
+              }}
+            />
+
+
+            <Button type='submit' className='w-full' disabled={isRenamePending || editedName === "" || editedName === q.name}>
+              {!isRenamePending && "Proceed"}
+              {isRenamePending && <Loader2 className='animate-spin' />}
+            </Button>
+          </form>
+          
+
         </DialogContent>
       </Dialog>
     </>
@@ -596,6 +807,66 @@ function DeleteDialog({
                     error instanceof Error ? error.message : "Unknown error"
                   }`,
                   { id: `delete-query` }
+                )
+              }
+            }}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+
+    </AlertDialog>
+  )
+}
+
+function FolderDeleteDialog({
+  name,
+  id,
+  projectId,
+  open,
+  setOpen
+}: {
+  name: string,
+  id: string,
+  projectId: string,
+  open: boolean,
+  setOpen: Dispatch<SetStateAction<boolean>>;
+}) {
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <AlertDialogContent className="flex flex-col gap-8">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <TriangleAlertIcon className="stroke-indigo-500" />
+            Confirm delete {name}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone, and will remove all queries inside.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={e => {
+              e.stopPropagation()
+            }}
+          >Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async (e) => {
+              e.stopPropagation()
+              try {
+                await deleteFolder(projectId, id)
+                toast.success(`Folder deleted.`, { id: `delete-Folder` })
+              } catch (error) {
+                toast.error(
+                  `Failed to delete Folder: ${
+                    error instanceof Error ? error.message : "Unknown error"
+                  }`,
+                  { id: `delete-Folder` }
                 )
               }
             }}

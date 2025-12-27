@@ -169,3 +169,17 @@ export async function deleteQuery(
 
   return result
 }
+
+export async function deleteFolder(
+  projectId: string,
+  id: string
+) {
+  const result = await prisma.sqlFolder.delete({
+    where: { id }
+  })
+
+  revalidateTag(t('queries', projectId), "max")
+  revalidateTag(t('folders', projectId), "max")
+
+  return result
+}

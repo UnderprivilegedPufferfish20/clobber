@@ -206,6 +206,7 @@ export async function createQuery(
   }
 
   revalidateTag(t("queries", projectId), "max")
+  revalidateTag(t('folders', projectId), "max")
 
   return result
 
@@ -217,7 +218,7 @@ export async function moveQueryIntoFolder(
   queryId: string,
   folderId: string
 ) {
-  await prisma.sql.update({
+  const result = await prisma.sql.update({
     where: {
       id: queryId
     },
@@ -233,6 +234,39 @@ export async function moveQueryIntoFolder(
   revalidateTag(t('query', projectId, queryId), "max")
   revalidateTag(t('queries', projectId), "max")
   revalidateTag(t('folders', projectId), "max")
+
+  return result
+}
+
+export async function renameFolder(projectId: string, id: string, newName: string) {
+  const result = await prisma.sqlFolder.update({
+    where: {  id},
+    data: { name: newName }
+  })
+
+  revalidateTag(t('folders', projectId), "max")
+
+  return result
+}
+
+export async function moveQueryToRoot(
+  projectId: string,
+  queryId: string
+) {
+  const result = await prisma.sql.update({
+    where: {id: queryId},
+    data: {
+      folder: {
+        disconnect: true
+      }
+    }
+  })
+
+  revalidateTag(t('query', projectId, queryId), "max")
+  revalidateTag(t('queries', projectId), "max")
+  revalidateTag(t('folders', projectId), "max")
+
+  return result
 }
 
 export async function addColumn(
