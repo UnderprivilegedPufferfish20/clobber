@@ -28,8 +28,6 @@ const UserButton = () => {
   if (loading) return <Loader sz={40}/>
   if (!user) return null;
 
-  console.log("@@USER BUTTON - user: ", user)
-
   const handleMenuClick = (action: string) => {
     setIsOpen(false)
     

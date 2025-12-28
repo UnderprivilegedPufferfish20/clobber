@@ -17,6 +17,7 @@
     "@google-cloud/cloud-sql-connector": "^1.8.5",
     "@google-cloud/local-auth": "^3.0.1",
     "@google-cloud/sql": "^0.23.0",
+    "@google-cloud/storage": "^7.18.0",
     "@hookform/resolvers": "^5.2.2",
     "@monaco-editor/react": "^4.7.0",
     "@prisma/adapter-pg": "^7.0.1",
