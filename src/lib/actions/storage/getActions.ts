@@ -19,7 +19,7 @@ export async function getFolderData(
   projectId: string,
   path: string
 ) {
-  cacheTag(t("folder-data", path))
+  cacheTag(t("folder-data", `${projectId}/${path}`))
 
   const bucket = await prisma.bucket.findUnique({
     where: { projectId, name: path.split("/")[0] }

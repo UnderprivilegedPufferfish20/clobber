@@ -1,22 +1,25 @@
 "use client";
 
 import CustomDialogHeader from '@/components/CustomDialogHeader';
+import TextInputDialog from '@/components/TextInputDialog';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Dialog, DialogClose, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { createFolder } from '@/lib/actions/storage/actions';
+import { createFolder, renameObject, uploadFile } from '@/lib/actions/storage/actions';
 import { getFolderData } from '@/lib/actions/storage/getActions';
-import { cn } from '@/lib/utils';
+import { fileEndingToIcon } from '@/lib/constants';
+import { cn, listImmediateChildren } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeftIcon, FolderIcon, FolderPlusIcon, Heading1, InboxIcon, Loader2, Search } from 'lucide-react';
+import { ArrowLeftIcon, ArrowUpRightFromSquare, CloudUploadIcon, DownloadIcon, EditIcon, FileTextIcon, FolderIcon, FolderPlusIcon, Heading1, InboxIcon, LinkIcon, Loader2, Search, Trash2Icon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import path from 'path';
-import { useMemo, useState } from 'react';
+import { ChangeEvent, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { Object as DbObject } from '@/lib/db/generated';
 
 type Props = {
   bucketName: string,
@@ -24,9 +27,16 @@ type Props = {
 }
 
 const FoldersPage = (props: Props) => {
+  console.log("@@FOLDERDATA: ", props.folderData)
+
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const [file, setFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string>("");
 
   const projectId = pathname.split("/")[2]
   const currentPath = searchParams.get("path") as string;
@@ -54,17 +64,66 @@ const FoldersPage = (props: Props) => {
     }
   })
 
+  const { mutate: upload, isPending: isUploadPending } = useMutation({
+    mutationFn: async (f: File) => {
+      const fileName = f.name;
+      const arrayBuffer = await f.arrayBuffer();
+
+      return uploadFile(projectId, currentPath, fileName, arrayBuffer)
+    },
+    onSuccess: () => {
+      toast.success("Upload Successful", { id:"upload" });
+    },
+    onMutate(variables, context) {
+      toast.loading("Uploading...", { id: "upload" })
+    },
+    onError: (error) => {
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Item Uploaded", { id:"cupload" });
+        setOpen(false);
+        return;
+      }
+      toast.error("Failed to upload item", { id:"upload" })
+    }
+  })
+
   const filteredItems = useMemo(() => {
-      if (!props.folderData) return [];
-  
-      const q = searchTerm.trim().toLowerCase();
-      if (!q) return props.folderData;
-  
-      return props.folderData.filter(b => b.name.toLowerCase().includes(q))
-    }, [searchTerm, props.folderData])
-  
-    const showEmptyState = !searchTerm && (props.folderData?.length ?? 0) === 0;
-    const showNoMatchesState = !!searchTerm && filteredItems.length === 0;
+    if (!props.folderData) return [];
+
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return props.folderData;
+
+    return props.folderData.filter(b => b.name.toLowerCase().includes(q))
+  }, [searchTerm, props.folderData])
+
+  const { folders, files } = useMemo(() => {
+    if (!props.folderData) return { folders: [], files: [] };
+    return listImmediateChildren(props.folderData, projectId, currentPath);
+  }, [props.folderData, projectId, currentPath]);
+
+  const showEmptyState = !searchTerm && props.folderData.every(f => f.name.slice(`${projectId}/${currentPath}`.length + 1) === ".placeholder");
+  const showNoMatchesState = !!searchTerm && filteredItems.length === 0;
+
+  const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null
+    if (!f) return;
+
+    setFile(f);
+    setFileName(f.name);
+
+    // optional: auto-upload immediately after selection
+    upload(f);
+
+    // allow re-selecting the SAME file later (important UX detail)
+    e.currentTarget.value = "";
+  }
+
+  const onPickFile = () => inputRef.current?.click();
+
+  const prefix = `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`;
+  const childName = (o: DbObject) =>
+    o.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? o.name;
 
   return (
     <>
@@ -95,7 +154,7 @@ const FoldersPage = (props: Props) => {
                     <>
                       <BreadcrumbItem>
                         <BreadcrumbLink asChild>
-                          <Link href={linkToFolder(p)}>{p}</Link>
+                          <Link href={`${pathname}?page=files&path=${linkToFolder(p)}`}>{p}</Link>
                         </BreadcrumbLink>
                       </BreadcrumbItem>
                       <BreadcrumbSeparator />
@@ -107,6 +166,24 @@ const FoldersPage = (props: Props) => {
           </div>
           
           <div className='flex items-center gap-2'>
+            <div className="flex items-center gap-2">
+              <input
+                ref={inputRef}
+                type="file"
+                className="hidden"
+                onChange={onFileChange}
+              />
+
+              <Button
+                className="flex items-center gap-2"
+                variant="outline"
+                onClick={onPickFile}
+                disabled={isUploadPending}
+              >
+                <CloudUploadIcon className="w-6 h-6" />
+                Upload
+              </Button>
+            </div>
             <Button
               className='flex items-center gap-2'
               variant={"outline"}
@@ -160,19 +237,36 @@ const FoldersPage = (props: Props) => {
             </Button>
           </div>
         ) : (
-          <div
-            className={cn(
-              "grid gap-4",
-              "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            )}
-          >
-            {props.folderData.map(f => (
-              <FolderCard
-                name={f.name.slice(`${projectId}/${currentPath}`.length + 1).slice(0, -13)}
-              />
-            ))}
-        </div>
-      )}
+          <div className='flex flex-col gap-8'>
+
+            <h1 className='text-2xl font-semibold'>Folders</h1>
+            <div 
+              className='flex gap-2 overflow-hidden hover:overflow-x-scroll p-2 mb-7 scroll-mb-6'
+            >
+              {folders.map((folder) => (
+                <FolderCard 
+                  key={`folder:${folder.id}`} 
+                  name={childName(folder)} 
+                />
+              ))}
+            </div>
+            
+            <h1 className='text-2xl font-semibold mt-6'>Files</h1>
+            <div className='grid grid-cols-6 gap-2'>
+              {files.map((file) => (
+                <FileCard 
+                  key={`file:${file.id}`} 
+                  name={childName(file)}
+                  createdAt={file.createdAt}
+                  size='1.2 Mb'
+                  type='text/plain'
+                  id={file.id} 
+                />
+              ))}
+            </div>
+
+          </div>
+        )}
       </div>
 
       <Dialog
@@ -228,6 +322,150 @@ const FoldersPage = (props: Props) => {
 
 export default FoldersPage
 
+function FileCard({
+  id,
+  name,
+  createdAt,
+  type,
+  size
+}: {
+  id: string,
+  name: string,
+  createdAt: Date,
+  type: string,
+  size: string
+}) {
+  const [fileName, ending] = name.split(".")
+
+  const [isNameEditOpen, setIsNameEditOpen] = useState(false);
+  const [newObjectName, setNewObjectName] = useState(name)
+
+  const [isGetUrlOpen, setIsGetUrlOpen] = useState(false)
+
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const projectId = pathname.split("/")[2]
+
+  const { mutate: download, isPending: isDownloadPending } = useMutation({
+    mutationFn: async (f: File) => {
+      const fileName = f.name;
+      const arrayBuffer = await f.arrayBuffer();
+
+      return uploadFile(projectId, currentPath, fileName, arrayBuffer)
+    },
+    onSuccess: () => {
+      toast.success("Upload Successful", { id:"upload" });
+    },
+    onMutate(variables, context) {
+      toast.loading("Uploading...", { id: "upload" })
+    },
+    onError: (error) => {
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Item Uploaded", { id:"cupload" });
+        setOpen(false);
+        return;
+      }
+      toast.error("Failed to upload item", { id:"upload" })
+    }
+  })
+
+  
+
+  const { mutate: getUrl, isPending: isGetUrlPending } = useMutation({
+    mutationFn: async (f: File) => {
+      const fileName = f.name;
+      const arrayBuffer = await f.arrayBuffer();
+
+      return uploadFile(projectId, currentPath, fileName, arrayBuffer)
+    },
+    onSuccess: () => {
+      toast.success("Upload Successful", { id:"upload" });
+    },
+    onMutate(variables, context) {
+      toast.loading("Uploading...", { id: "upload" })
+    },
+    onError: (error) => {
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Item Uploaded", { id:"cupload" });
+        setOpen(false);
+        return;
+      }
+      toast.error("Failed to upload item", { id:"upload" })
+    }
+  })
+
+
+
+  const Icon = fileEndingToIcon[ending] ?? FileTextIcon
+
+  return (
+    <>
+    
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <div className='group flex flex-col gap-6 rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20'>
+            <div className="min-w-0 flex items-center justify-between">
+              <div className="group flex items-center gap-2">
+                <Icon className="h-6 w-6 text-muted-foreground" />
+                <h3>{name}</h3>
+              </div>
+
+              <h2 className='text-muted-foreground'>{size}</h2>
+            </div>
+
+            <footer className='fullwidth flex justify-between items-center text-muted-foreground text-sm'>
+              {createdAt.toLocaleDateString()}
+              <h3>{type}</h3>
+            </footer>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem className='flex items-center gap-2'>
+            <LinkIcon className='w-4 h-4'/>
+            Get URL
+          </ContextMenuItem>
+          <ContextMenuItem className='flex items-center gap-2' onClick={() => setIsNameEditOpen(true)}>
+            <EditIcon className='w-4 h-4'/>
+            Rename
+          </ContextMenuItem>
+          <ContextMenuItem className='flex items-center gap-2'>
+            <ArrowUpRightFromSquare className='w-4 h-4'/>
+            Move
+          </ContextMenuItem>
+          <ContextMenuItem className='flex items-center gap-2'>
+            <DownloadIcon className='w-4 h-4'/>
+            Download
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem className='flex items-center gap-2'>
+            <Trash2Icon className='w-4 h-4'/>
+            Delete
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <TextInputDialog
+        open={isNameEditOpen}
+        onOpenChange={setIsNameEditOpen} 
+        action={renameObject}
+        value={newObjectName}
+        onValueChange={setNewObjectName}
+        headerIcon={EditIcon}
+        headerTitle='Rename Item'
+        toastId='rename-object'
+        successMessage='Item renamed'
+        loadingMessage='Renaming...'
+        errorMessage='Failed to rename item'
+        defaultState={name}
+        actionArgs={[projectId, id, `${projectId}/${searchParams.get("path")}/${name}`, newObjectName]}
+      />
+    </>
+  )
+}
+
 function FolderCard({
   name
 }: {
@@ -242,10 +480,12 @@ function FolderCard({
     return curPath + `/${name}`
   }
 
+
+
   return (
     <Link
       href={`${pathname}?page=files&path=${constructNextPathname()}`}
-      className="group rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20"
+      className="group rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20 w-md min-w-md max-w-md"
     >
       <div className="min-w-0">
           <div className="group flex items-center gap-2">

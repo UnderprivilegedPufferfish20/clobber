@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { DATA_TYPE_TYPE, DATA_TYPES, FilterOperator, FUNCTION_RETURN_TYPE_TYPE, FUNCTION_RETURN_TYPES, QueryFilters } from "./types";
+import { Object as DbObject } from "./db/generated";
 
 
 export function cn(...inputs: ClassValue[]) {
@@ -360,3 +361,72 @@ export function buildWhereClause(
 
   return { whereClause, whereParams, errors };
 }
+
+export function joinPosix(...parts: string[]) {
+  return parts
+    .filter(Boolean)
+    .join("/")
+    .replace(/\/{2,}/g, "/")
+    .replace(/^\/+|\/+$/g, "");
+}
+
+export function listImmediateChildren(
+  objects: DbObject[],
+  projectId: string,
+  currentPath: string
+): { folders: DbObject[]; files: DbObject[] } {
+  const normalizedPath = currentPath.replace(/^\/+|\/+$/g, "");
+  const prefix = `${projectId}/${normalizedPath}/`;
+
+  // folderName -> representative DbObject (prefer /.placeholder)
+  const folderMap = new Map<string, DbObject>();
+  const files: DbObject[] = [];
+
+  for (const obj of objects) {
+    const full = obj.name;
+    if (!full.startsWith(prefix)) continue;
+
+    const remainder = full.slice(prefix.length);
+    if (!remainder) continue;
+
+    const parts = remainder.split("/").filter(Boolean);
+    if (parts.length === 0) continue;
+
+    const first = parts[0];
+
+    // Don't render the current folder's own placeholder as a child item
+    if (first === ".placeholder") continue;
+
+    if (parts.length === 1) {
+      // direct child file under currentPath
+      // (NOTE: if you ever store "folder objects" differently, adjust here)
+      files.push(obj);
+      continue;
+    }
+
+    // It's something inside `${first}/...` => immediate child folder = first
+    const isFolderPlaceholder = parts[1] === ".placeholder";
+
+    const existing = folderMap.get(first);
+    if (!existing || isFolderPlaceholder) {
+      folderMap.set(first, obj);
+    }
+  }
+
+  const folders = Array.from(folderMap.values()).sort((a, b) => {
+    // sort by immediate folder name, not full path
+    const aName = a.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? a.name;
+    const bName = b.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? b.name;
+    return aName.localeCompare(bName);
+  });
+
+  const sortedFiles = files.sort((a, b) => {
+    // sort by immediate file name
+    const aName = a.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? a.name;
+    const bName = b.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? b.name;
+    return aName.localeCompare(bName);
+  });
+
+  return { folders, files: sortedFiles };
+}
+

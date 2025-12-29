@@ -1,4 +1,4 @@
-import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon } from "lucide-react";
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
 import { DATA_TYPES, DataTypeType } from "../types";
 
@@ -91,6 +91,51 @@ export const DatabaseSidebarRoutes = [
     icon: CogIcon,
   }
 ]
+
+export const fileEndingToIcon: Record<string, LucideIcon> = {
+  // ─────────────────────────────
+  // Documents / Text / Data
+  // ─────────────────────────────
+  docx: FileText,
+  pdf: FileText,
+  txt: FileText,
+  pptx: Presentation,
+  xlsx: FileSpreadsheet,
+
+  // ─────────────────────────────
+  // Images
+  // ─────────────────────────────
+  jpg: FileImage,
+  jpeg: FileImage,
+  png: FileImage,
+  gif: FileImage,
+  svg: FileImage,
+
+  // ─────────────────────────────
+  // Audio
+  // ─────────────────────────────
+  mp3: FileAudio,
+  wav: FileAudio,
+
+  // ─────────────────────────────
+  // Video
+  // ─────────────────────────────
+  mp4: FileVideo,
+  avi: FileVideo,
+
+  // ─────────────────────────────
+  // Web
+  // ─────────────────────────────
+  html: FileCode,
+  htm: FileCode,
+  css: FileCode,
+
+  // ─────────────────────────────
+  // Archives
+  // ─────────────────────────────
+  zip: FileArchive,
+  rar: FileArchive,
+};
 
 export const PricePlans = {
     monthly: {
