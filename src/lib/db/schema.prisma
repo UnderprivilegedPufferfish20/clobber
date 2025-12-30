@@ -89,6 +89,7 @@ model Object {
   name String
   bucketId String 
 
+  metadata Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

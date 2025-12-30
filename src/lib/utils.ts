@@ -362,6 +362,26 @@ export function buildWhereClause(
   return { whereClause, whereParams, errors };
 }
 
+export function formatGCSFileSize(fileSize: string): string {
+  console.log("File Size: ", fileSize)
+
+  if (isNaN(Number(fileSize))) {
+    return '0 B';
+  }
+
+  const bytes = Number(fileSize);
+  const units = ['B', 'kB', 'MB', 'GB', 'TB', 'PB'];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return `${size.toFixed(1)} ${units[unitIndex]}`;
+}
+
 export function joinPosix(...parts: string[]) {
   return parts
     .filter(Boolean)

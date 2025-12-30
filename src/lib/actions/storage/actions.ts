@@ -37,15 +37,18 @@ export async function uploadFile(
 
   if (!dbBucket) throw new Error("Database bucket not found");
 
+  const metadata = await file.getMetadata()
+
   await prisma.object.create({
     data: {
       lastAccessedAt: new Date(),
       name: dest,
-      bucketId: dbBucket.id
+      bucketId: dbBucket.id,
+      metadata: JSON.stringify(metadata)
     }
   })
 
-  revalidateTag(t('folder-data', path), "max")
+  revalidateTag(t('folder-data', `${projectId}/${path}`), "max")
 }
 
 export async function createFolder(
@@ -134,9 +137,11 @@ export async function downloadObject(
   const file = bucket.file(path)
   if (!file) throw new Error("File not found");
 
+  const [metadata] = await file.getMetadata()
+
   const [result] = await file.download()
   
-  return result;
+  return { data: result, fileType: metadata.contentType };
 }
 
 export async function renameObject(

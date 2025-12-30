@@ -9,17 +9,20 @@ import { Dialog, DialogClose, DialogContent, DialogFooter } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { createFolder, renameObject, uploadFile } from '@/lib/actions/storage/actions';
+import { createFolder, downloadObject, getURL, renameObject, uploadFile } from '@/lib/actions/storage/actions';
 import { getFolderData } from '@/lib/actions/storage/getActions';
 import { fileEndingToIcon } from '@/lib/constants';
-import { cn, listImmediateChildren } from '@/lib/utils';
+import { formatGCSFileSize, listImmediateChildren } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowLeftIcon, ArrowUpRightFromSquare, CloudUploadIcon, DownloadIcon, EditIcon, FileTextIcon, FolderIcon, FolderPlusIcon, Heading1, InboxIcon, LinkIcon, Loader2, Search, Trash2Icon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { ChangeEvent, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Object as DbObject } from '@/lib/db/generated';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { deleteObject } from '@/lib/actions/storage/deleteActions';
 
 type Props = {
   bucketName: string,
@@ -27,13 +30,12 @@ type Props = {
 }
 
 const FoldersPage = (props: Props) => {
-  console.log("@@FOLDERDATA: ", props.folderData)
-
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const foldersRef = useRef<HTMLDivElement | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string>("");
@@ -88,22 +90,27 @@ const FoldersPage = (props: Props) => {
     }
   })
 
-  const filteredItems = useMemo(() => {
-    if (!props.folderData) return [];
-
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return props.folderData;
-
-    return props.folderData.filter(b => b.name.toLowerCase().includes(q))
-  }, [searchTerm, props.folderData])
-
   const { folders, files } = useMemo(() => {
     if (!props.folderData) return { folders: [], files: [] };
     return listImmediateChildren(props.folderData, projectId, currentPath);
   }, [props.folderData, projectId, currentPath]);
 
-  const showEmptyState = !searchTerm && props.folderData.every(f => f.name.slice(`${projectId}/${currentPath}`.length + 1) === ".placeholder");
-  const showNoMatchesState = !!searchTerm && filteredItems.length === 0;
+  // MOVED THIS BEFORE useMemo hooks that use it
+  const prefix = `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`;
+  const childName = (o: DbObject) =>
+    o.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? o.name;
+
+  const filteredFolders = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return folders;
+    return folders.filter(f => childName(f).toLowerCase().includes(q));
+  }, [folders, searchTerm]);
+
+  const filteredFiles = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return files;
+    return files.filter(f => childName(f).toLowerCase().includes(q));
+  }, [files, searchTerm]);
 
   const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null
@@ -121,9 +128,19 @@ const FoldersPage = (props: Props) => {
 
   const onPickFile = () => inputRef.current?.click();
 
-  const prefix = `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`;
-  const childName = (o: DbObject) =>
-    o.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? o.name;
+  useEffect(() => {
+    const div = foldersRef.current;
+    if (!div) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      div.scrollLeft += e.deltaY;
+    };
+
+    div.addEventListener('wheel', handleWheel);
+    return () => div.removeEventListener('wheel', handleWheel);
+  }, []);
 
   return (
     <>
@@ -151,14 +168,17 @@ const FoldersPage = (props: Props) => {
                   }
 
                   return (
-                    <>
+                    <div
+                      className='flex items-center gap-1' 
+                      key={Math.random()}
+                    >
                       <BreadcrumbItem>
                         <BreadcrumbLink asChild>
                           <Link href={`${pathname}?page=files&path=${linkToFolder(p)}`}>{p}</Link>
                         </BreadcrumbLink>
                       </BreadcrumbItem>
                       <BreadcrumbSeparator />
-                    </>
+                    </div>
                   )
                 })}
               </BreadcrumbList>
@@ -204,69 +224,105 @@ const FoldersPage = (props: Props) => {
 
         <Separator className="mb-6" />
 
-        {showEmptyState ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
-            <InboxIcon size={96} className="text-muted-foreground" />
-            <div className="space-y-1">
-              <h2 className="text-2xl font-semibold">No items yet</h2>
-              <p className="text-muted-foreground text-sm">
-                Create a folder or upload a file
-              </p>
-            </div>
-
-            <Button
-              variant={"default"}
-              onClick={() => setOpen(true)}
-            >
-              Create Bucket
-            </Button>
+        <div className='flex flex-col gap-8'>
+          <div>
+            <h1 className='text-2xl font-semibold mb-4'>Folders</h1>
+            {filteredFolders.length === 0 ? (
+              searchTerm ? (
+                <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
+                  <Search size={48} className="text-muted-foreground" />
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-semibold">No matching folders</h2>
+                    <p className="text-muted-foreground text-sm">
+                      No folders match "{searchTerm.trim()}".
+                    </p>
+                  </div>
+                  <Button onClick={() => setSearchTerm("")}>
+                    Clear Search
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
+                  <FolderIcon size={48} className="text-muted-foreground" />
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-semibold">No folders yet</h2>
+                    <p className="text-muted-foreground text-sm">
+                      Create a folder to organize your files
+                    </p>
+                  </div>
+                  <Button onClick={() => setCreateFolderOpen(true)}>
+                    Create Folder
+                  </Button>
+                </div>
+              )
+            ) : (
+              <div 
+                ref={foldersRef}
+                className='flex gap-2 overflow-x-auto scrollbar-hide p-2 mb-7'
+              >
+                {filteredFolders.map((folder) => (
+                  <FolderCard 
+                    key={`folder:${folder.id}`} 
+                    name={childName(folder)} 
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        ) : showNoMatchesState ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-            <Search size={72} className="text-muted-foreground" />
-            <div className="space-y-1">
-              <h2 className="text-xl font-semibold">No matches</h2>
-              <p className="text-muted-foreground text-sm">
-                No buckets match “{searchTerm.trim()}”.
-              </p>
-            </div>
-            <Button
-              onClick={() => setSearchTerm("")}
-            >
-              Clear Search
-            </Button>
-          </div>
-        ) : (
-          <div className='flex flex-col gap-8'>
+          
+          <div className='fullscreen'>
+            <h1 className='text-2xl font-semibold mb-4'>Files</h1>
+            {filteredFiles.length === 0 ? (
+              searchTerm ? (
+                <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
+                  <Search size={48} className="text-muted-foreground" />
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-semibold">No matching files</h2>
+                    <p className="text-muted-foreground text-sm">
+                      No files match "{searchTerm.trim()}".
+                    </p>
+                  </div>
+                  <Button onClick={() => setSearchTerm("")}>
+                    Clear Search
+                  </Button>
+                </div>
+              ) : (
+                <div className="fullscreen flex flex-col items-center justify-center gap-4 text-center py-8">
+                  <FileTextIcon size={48} className="text-muted-foreground" />
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-semibold">No files yet</h2>
+                    <p className="text-muted-foreground text-sm">
+                      Upload a file to get started
+                    </p>
+                  </div>
+                  <Button onClick={onPickFile}>
+                    Upload File
+                  </Button>
+                </div>
+              )
+            ) : (
+              <div className='flex items-center gap-2 flex-wrap'>
+                {filteredFiles.map((file) => {
 
-            <h1 className='text-2xl font-semibold'>Folders</h1>
-            <div 
-              className='flex gap-2 overflow-hidden hover:overflow-x-scroll p-2 mb-7 scroll-mb-6'
-            >
-              {folders.map((folder) => (
-                <FolderCard 
-                  key={`folder:${folder.id}`} 
-                  name={childName(folder)} 
-                />
-              ))}
-            </div>
-            
-            <h1 className='text-2xl font-semibold mt-6'>Files</h1>
-            <div className='grid grid-cols-6 gap-2'>
-              {files.map((file) => (
-                <FileCard 
-                  key={`file:${file.id}`} 
-                  name={childName(file)}
-                  createdAt={file.createdAt}
-                  size='1.2 Mb'
-                  type='text/plain'
-                  id={file.id} 
-                />
-              ))}
-            </div>
+                  const metadata = JSON.parse(file.metadata as string);
+                  const metadataObj = Array.isArray(metadata) ? metadata[0] : metadata;
+                
 
+                  return (
+                    <FileCard
+                      key={`file:${file.id}`}
+                      name={childName(file)}
+                      createdAt={new Date(metadataObj.timeCreated)}
+                      size={formatGCSFileSize(metadataObj.size)}
+                      type={metadataObj.contentType}
+                      id={file.id}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <Dialog
@@ -320,7 +376,7 @@ const FoldersPage = (props: Props) => {
   )
 }
 
-export default FoldersPage
+export default FoldersPage;
 
 function FileCard({
   id,
@@ -341,6 +397,10 @@ function FileCard({
   const [newObjectName, setNewObjectName] = useState(name)
 
   const [isGetUrlOpen, setIsGetUrlOpen] = useState(false)
+  const [urlValidLength, setGetUrlValidLength] = useState("")
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState("days")
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -348,52 +408,115 @@ function FileCard({
   const projectId = pathname.split("/")[2]
 
   const { mutate: download, isPending: isDownloadPending } = useMutation({
-    mutationFn: async (f: File) => {
-      const fileName = f.name;
-      const arrayBuffer = await f.arrayBuffer();
+    mutationFn: async () => {
+      const result = await downloadObject(`${projectId}/${searchParams.get("path")}/${name}`)
 
-      return uploadFile(projectId, currentPath, fileName, arrayBuffer)
+      const blob = new Blob([result.data.buffer as ArrayBuffer], { type: result.fileType });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+
+
+      a.download = `${name}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
     },
     onSuccess: () => {
-      toast.success("Upload Successful", { id:"upload" });
+      toast.success("Download Successful", { id:"download" });
+      setIsGetUrlOpen(false)
+      setGetUrlValidLength("")
+      setSelectedTimeFrame('days')
     },
     onMutate(variables, context) {
-      toast.loading("Uploading...", { id: "upload" })
+      toast.loading("Downloading...", { id: "download" })
     },
     onError: (error) => {
       console.log("Error details:", error);
       if (error.message === 'NEXT_REDIRECT') {
-        toast.success("Item Uploaded", { id:"cupload" });
-        setOpen(false);
+        toast.success("Item Downloaded", { id:"download" });
+        setIsGetUrlOpen(false)
+        setGetUrlValidLength("")
+        setSelectedTimeFrame('days')
         return;
       }
-      toast.error("Failed to upload item", { id:"upload" })
+      toast.error("Failed to download item", { id:"download" })
     }
   })
 
-  
-
   const { mutate: getUrl, isPending: isGetUrlPending } = useMutation({
-    mutationFn: async (f: File) => {
-      const fileName = f.name;
-      const arrayBuffer = await f.arrayBuffer();
+    mutationFn: async () => {
+      let millisecondsTimeframe = 0
 
-      return uploadFile(projectId, currentPath, fileName, arrayBuffer)
+      switch (selectedTimeFrame) {
+        case "days":
+          millisecondsTimeframe = Number(urlValidLength) * 86_400_000
+          break
+        case "weeks":
+          millisecondsTimeframe = Number(urlValidLength) * 604_800_000
+          break
+        case "months":
+          millisecondsTimeframe = Number(urlValidLength) * 2_629_746_000
+          break
+        case "years":
+          millisecondsTimeframe = Number(urlValidLength) * 31_556_952_000
+          break
+        default:
+          throw new Error("Invalid time frame")
+      }
+
+      const result = await getURL(`${projectId}/${searchParams.get("path")}/${name}`, millisecondsTimeframe)
+
+      navigator.clipboard.writeText(result)
     },
     onSuccess: () => {
-      toast.success("Upload Successful", { id:"upload" });
+      toast.success("URL copied to clipboard", { id:"get-url" });
+      setIsGetUrlOpen(false)
+      setGetUrlValidLength("")
+      setSelectedTimeFrame("days")
     },
     onMutate(variables, context) {
-      toast.loading("Uploading...", { id: "upload" })
+      toast.loading("Getting URL...", { id:"get-url" })
     },
     onError: (error) => {
       console.log("Error details:", error);
       if (error.message === 'NEXT_REDIRECT') {
-        toast.success("Item Uploaded", { id:"cupload" });
-        setOpen(false);
+        toast.success("URL copied to clipboard", { id:"get-url" });
+        setIsGetUrlOpen(false)
+        setGetUrlValidLength("")
+        setSelectedTimeFrame("days")
         return;
       }
-      toast.error("Failed to upload item", { id:"upload" })
+      toast.error("Failed to get URL", { id:"get-url" })
+    }
+  })
+
+  const { mutate: deleteItem } = useMutation({
+    mutationFn: async () => {
+      deleteObject(`${projectId}/${searchParams.get("path")}/${name}`, id)
+    },
+    onSuccess: () => {
+      toast.success("Object Deleted", { id:"delete-object" });
+      setIsGetUrlOpen(false)
+      setGetUrlValidLength("")
+      setSelectedTimeFrame("days")
+    },
+    onMutate(variables, context) {
+      toast.loading("Deleting Object", { id:"delete-object" })
+    },
+    onError: (error) => {
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Object deleted", { id:"delete-object" });
+        setIsGetUrlOpen(false)
+        setGetUrlValidLength("")
+        setSelectedTimeFrame("days")
+        return;
+      }
+      toast.error("Failed to delete object", { id:"delete-object" })
     }
   })
 
@@ -403,9 +526,8 @@ function FileCard({
 
   return (
     <>
-    
       <ContextMenu>
-        <ContextMenuTrigger>
+        <ContextMenuTrigger className='w-sm min-w-sm max-w-sm'>
           <div className='group flex flex-col gap-6 rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20'>
             <div className="min-w-0 flex items-center justify-between">
               <div className="group flex items-center gap-2">
@@ -423,11 +545,20 @@ function FileCard({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem className='flex items-center gap-2'>
+          <ContextMenuItem 
+            className='flex items-center gap-2' 
+            onClick={e => {
+              e.stopPropagation()
+              setIsGetUrlOpen(true)
+            }}
+          >
             <LinkIcon className='w-4 h-4'/>
             Get URL
           </ContextMenuItem>
-          <ContextMenuItem className='flex items-center gap-2' onClick={() => setIsNameEditOpen(true)}>
+          <ContextMenuItem 
+            className='flex items-center gap-2' 
+            onClick={() => setIsNameEditOpen(true)}
+          >
             <EditIcon className='w-4 h-4'/>
             Rename
           </ContextMenuItem>
@@ -435,12 +566,18 @@ function FileCard({
             <ArrowUpRightFromSquare className='w-4 h-4'/>
             Move
           </ContextMenuItem>
-          <ContextMenuItem className='flex items-center gap-2'>
+          <ContextMenuItem 
+            className='flex items-center gap-2' 
+            onClick={() => download()}
+          >
             <DownloadIcon className='w-4 h-4'/>
             Download
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem className='flex items-center gap-2'>
+          <ContextMenuItem 
+            className='flex items-center gap-2'
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
             <Trash2Icon className='w-4 h-4'/>
             Delete
           </ContextMenuItem>
@@ -462,6 +599,98 @@ function FileCard({
         defaultState={name}
         actionArgs={[projectId, id, `${projectId}/${searchParams.get("path")}/${name}`, newObjectName]}
       />
+
+      <Dialog
+        open={isGetUrlOpen}
+        onOpenChange={setIsGetUrlOpen}
+      >
+        <form
+          onSubmit={e => {
+            e.preventDefault()
+            getUrl()
+          }}
+        >
+          <DialogContent>
+            <CustomDialogHeader 
+              icon={LinkIcon}
+              title='Get a URL for this resource'
+            />
+
+            <div className='flex items-center gap-2 m-2'>
+              
+              <Input
+                min={1}
+                placeholder='Usable For...'
+                value={urlValidLength}
+                onKeyDown={e => {
+                if (e.key === "Enter" && !isGetUrlPending && urlValidLength !== "" && Number(urlValidLength) > 0) {
+                    e.preventDefault()
+                    getUrl()
+                  }
+                }}
+                onChange={e => setGetUrlValidLength(e.target.value)} 
+                id="name"
+                type="number"
+              />
+   
+              <Select
+                value={selectedTimeFrame}
+                onValueChange={setSelectedTimeFrame}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Time"/>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="days">Days</SelectItem>
+                  <SelectItem value="weeks">Weeks</SelectItem>
+                  <SelectItem value="months">Months</SelectItem>
+                  <SelectItem value="years">Years</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button
+                  variant={'outline'}
+                >
+                  Cancel
+                </Button>
+              </DialogClose>
+
+              <Button type='submit' disabled={isGetUrlPending || urlValidLength === "" || Number(urlValidLength) <= 0}>
+                {!isGetUrlPending && "Proceed"}
+                {isGetUrlPending && <Loader2 className='animate-spin' />}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </form>
+      </Dialog>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm delete {name}</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className='bg-indigo-500 text-white'
+              onClick={e => {
+                deleteItem()
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
