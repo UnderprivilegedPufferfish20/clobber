@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { createFolder, downloadObject, getURL, renameObject, uploadFile } from '@/lib/actions/storage/actions';
 import { getFolderData } from '@/lib/actions/storage/getActions';
 import { fileEndingToIcon } from '@/lib/constants';
-import { formatGCSFileSize, listImmediateChildren } from '@/lib/utils';
+import { childName, formatGCSFileSize } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowLeftIcon, ArrowUpRightFromSquare, CloudUploadIcon, DownloadIcon, EditIcon, FileTextIcon, FolderIcon, FolderPlusIcon, Heading1, InboxIcon, LinkIcon, Loader2, Search, Trash2Icon } from 'lucide-react';
 import Link from 'next/link';
@@ -23,6 +23,8 @@ import { Object as DbObject } from '@/lib/db/generated';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { deleteObject } from '@/lib/actions/storage/deleteActions';
+import CreateFolderDialog from '../dialogs/CreateFolderDialog';
+import MoveObjectSheet from '../sheets/MoveSheet';
 
 type Props = {
   bucketName: string,
@@ -48,23 +50,7 @@ const FoldersPage = (props: Props) => {
   const [open, setOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: () => createFolder(projectId, newFolderName, searchParams.get("path")!),
-    onSuccess: () => {
-      toast.success("Folder Created", { id:"create-folder" });
-      setOpen(false);
-      setNewFolderName("")
-    },
-    onError: (error) => {
-      console.log("Error details:", error);
-      if (error.message === 'NEXT_REDIRECT') {
-        toast.success("folder Added", { id:"create-folder" });
-        setOpen(false);
-        return;
-      }
-      toast.error("Failed to Create folder", { id:"create-folder" })
-    }
-  })
+  
 
   const { mutate: upload, isPending: isUploadPending } = useMutation({
     mutationFn: async (f: File) => {
@@ -90,26 +76,27 @@ const FoldersPage = (props: Props) => {
     }
   })
 
-  const { folders, files } = useMemo(() => {
-    if (!props.folderData) return { folders: [], files: [] };
-    return listImmediateChildren(props.folderData, projectId, currentPath);
-  }, [props.folderData, projectId, currentPath]);
+  const files = useMemo(() => {
+    return props.folderData.filter(f => !f.name.endsWith(".placeholder"))
+  }, [props.folderData, projectId, currentPath])
+
+  const folders = useMemo(() => {
+    return props.folderData.filter(f => f.name.endsWith(".placeholder"))
+  }, [props.folderData, projectId, currentPath])
 
   // MOVED THIS BEFORE useMemo hooks that use it
   const prefix = `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`;
-  const childName = (o: DbObject) =>
-    o.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? o.name;
 
   const filteredFolders = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return folders;
-    return folders.filter(f => childName(f).toLowerCase().includes(q));
+    return folders.filter(f => childName(f, prefix).toLowerCase().includes(q));
   }, [folders, searchTerm]);
 
   const filteredFiles = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return files;
-    return files.filter(f => childName(f).toLowerCase().includes(q));
+    return files.filter(f => childName(f, prefix).toLowerCase().includes(q));
   }, [files, searchTerm]);
 
   const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -263,7 +250,7 @@ const FoldersPage = (props: Props) => {
                 {filteredFolders.map((folder) => (
                   <FolderCard 
                     key={`folder:${folder.id}`} 
-                    name={childName(folder)} 
+                    name={childName(folder, prefix)} 
                   />
                 ))}
               </div>
@@ -304,18 +291,12 @@ const FoldersPage = (props: Props) => {
               <div className='flex items-center gap-2 flex-wrap'>
                 {filteredFiles.map((file) => {
 
-                  const metadata = JSON.parse(file.metadata as string);
-                  const metadataObj = Array.isArray(metadata) ? metadata[0] : metadata;
+                  
                 
-
                   return (
                     <FileCard
                       key={`file:${file.id}`}
-                      name={childName(file)}
-                      createdAt={new Date(metadataObj.timeCreated)}
-                      size={formatGCSFileSize(metadataObj.size)}
-                      type={metadataObj.contentType}
-                      id={file.id}
+                      object={file}
                     />
                   );
                 })}
@@ -325,53 +306,14 @@ const FoldersPage = (props: Props) => {
         </div>
       </div>
 
-      <Dialog
-        open={createFolderOpen}
-        onOpenChange={setCreateFolderOpen}
-      >
-        <form
-          onSubmit={e => {
-            e.preventDefault()
-            mutate()
-          }}
-        >
-          <DialogContent>
-            <CustomDialogHeader 
-              icon={FolderPlusIcon}
-              title="New Folder"
-            />
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="name" >Name</Label>
-              <Input
-                value={newFolderName}
-                onKeyDown={e => {
-                if (e.key === "Enter") {
-                    e.preventDefault()
-                    mutate()
-                  }
-                }}
-                onChange={e => setNewFolderName(e.target.value)} 
-                id="name"
-              />
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button
-                  variant={'outline'}
-                >
-                  Cancel
-                </Button>
-              </DialogClose>
-
-              <Button type='submit' disabled={isPending || props.folderData.map(b => b.name).includes(newFolderName) || newFolderName === ""}>
-                {!isPending && "Proceed"}
-                {isPending && <Loader2 className='animate-spin' />}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </form>
-      </Dialog>
+      <CreateFolderDialog 
+        createFolderOpen={createFolderOpen}
+        setCreateFolderOpen={setCreateFolderOpen}
+        projectId={projectId}
+        newFolderName={newFolderName}
+        setNewFolderName={setNewFolderName}
+        path={currentPath}
+      />
     </>
   )
 }
@@ -379,22 +321,28 @@ const FoldersPage = (props: Props) => {
 export default FoldersPage;
 
 function FileCard({
-  id,
-  name,
-  createdAt,
-  type,
-  size
+  object
 }: {
-  id: string,
-  name: string,
-  createdAt: Date,
-  type: string,
-  size: string
+  object: DbObject
 }) {
-  const [fileName, ending] = name.split(".")
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const projectId = pathname.split("/")[2]
+
+  const currentPath = searchParams.get("path") as string
+
+  const prefix = `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`;
+  
+  const m = JSON.parse(object.metadata as string);
+  const metadata = Array.isArray(m) ? m[0] : m;
+
+  const [fileName, ending] = object.name.split(".")
 
   const [isNameEditOpen, setIsNameEditOpen] = useState(false);
-  const [newObjectName, setNewObjectName] = useState(name)
+  const [newObjectName, setNewObjectName] = useState(childName(object, prefix))
+
+  const [isMoveOpen, setIsMoveOpen] = useState(false)
 
   const [isGetUrlOpen, setIsGetUrlOpen] = useState(false)
   const [urlValidLength, setGetUrlValidLength] = useState("")
@@ -402,14 +350,10 @@ function FileCard({
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const projectId = pathname.split("/")[2]
 
   const { mutate: download, isPending: isDownloadPending } = useMutation({
     mutationFn: async () => {
-      const result = await downloadObject(`${projectId}/${searchParams.get("path")}/${name}`)
+      const result = await downloadObject(`${prefix}${childName(object, prefix)}`)
 
       const blob = new Blob([result.data.buffer as ArrayBuffer], { type: result.fileType });
       const url = URL.createObjectURL(blob);
@@ -418,7 +362,7 @@ function FileCard({
       a.href = url;
 
 
-      a.download = `${name}`;
+      a.download = `${childName(object, prefix)}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -468,7 +412,7 @@ function FileCard({
           throw new Error("Invalid time frame")
       }
 
-      const result = await getURL(`${projectId}/${searchParams.get("path")}/${name}`, millisecondsTimeframe)
+      const result = await getURL(`${prefix}${childName(object, prefix)}`, millisecondsTimeframe)
 
       navigator.clipboard.writeText(result)
     },
@@ -496,7 +440,7 @@ function FileCard({
 
   const { mutate: deleteItem } = useMutation({
     mutationFn: async () => {
-      deleteObject(`${projectId}/${searchParams.get("path")}/${name}`, id)
+      deleteObject(`${prefix}${childName(object, prefix)}`, object.id)
     },
     onSuccess: () => {
       toast.success("Object Deleted", { id:"delete-object" });
@@ -532,15 +476,15 @@ function FileCard({
             <div className="min-w-0 flex items-center justify-between">
               <div className="group flex items-center gap-2">
                 <Icon className="h-6 w-6 text-muted-foreground" />
-                <h3>{name}</h3>
+                <h3>{childName(object, prefix)}</h3>
               </div>
 
-              <h2 className='text-muted-foreground'>{size}</h2>
+              <h2 className='text-muted-foreground'>{formatGCSFileSize(metadata.size)}</h2>
             </div>
 
             <footer className='fullwidth flex justify-between items-center text-muted-foreground text-sm'>
-              {createdAt.toLocaleDateString()}
-              <h3>{type}</h3>
+              {object.createdAt.toLocaleDateString()}
+              <h3>{metadata.type}</h3>
             </footer>
           </div>
         </ContextMenuTrigger>
@@ -562,7 +506,10 @@ function FileCard({
             <EditIcon className='w-4 h-4'/>
             Rename
           </ContextMenuItem>
-          <ContextMenuItem className='flex items-center gap-2'>
+          <ContextMenuItem 
+            className='flex items-center gap-2'
+            onClick={() => setIsMoveOpen(true)}
+          >
             <ArrowUpRightFromSquare className='w-4 h-4'/>
             Move
           </ContextMenuItem>
@@ -596,8 +543,8 @@ function FileCard({
         successMessage='Item renamed'
         loadingMessage='Renaming...'
         errorMessage='Failed to rename item'
-        defaultState={name}
-        actionArgs={[projectId, id, `${projectId}/${searchParams.get("path")}/${name}`, newObjectName]}
+        defaultState={object.name}
+        actionArgs={[projectId, object.id, `${prefix}${childName(object, prefix)}`, newObjectName]}
       />
 
       <Dialog
@@ -673,7 +620,7 @@ function FileCard({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete {name}</AlertDialogTitle>
+            <AlertDialogTitle>Confirm delete {object.name}</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone
             </AlertDialogDescription>
@@ -691,6 +638,13 @@ function FileCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MoveObjectSheet 
+        moveSheetOpen={isMoveOpen}
+        setMoveSheetOpen={setIsMoveOpen}
+        object={object}
+        projectId={projectId}
+      />
     </>
   )
 }

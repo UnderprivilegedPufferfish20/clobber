@@ -78,9 +78,8 @@ export async function createFolder(
     }
   })
 
-  revalidateTag(t("folder-data", path), "max")
+  revalidateTag(t("folder-data", `${projectId}/${path}`), "max")
 }
-
 
 export async function createBucket(
   projectId: string,
@@ -108,7 +107,6 @@ export async function createBucket(
 
   return result
 }
-
 
 export async function getURL(
   path: string,
@@ -232,4 +230,33 @@ export async function renameObject(
   // If you store a folder marker object (like ".placeholder") in DB, it will already be updated above.
 
   revalidateTag(t("folder-data", parentPrefix), 'max');
+}
+
+export async function moveObject(
+  projectId: string,
+  objectId: string,
+  path: string,
+  newPath: string
+) {
+  console.log("@OLDPATH: ", path)
+  console.log("@NEWPATH: ", newPath)
+
+  const bucket = getBucket();
+  if (!bucket) throw new Error("Cannot connect to bucket");
+
+  const file = bucket.file(path)
+  if (!file) throw new Error("File not found");
+
+  await file.move(`${projectId}/${newPath}`)
+
+
+  await prisma.object.update({
+    where: { id: objectId },
+    data: {
+      name: `${projectId}/${newPath}`
+    }
+  })
+
+  revalidateTag(t('folder-data', path.split("/").slice(0, -1).join("/")), "max")
+  revalidateTag(t('folder-data', `${projectId}/${newPath}`.split("/").slice(0, -1).join("/")), "max")
 }

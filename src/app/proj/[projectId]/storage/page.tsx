@@ -25,6 +25,7 @@ const BucketsPage = async ({ params, searchParams }: PageProps<"/proj/[projectId
     case 'files': {
       if (sp['path']) {
         const folderData = await getFolderData(p.projectId, sp["path"] as string)
+
         pageContent = (
           <>
             <div className='flex-1'>
