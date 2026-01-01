@@ -142,6 +142,12 @@ export async function downloadObject(
   return { data: result, fileType: metadata.contentType };
 }
 
+export async function downloadFolder(
+  path: string
+) {
+  
+}
+
 export async function renameObject(
   projectId: string,
   objectId: string,

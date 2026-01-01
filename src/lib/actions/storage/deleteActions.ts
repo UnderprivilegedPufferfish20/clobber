@@ -23,3 +23,28 @@ export async function deleteObject(
 
   revalidateTag(t("folder-data", path.split("/").slice(0, -1).join("/")), 'max')
 }
+
+export async function deleteFolder(
+  projectId: string,
+  path: string
+) {
+  const bucket = getBucket()
+  if (!bucket) throw new Error("Cannot connect to bucket");
+
+  const prefix = `${projectId}/${path}`
+  const parentFolder = prefix.split("/").slice(0, -1).join("/");
+
+  await bucket.deleteFiles({
+    prefix
+  })
+
+  await prisma.object.deleteMany({
+    where: {
+      name: {
+        startsWith: prefix
+      }
+    }
+  })
+
+  revalidateTag(t("folder-data", parentFolder), 'max')
+}

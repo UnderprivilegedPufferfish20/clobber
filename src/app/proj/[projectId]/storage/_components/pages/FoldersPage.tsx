@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { Object as DbObject } from '@/lib/db/generated';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { deleteObject } from '@/lib/actions/storage/deleteActions';
+import { deleteFolder, deleteObject } from '@/lib/actions/storage/deleteActions';
 import CreateFolderDialog from '../dialogs/CreateFolderDialog';
 import MoveObjectSheet from '../sheets/MoveSheet';
 
@@ -250,7 +250,7 @@ const FoldersPage = (props: Props) => {
                 {filteredFolders.map((folder) => (
                   <FolderCard 
                     key={`folder:${folder.id}`} 
-                    name={childName(folder, prefix)} 
+                    object={folder}
                   />
                 ))}
               </div>
@@ -620,7 +620,7 @@ function FileCard({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete {object.name}</AlertDialogTitle>
+            <AlertDialogTitle>Confirm delete {childName(object, prefix)}</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone
             </AlertDialogDescription>
@@ -650,32 +650,167 @@ function FileCard({
 }
 
 function FolderCard({
-  name
+  object
 }: {
-  name: string
+  object: DbObject
 }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
 
+  const projectId = pathname.split("/")[2]
+
+  const currentPath = searchParams.get("path") as string
+
+  const prefix = `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`;
+
   const constructNextPathname = () => {
     const sp = new URLSearchParams(searchParams)
     const curPath = sp.get("path")
-    return curPath + `/${name}`
+    return curPath + `/${childName(object, prefix)}`
   }
+
+  const { mutate: download, isPending: isDownloadPending } = useMutation({
+    mutationFn: async () => {
+      const result = await downloadObject(`${prefix}${childName(object, prefix)}`)
+
+      const blob = new Blob([result.data.buffer as ArrayBuffer], { type: result.fileType });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+
+
+      a.download = `${childName(object, prefix)}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
+    },
+    onSuccess: () => {
+      toast.success("Download Successful", { id:"download" });
+    },
+    onMutate(variables, context) {
+      toast.loading("Downloading...", { id: "download" })
+    },
+    onError: (error) => {
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Item Downloaded", { id:"download" });
+        return;
+      }
+      toast.error("Failed to download item", { id:"download" })
+    }
+  })
+
+  const { mutate: deleteItem } = useMutation({
+    mutationFn: async () => {
+      deleteFolder(projectId, `${currentPath}/${childName(object, prefix)}`)
+    },
+    onSuccess: () => {
+      toast.success("Folder Deleted", { id:"delete-folder" });
+    },
+    onMutate(variables, context) {
+      toast.loading("Deleting folder...", { id:"delete-folder" })
+    },
+    onError: (error) => {
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("Folder deleted", { id:"delete-folder" });
+        return;
+      }
+      toast.error("Failed to delete folder", { id:"delete-folder" })
+    }
+  })
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+  const [isNameEditOpen, setIsNameEditOpen] = useState(false)
+  const [newObjectName, setNewObjectName] = useState("")
 
 
 
   return (
-    <Link
-      href={`${pathname}?page=files&path=${constructNextPathname()}`}
-      className="group rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20 w-md min-w-md max-w-md"
-    >
-      <div className="min-w-0">
-          <div className="group flex items-center gap-2">
-            <FolderIcon className="h-6 w-6 text-muted-foreground" />
-            <h3>{name}</h3>
-          </div>
-        </div>
-    </Link>
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <Link
+            href={`${pathname}?page=files&path=${constructNextPathname()}`}
+            className="group rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20 w-md min-w-md max-w-md"
+          >
+            <div className="min-w-0">
+              <div className="group flex items-center gap-2">
+                <FolderIcon className="h-6 w-6 text-muted-foreground" />
+                <h3>{childName(object, prefix)}</h3>
+              </div>
+            </div>
+          </Link>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem 
+            className='flex items-center gap-2'
+            onClick={() => setIsNameEditOpen(true)}
+          >
+            <EditIcon className='w-6 h-6' />
+            Rename
+          </ContextMenuItem>
+          <ContextMenuItem className='flex items-center gap-2'>
+            <DownloadIcon className='w-6 h-6' />
+            Download
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem 
+            className='flex items-center gap-2'
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2Icon className='w-6 h-6' />
+            Delete
+          </ContextMenuItem>
+
+
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <TextInputDialog
+        open={isNameEditOpen}
+        onOpenChange={setIsNameEditOpen} 
+        action={renameObject}
+        value={newObjectName}
+        onValueChange={setNewObjectName}
+        headerIcon={EditIcon}
+        headerTitle='Rename Folder'
+        toastId='rename-folder'
+        successMessage='Folder renamed'
+        loadingMessage='Renaming...'
+        errorMessage='Failed to rename folder'
+        defaultState={object.name}
+        actionArgs={[projectId, object.id, `${prefix}${childName(object, prefix)}`, newObjectName]}
+      />
+      
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm delete {childName(object, prefix)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className='bg-indigo-500 text-white'
+              onClick={e => {
+                deleteItem()
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
