@@ -92,49 +92,50 @@ export const DatabaseSidebarRoutes = [
   }
 ]
 
-export const fileEndingToIcon: Record<string, LucideIcon> = {
+export const mimeTypeToIcon: Record<string, LucideIcon> = {
   // ─────────────────────────────
   // Documents / Text / Data
   // ─────────────────────────────
-  docx: FileText,
-  pdf: FileText,
-  txt: FileText,
-  pptx: Presentation,
-  xlsx: FileSpreadsheet,
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': FileText,  // docx
+  'application/pdf': FileText,
+  'text/plain': FileText,
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': Presentation,  // pptx
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': FileSpreadsheet,  // xlsx
 
   // ─────────────────────────────
   // Images
   // ─────────────────────────────
-  jpg: FileImage,
-  jpeg: FileImage,
-  png: FileImage,
-  gif: FileImage,
-  svg: FileImage,
+  'image/jpeg': FileImage,
+  'image/png': FileImage,
+  'image/gif': FileImage,
+  'image/svg+xml': FileImage,
 
   // ─────────────────────────────
   // Audio
   // ─────────────────────────────
-  mp3: FileAudio,
-  wav: FileAudio,
+  'audio/mpeg': FileAudio,   // mp3
+  'audio/wav': FileAudio,
 
   // ─────────────────────────────
   // Video
   // ─────────────────────────────
-  mp4: FileVideo,
-  avi: FileVideo,
+  'video/mp4': FileVideo,
+  'video/x-msvideo': FileVideo,  // avi
 
   // ─────────────────────────────
   // Web
   // ─────────────────────────────
-  html: FileCode,
-  htm: FileCode,
-  css: FileCode,
+  'text/html': FileCode,
+  'text/css': FileCode,
 
   // ─────────────────────────────
   // Archives
   // ─────────────────────────────
-  zip: FileArchive,
-  rar: FileArchive,
+  'application/zip': FileArchive,
+  'application/x-rar-compressed': FileArchive,
+
+  // Fallback
+  'application/octet-stream': FileText,  // Unknown binary
 };
 
 export const PricePlans = {

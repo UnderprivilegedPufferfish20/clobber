@@ -9,15 +9,15 @@ import { Dialog, DialogClose, DialogContent, DialogFooter } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { createFolder, downloadObject, getURL, renameObject, uploadFile } from '@/lib/actions/storage/actions';
+import { createFolder, downloadFolder, downloadObject, getURL, renameObject, uploadFile } from '@/lib/actions/storage/actions';
 import { getFolderData } from '@/lib/actions/storage/getActions';
-import { fileEndingToIcon } from '@/lib/constants';
+import { mimeTypeToIcon } from '@/lib/constants';
 import { childName, formatGCSFileSize } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeftIcon, ArrowUpRightFromSquare, CloudUploadIcon, DownloadIcon, EditIcon, FileTextIcon, FolderIcon, FolderPlusIcon, Heading1, InboxIcon, LinkIcon, Loader2, Search, Trash2Icon } from 'lucide-react';
+import { ArrowLeftIcon, ArrowUpRightFromSquare, ArrowUpRightFromSquareIcon, CloudUploadIcon, DownloadIcon, EditIcon, FileTextIcon, FolderIcon, FolderPlusIcon, Heading1, InboxIcon, LinkIcon, Loader2, Search, Trash2Icon, XIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Object as DbObject } from '@/lib/db/generated';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,6 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { deleteFolder, deleteObject } from '@/lib/actions/storage/deleteActions';
 import CreateFolderDialog from '../dialogs/CreateFolderDialog';
 import MoveObjectSheet from '../sheets/MoveSheet';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Props = {
   bucketName: string,
@@ -49,6 +50,8 @@ const FoldersPage = (props: Props) => {
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const [open, setOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
+
+  const [selectedObjects, setSelectedObjects] = useState<string[]>([])
 
   
 
@@ -258,7 +261,62 @@ const FoldersPage = (props: Props) => {
           </div>
           
           <div className='fullscreen'>
-            <h1 className='text-2xl font-semibold mb-4'>Files</h1>
+            <div className='group flex items-center gap-2 mb-4'>
+              <h1 className='text-2xl font-semibold'>Files</h1>
+              {selectedObjects.length > 0 ? (
+                <div className='flex items-center justify-between rounded-full w-lg min-w-lg max-w-lg bg-indigo-500 text-white px-3 py-0.5'>
+                  <div className='flex items-center gap-1'>
+                    <Button
+                      variant={'ghost'}
+                      className='h-6 w-6'
+                      onClick={() => setSelectedObjects([])}
+                    >
+                      <XIcon className='w-3 h-3'/>
+                    </Button>
+                    <p className='text-white'>{selectedObjects.length} items selected</p>
+                  </div>
+
+                  <div className='flex items-center gap-0!'>
+                    <Button
+                      variant={'ghost'}
+                      className='flex items-center gap-2'
+                      onClick={() => setSelectedObjects([])}
+                    >
+                      <DownloadIcon className='w-3 h-3'/>
+                      Download
+                    </Button>
+                    <Button
+                      variant={'ghost'}
+                      className='flex items-center gap-2'
+                      onClick={() => setSelectedObjects([])}
+                    >
+                      <ArrowUpRightFromSquareIcon className='w-3 h-3'/>
+                      Move
+                    </Button>
+                    <Button
+                      variant={'ghost'}
+                      className='flex items-center gap-2'
+                      onClick={() => setSelectedObjects([])}
+                    >
+                      <Trash2Icon className='w-3 h-3'/>
+                      Delete
+                    </Button>
+                  </div>
+
+                </div>
+              ) : (
+                <Checkbox
+                  className='hidden group-hover:inline w-4 h-4' 
+                  onCheckedChange={checked => {
+                    if (checked) {
+                      setSelectedObjects(files.map(f => f.id))
+                    } else {
+                      setSelectedObjects([])
+                    }
+                  }}
+                />
+              )}
+            </div>
             {filteredFiles.length === 0 ? (
               searchTerm ? (
                 <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
@@ -295,6 +353,8 @@ const FoldersPage = (props: Props) => {
                 
                   return (
                     <FileCard
+                      selectedObjects={selectedObjects}
+                      setSelectedObjects={setSelectedObjects}
                       key={`file:${file.id}`}
                       object={file}
                     />
@@ -321,10 +381,17 @@ const FoldersPage = (props: Props) => {
 export default FoldersPage;
 
 function FileCard({
-  object
+  object,
+  selectedObjects,
+  setSelectedObjects
 }: {
-  object: DbObject
+  object: DbObject,
+  selectedObjects: string[],
+  setSelectedObjects: Dispatch<SetStateAction<string[]>>
 }) {
+
+  const fileMetadata = JSON.parse(object.metadata as string)[0]
+
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -334,11 +401,6 @@ function FileCard({
 
   const prefix = `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`;
   
-  const m = JSON.parse(object.metadata as string);
-  const metadata = Array.isArray(m) ? m[0] : m;
-
-  const [fileName, ending] = object.name.split(".")
-
   const [isNameEditOpen, setIsNameEditOpen] = useState(false);
   const [newObjectName, setNewObjectName] = useState(childName(object, prefix))
 
@@ -464,9 +526,12 @@ function FileCard({
     }
   })
 
+  useEffect(() => {
+    console.log("@@SELECTEDOBJECTS: ", selectedObjects)
+  }, [selectedObjects])
 
 
-  const Icon = fileEndingToIcon[ending] ?? FileTextIcon
+  const Icon = mimeTypeToIcon[fileMetadata['contentType']] ?? FileTextIcon
 
   return (
     <>
@@ -474,17 +539,45 @@ function FileCard({
         <ContextMenuTrigger className='w-sm min-w-sm max-w-sm'>
           <div className='group flex flex-col gap-6 rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20'>
             <div className="min-w-0 flex items-center justify-between">
-              <div className="group flex items-center gap-2">
-                <Icon className="h-6 w-6 text-muted-foreground" />
-                <h3>{childName(object, prefix)}</h3>
+              <div className="group flex items-center gap-2 max-w-3xs">
+                {selectedObjects.includes(object.id) ? (
+                  <Checkbox
+                    defaultChecked={selectedObjects.includes(object.id)} 
+                    className='bg-indigo-500! text-white! w-6 h-6'
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedObjects(p => [...p, object.id])
+                      } else {
+                        setSelectedObjects(p => p.filter(oid => oid !== object.id))
+                      }
+                    }}
+                  />
+                ) : (
+                  <>
+                  <Icon className="group-hover:hidden h-6 w-6 text-muted-foreground" />
+                  <Checkbox
+                    defaultChecked={selectedObjects.includes(object.id)} 
+                    className='hidden w-6 h-6 group-hover:inline'
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedObjects(p => [...p, object.id])
+                      } else {
+                        setSelectedObjects(p => p.filter(oid => oid !== object.id))
+                      }
+                    }}
+                  />
+                  </>
+                )}
+                
+                <h3 className='truncate'>{childName(object, prefix)}</h3>
               </div>
 
-              <h2 className='text-muted-foreground'>{formatGCSFileSize(metadata.size)}</h2>
+              <h2 className='text-muted-foreground'>{formatGCSFileSize(fileMetadata['size'])}</h2>
             </div>
 
-            <footer className='fullwidth flex justify-between items-center text-muted-foreground text-sm'>
+            <footer className='truncate fullwidth flex justify-between items-center text-muted-foreground text-sm'>
               {object.createdAt.toLocaleDateString()}
-              <h3>{metadata.type}</h3>
+              <h3 className='truncate max-w-56'>{fileMetadata['contentType']}</h3>
             </footer>
           </div>
         </ContextMenuTrigger>
@@ -671,20 +764,16 @@ function FolderCard({
 
   const { mutate: download, isPending: isDownloadPending } = useMutation({
     mutationFn: async () => {
-      const result = await downloadObject(`${prefix}${childName(object, prefix)}`)
+      const result = await downloadFolder(projectId, `${prefix}${childName(object, prefix)}`);
 
-      const blob = new Blob([result.data.buffer as ArrayBuffer], { type: result.fileType });
-      const url = URL.createObjectURL(blob);
-
+      // Create download link
+      const url = URL.createObjectURL(result);
       const a = document.createElement("a");
       a.href = url;
-
-
-      a.download = `${childName(object, prefix)}`;
+      a.download = `${childName(object, prefix)}.zip`;  // Add .zip extension
       document.body.appendChild(a);
       a.click();
       a.remove();
-
       URL.revokeObjectURL(url);
     },
     onSuccess: () => {
@@ -754,7 +843,10 @@ function FolderCard({
             <EditIcon className='w-6 h-6' />
             Rename
           </ContextMenuItem>
-          <ContextMenuItem className='flex items-center gap-2'>
+          <ContextMenuItem 
+            className='flex items-center gap-2'
+            onClick={() => download()}
+          >
             <DownloadIcon className='w-6 h-6' />
             Download
           </ContextMenuItem>

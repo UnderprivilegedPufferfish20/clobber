@@ -5,6 +5,7 @@ import getBucket from "."
 import { joinPosix, t } from "@/lib/utils";
 import prisma from "@/lib/db";
 import pathPosix from 'path/posix'
+import JSZip from 'jszip'
 
 export async function uploadFile(
   projectId: string,
@@ -143,10 +144,51 @@ export async function downloadObject(
 }
 
 export async function downloadFolder(
-  path: string
+  projectId: string,
+  path: string  // e.g. 'projects/123/folder/'
 ) {
-  
+  const bucket = getBucket();
+  if (!bucket) throw new Error("Cannot connect to bucket");
+
+  const zip = new JSZip();
+
+  const [files] = await bucket.getFiles({ prefix: path });
+
+  for (const file of files) {
+    const fullPath = file.name;  // Full path like 'projects/123/folder/subdir/file.txt' [web:24]
+    const pathParts = fullPath.split("/");  // ['projects', '123', 'folder', 'subdir', 'file.txt']
+
+    // Skip if outside target path (edge case)
+    if (!fullPath.startsWith(path)) continue;
+
+    // Relative parts after the target path prefix
+    const relParts = fullPath.replace(path, '').split("/").filter(Boolean);  // ['subdir', 'file.txt']
+    if (relParts.length === 0) continue;
+
+    let currentFolder = zip;
+    // Recursively create nested folders up to the parent
+    for (let i = 0; i < relParts.length - 1; i++) {
+      currentFolder = currentFolder.folder(relParts[i])!;  // zip.folder('subdir') [web:29][web:30]
+    }
+
+    const filename = relParts.at(-1)!;  // 'file.txt' or '.placeholder'
+
+    if (filename === ".placeholder") {
+      // Create the folder (don't add empty file)
+      currentFolder.folder("");  // Ensures folder exists [web:29]
+    } else {
+      // Add the file to the final folder
+      const stream = file.createReadStream();
+      currentFolder.file(filename, stream, { binary: true });  // [web:29][web:19]
+    }
+  }
+
+  return zip.generateAsync({ 
+    type: 'blob',
+    streamFiles: true  // Lower memory usage for large folders [web:38]
+  });
 }
+
 
 export async function renameObject(
   projectId: string,
