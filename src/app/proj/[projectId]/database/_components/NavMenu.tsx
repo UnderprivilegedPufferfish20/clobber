@@ -38,7 +38,7 @@ export function DatabaseNavbar() {
   const isActive = (val: string) => {
     const queryVal = searchParams.get("page");
 
-    if (!queryVal && val == "table_editor") {
+    if (!queryVal && val == "schema_editor") {
       return true
     } else if (!queryVal) {
       return false

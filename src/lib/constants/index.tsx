@@ -10,7 +10,22 @@ export const DATA_TYPES_LIST = [
   'boolean',
   'datetime',
   "bytes",
-  "JSON"
+  "JSON",
+  "uuid"
+] as const
+
+export const FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST = [
+  "NO ACTION", 
+  "CASCADE",
+  'RESTRICT',
+] as const
+
+export const FKEY_REFERENCED_ROW_ACTION_DELETED_LIST = [
+  "NO ACTION", 
+  "CASCADE",
+  'RESTRICT',
+  "SET DEFAULT",
+  "SET NULL"
 ] as const
 
 export const FUNCTION_RETURN_TYPES_LIST = [

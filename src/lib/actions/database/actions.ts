@@ -122,6 +122,7 @@ export async function addTable(
 
   if (!success) throw new Error("Invalid form data");
 
+  if (!data) throw new Error("No data");
 
   const pool = await getTenantPool({
     connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
@@ -130,28 +131,65 @@ export async function addTable(
     database: project.db_name
   })
 
-  const result = await pool.query(`
-    CREATE TABLE ${schema}.${data.name} (
-      "$id"   BIGINT  GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-      "$createdAt" timestamptz NOT NULL DEFAULT now(),      
-      "$updatedAt" timestamptz NOT NULL DEFAULT now()  
-    );
+  const tableName = `"${schema}"."${data.name}"`;
+  let columnDefs: string[] = [];
+  let constraints: string[] = [];
+  const pkeyCols: string[] = [];
 
-    CREATE OR REPLACE FUNCTION my_schema_set_updated_at()
-    RETURNS trigger AS $$
-    BEGIN
-      NEW."$updatedAt" := now();
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
+  for (const col of data.columns) {
+    let colDef = `"${col.name}" ${getPostgresType(col.dtype)}${col.isArray ? '[]' : ''}`;
+    if (!col.isNullable) colDef += ' NOT NULL';
+    if (col.isUnique) colDef += ' UNIQUE';
 
-    CREATE TRIGGER my_table_set_updated_at
-    BEFORE UPDATE ON ${schema}.${data.name}
-    FOR EACH ROW
-    EXECUTE FUNCTION my_schema_set_updated_at();
+    if (col.default !== undefined) {
+      let quotedDefault: string;
+      switch (col.dtype) {
+        case 'string':
+        case 'datetime':
+        case 'JSON':
+          quotedDefault = `'${col.default.replace(/'/g, "''")}'`;
+          if (col.dtype === 'JSON') quotedDefault += '::JSONB';
+          break;
+        case 'boolean':
+          quotedDefault = col.default.toUpperCase();
+          break;
+        case 'integer':
+        case 'float':
+          quotedDefault = col.default;
+          break;
+        case 'uuid':
+        case 'bytes':
+          quotedDefault = col.default; // Assume raw value (e.g., function call or hex)
+          break;
+        default:
+          quotedDefault = col.default;
+      }
+      colDef += ` DEFAULT ${quotedDefault}`;
+    }
 
-    GRANT ALL PRIVILEGES ON TABLE ${schema}.${data.name} TO ${project.db_user};
-  `);
+    if (col.isPkey) {
+      pkeyCols.push(`"${col.name}"`);
+    }
+
+    columnDefs.push(colDef);
+
+    if (col.fkey) {
+      const fk = col.fkey;
+      const constName = `fk_${data.name}_${col.name}`;
+      const refTable = `"${fk.keySchema}"."${fk.keyTable}"`;
+      const fkDef = `CONSTRAINT "${constName}" FOREIGN KEY ("${col.name}") REFERENCES ${refTable} ("${fk.keyColumn}") ON UPDATE ${fk.updateAction} ON DELETE ${fk.deleteAction}`;
+      constraints.push(fkDef);
+    }
+  }
+
+  if (pkeyCols.length > 0) {
+    constraints.unshift(`PRIMARY KEY (${pkeyCols.join(', ')})`);
+  }
+
+  const allDefs = [...columnDefs, ...constraints];
+  const sql = `CREATE TABLE ${tableName} (\n  ${allDefs.join(',\n  ')}\n);`;
+
+  const result = await pool.query(sql);
 
   console.log("@@ CREATE TABLE: ", result);
 
@@ -275,8 +313,9 @@ export async function addColumn(
   projectId: string,
   table: string
 ) {
-  const { success, data } = createColumnSchema.safeParse(form);
-  if (!success) throw new Error("Invalid form");
+  const parsed = createColumnSchema.safeParse(form);
+  if (!parsed.success) throw new Error("Invalid form");
+  const data = parsed.data;
 
   const user = await getUser();
   if (!user) throw new Error("No user");
@@ -288,59 +327,85 @@ export async function addColumn(
     connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
     user: project.db_user,
     password: project.db_pwd,
-    database: project.db_name
+    database: project.db_name,
   });
 
-  // 1. Resolve Postgres Data Type (handling arrays)
+  // 1) Resolve Postgres data type (handling arrays)
   const baseType = getPostgresType(data.dtype);
   const finalType = data.isArray ? `${baseType}[]` : baseType;
 
-  // 2. Handle Constraints
-  const constraints = [];
+  // 2) Column constraints
+  const constraints: string[] = [];
   if (data.isPkey) constraints.push("PRIMARY KEY");
   if (data.isUnique) constraints.push("UNIQUE");
   if (!data.isNullable) constraints.push("NOT NULL");
-
-  // 3. Handle Default Value with explicit casting for safety
-  // We wrap the default in single quotes and cast it to ensure type safety
-  const defaultStatement = data.default 
-    ? `DEFAULT '${data.default.replace(/'/g, "''")}'::${finalType}` 
-    : "";
-
   const constraintString = constraints.join(" ");
 
-  // 4. Execute with Transaction
-  // Primary Keys require extra care: a table can only have one.
+  // 3) Default value (explicit cast)
+  const defaultStatement =
+    data.default && data.default.length > 0
+      ? `DEFAULT '${data.default.replace(/'/g, "''")}'::${finalType}`
+      : "";
+
+  // 4) Foreign key (added as a separate constraint)
+  // Keep constraint name deterministic (and <= 63 chars)
+  const fk = data.fkey;
+  const fkNameRaw = `${table}_${data.name}_fkey`;
+  const fkConstraintName = fkNameRaw.length > 63 ? fkNameRaw.slice(0, 63) : fkNameRaw;
+
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
-    // If adding a Primary Key, we first drop any existing PK constraint on this table
+    // If adding a Primary Key, drop existing PK constraint (your prior behavior)
     if (data.isPkey) {
       await client.query(`
-        ALTER TABLE "${schema}"."${table}" 
+        ALTER TABLE "${schema}"."${table}"
         DROP CONSTRAINT IF EXISTS "${table}_pkey" CASCADE
       `);
     }
 
-    const query = `
+    // Add the column
+    await client.query(
+      `
       ALTER TABLE "${schema}"."${table}"
       ADD COLUMN IF NOT EXISTS "${data.name}" ${finalType} ${defaultStatement} ${constraintString}
-    `.trim();
+      `.trim()
+    );
 
-    await client.query(query);
-    await client.query('COMMIT');
+    // Add FK constraint if provided
+    if (fk) {
+      const fkSql = `
+        ALTER TABLE "${schema}"."${table}"
+        ADD CONSTRAINT "${fkConstraintName}"
+        FOREIGN KEY ("${data.name}")
+        REFERENCES "${fk.keySchema}"."${fk.keyTable}" ("${fk.keyColumn}")
+        ON UPDATE ${fk.updateAction}
+        ON DELETE ${fk.deleteAction}
+      `.trim();
+
+      try {
+        await client.query(fkSql);
+      } catch (err: any) {
+        // If it already exists, ignore; otherwise rethrow
+        // Postgres duplicate_object: 42710
+        if (err?.code !== "42710") throw err;
+      }
+    }
+
+    await client.query("COMMIT");
   } catch (e) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw e;
   } finally {
     client.release();
   }
 
-  revalidateTag(t("columns", projectId, schema, table), 'max')
-  revalidateTag(t("schema", projectId, schema), 'max')
-  revalidateTag(t("table-schema", projectId, schema, table), 'max')
+  revalidateTag(t("columns", projectId, schema, table), "max");
+  revalidateTag(t("schema", projectId, schema), "max");
+  revalidateTag(t("table-schema", projectId, schema, table), "max");
 }
+
 
 export async function addRow(
   schema: string,

@@ -8,6 +8,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  Edge,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
@@ -15,6 +16,9 @@ import {
   useNodesState,
   type Node,
   type NodeProps,
+  MarkerType,
+  Handle,
+  Position,
 } from "@xyflow/react";
 import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, RefreshCwOffIcon, GripVerticalIcon, PlusIcon } from "lucide-react"; // Assuming "RecycleCwOffIcon" is a typo for "RefreshCwOffIcon"; adjust if needed
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -47,8 +51,20 @@ function TableColumn({
   name: string,
   datatype: DATA_TYPES
 }) {
+  const inId = `in:${name}`;
+  const outId = `out:${name}`;
+
   return (
-    <div className="flex items-center justify-between p-2 hover:bg-black/10 hover:dark:bg-black/90">
+    <div className="relative flex items-center justify-between p-2 hover:bg-black/10 hover:dark:bg-black/90">
+      <Handle
+        type="target"
+        id={inId}
+        position={Position.Left}
+        className="w-2.5! h-2.5! bg-muted-foreground!"
+        style={{ top: "50%" }}
+
+      />
+
       <div className="flex items-center gap-2">
         <TooltipProvider>
           {isPrimaryKey && (
@@ -88,6 +104,14 @@ function TableColumn({
       </div>
 
       <p className="text-muted-foreground text-sm">{datatype}</p>
+
+      <Handle
+        type="source"
+        id={outId}
+        position={Position.Right}
+        className="w-2.5! h-2.5! bg-muted-foreground!"
+        style={{ top: "50%" }}
+      />
     </div>
   )
 }
@@ -217,6 +241,10 @@ type Props = {
 };
 
 const SchemaEditorPage = (props: Props) => {
+
+  console.log("@@SCHEMA EDITOR SCHEMA: ", props.schema)
+
+
   const { schema, setSchema } = useSelectedSchema({
     projectId: props.projectId,
     schemas: props.schemas,
@@ -241,8 +269,39 @@ const SchemaEditorPage = (props: Props) => {
     }) : [];
   }, [props.schema]);
 
+  const initialEdges = useMemo(() => {
+    const edges: Edge[] = [];
+
+    props.schema.forEach((table) => {
+      const sourceId = `${table.schema}.${table.name}`;
+
+      table.columns.forEach((column) => {
+        column.foreignKeys.forEach((fk) => {
+          const targetId = `${fk.to.schema}.${fk.to.table}`;
+
+          edges.push({
+            id: `${sourceId}-${column.name}-to-${targetId}-${fk.to.column}`,
+            source: sourceId,
+            target: targetId,
+            type: "smoothstep",
+
+            // ✅ match the Handle ids you rendered
+            sourceHandle: `out:${column.name}`,
+            targetHandle: `in:${fk.to.column}`,
+
+            markerEnd: { type: MarkerType.ArrowClosed },
+            label: `${column.name} -> ${fk.to.column}`,
+          });
+        });
+      });
+    });
+
+    return edges;
+  }, [props.schema]);
+
+
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const {theme} = useTheme()
 
@@ -250,6 +309,10 @@ const SchemaEditorPage = (props: Props) => {
   useEffect(() => {
     setNodes(initialNodes);
   }, [initialNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
 
   return (
     <div className="fullscreen flex flex-col">
@@ -276,18 +339,6 @@ const SchemaEditorPage = (props: Props) => {
             <MiniMap />
           </ReactFlow>
         </ReactFlowProvider>
-      </div>
-
-      <div className="border-t px-3 py-2 text-sm flex items-center justify-center gap-4 h-12 min-h-12 max-h-12">
-        <div className="flex items-center gap-1">
-          <KeyRoundIcon className="h-4 w-4" /> Primary Key
-        </div>
-        <div className="flex items-center gap-1">
-          <CircleIcon className="h-4 w-4" /> Nullable
-        </div>
-        <div className="flex items-center gap-1">
-          <RefreshCwOffIcon className="h-4 w-4" /> Unique {/* Adjust icon if needed */}
-        </div>
       </div>
     </div>
   );

@@ -369,13 +369,13 @@ const TableView = ({ projectId }: TableViewProps) => {
     );
   }
 
-  if (!data || allRows.length === 0) {
-    return (
-      <div className="fullscreen flex flex-col items-center justify-center">
-        <p className="text-muted-foreground">No data in this table</p>
-      </div>
-    );
-  }
+  // if (!data || allRows.length === 0) {
+  //   return (
+  //     <div className="fullscreen flex flex-col items-center justify-center">
+  //       <p className="text-muted-foreground">No data in this table</p>
+  //     </div>
+  //   );
+  // }
 
 return (
     <div className="w-full h-full flex flex-col">
@@ -479,6 +479,11 @@ return (
           {/* body */}
           <Table className={isMeasured ? "table-fixed" : ""}>
             <TableBody>
+              {allRows.length === 0 && (
+                <div className="fullscreen flex items-center justify-center">
+                  No data in this table
+                </div>
+              )}
               {allRows.map((row: any, idx: number) => {
                 const rowKey = String(row.$id ?? `${minPage}-${idx}`);
                 return (

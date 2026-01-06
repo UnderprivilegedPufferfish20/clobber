@@ -47,7 +47,8 @@ export enum DATA_TYPES {
   BOOL = 'boolean',
   DateTime = 'datetime',
   BYTES = "bytes",
-  JSON = "JSON"
+  JSON = "JSON",
+  UUID = "uuid"
 }
 
 export type TableViewProps = {
@@ -113,6 +114,20 @@ export enum INDEX_TYPES {
   BRIN = 'BRIN'
 }
 
+export enum FKEY_REFERENCED_ROW_ACTION_UPDATED {
+  NONE = "NO ACTION", 
+  CASCADE = "CASCADE",
+  RESTRICT = 'RESTRICT'
+}
+
+export enum FKEY_REFERENCED_ROW_ACTION_DELETED {
+  NONE = "NO ACTION", 
+  CASCADE = "CASCADE",
+  RESTRICT = 'RESTRICT',
+  SET_DEFAUKT = "SET DEFAULT",
+  SET_NULL = "SET NULL"
+}
+
 export enum FUNCTION_RETURN_TYPES {
   STRING = 'string',
   INT = 'integer',
@@ -151,6 +166,9 @@ export type INDEX_TYPE = (typeof INDEX_TYPES)
 export type TRIGGER_EVENT_TYPE = (typeof TRIGGER_EVENTS)
 export type TRIGGER_TYPE_TYPE = (typeof TRIGGER_TYPE)
 export type TRIGGER_ORIENTATION_TYPE = (typeof TRIGGER_ORIENTATION)
+export type FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE = (typeof FKEY_REFERENCED_ROW_ACTION_DELETED)
+export type FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE = (typeof FKEY_REFERENCED_ROW_ACTION_UPDATED)
+export type SELECTED_FKEY_COLS_TYPE = { referencorCol: string, referenceeCol: string }[]
 
 export type SchemaEditorTable = {
   schema: string;
@@ -167,19 +185,14 @@ export type SchemaEditorColumn = {
   isUnique: boolean;
   isNullable: boolean;
 
-  // Optional extras your UI will likely want
   defaultValue?: string;
 
-  // A column can participate in 0..n foreign keys (rare, but possible)
+
   foreignKeys: SchemaEditorForeignKey[];
 };
 
 export type SchemaEditorForeignKey = {
-  name?: string; // constraint name if you have it
-
-  // local column is implied by the parent column;
-  // but you can include it if you want this object to be stand-alone:
-  // fromColumn: string;
+  name?: string; 
 
   to: {
     schema: string;

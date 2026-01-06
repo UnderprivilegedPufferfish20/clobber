@@ -87,6 +87,8 @@ export function getPostgresType(type: DATA_TYPE_TYPE | FUNCTION_RETURN_TYPE_TYPE
       return 'BYTEA'; // Standard Postgres type for binary data (byte array).
     case 'JSON':
       return 'JSONB'; // 'JSONB' is generally preferred over 'JSON' for efficiency and indexing.
+    case "uuid":
+      return "uuid"
     default:
       return type
   }

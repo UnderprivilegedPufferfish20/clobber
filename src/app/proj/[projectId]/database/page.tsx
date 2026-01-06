@@ -28,7 +28,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const sp = await searchParams;
 
   // Determine current page - default to table_editor
-  const currentPage = (sp["page"] as PageType) || 'table_editor';
+  const currentPage = (sp["page"] as PageType) || 'schema_editor';
   const schema = sp["schema"] ? sp['schema'] as string : 'public';
 
   // Always fetch schemas (needed for all pages)

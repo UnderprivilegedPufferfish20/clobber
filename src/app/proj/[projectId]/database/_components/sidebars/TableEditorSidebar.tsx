@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SchemaPicker from "../SchemaPicker";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CopyIcon, DownloadIcon, EllipsisVerticalIcon, FileJsonIcon, FileSpreadsheetIcon, SlidersHorizontal, Table2Icon, Trash2Icon } from "lucide-react";
+import { CopyIcon, DownloadIcon, EllipsisVerticalIcon, FileJsonIcon, FileSpreadsheetIcon, PlusIcon, SlidersHorizontal, Table2Icon, Trash2Icon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { getTableSchema } from "@/lib/actions/database/getActions";
 import { deleteTable } from "@/lib/actions/database/deleteActions";
 import DeleteDialog from "../dialogs/DeleteDialog";
+import AddTableSheet from "../sheets/AddTableSheet";
 
 const TableEditorSidebar = ({
   schemas,
@@ -48,6 +49,8 @@ const TableEditorSidebar = ({
   const router = useRouter();
   const selectedTable = searchParams.get("table");
   const projectId = useMemo(() => pathname.split("/")[2] ?? "", [pathname]);
+
+  const [isCreateTableDialogOpen, setIsCreateTableDialogOpen] = useState(false)
 
 
   const { schema, setSchema, isReady } = useSelectedSchema({
@@ -73,56 +76,71 @@ const TableEditorSidebar = ({
   };
 
   return (
-    <aside className="sidebar">
-      <div className="fullwidth flex flex-col">
-        <h1 className="text-2xl font-semibold m-4">Table Editor</h1>
-        <Separator className="pt-0!" />
+    <>
+    
+      <aside className="sidebar">
+        <div className="fullwidth flex flex-col">
+          <h1 className="text-2xl font-semibold m-4">Table Editor</h1>
+          <Separator className="pt-0!" />
 
-        {!isReady ? (
-          <div className="flex flex-col p-2">
-            <div className="flex items-center gap-2 mb-2 justify-evenly">
-              <Skeleton className="h-8 w-32 bg-gray-700" />
-              <Skeleton className="h-8 w-12 bg-gray-700" />
-              <Skeleton className="h-8 w-12 bg-gray-700" />
+          {!isReady ? (
+            <div className="flex flex-col p-2">
+              <div className="flex items-center gap-2 mb-2 justify-evenly">
+                <Skeleton className="h-8 w-32 bg-gray-700" />
+                <Skeleton className="h-8 w-12 bg-gray-700" />
+                <Skeleton className="h-8 w-12 bg-gray-700" />
+              </div>
+              <Skeleton className="h-8 fullwidth bg-gray-700" />
             </div>
-            <Skeleton className="h-8 fullwidth bg-gray-700" />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center">
-            <div className="flex items-center justify-evenly fullwidth mt-6 mb-2">
-              <SchemaPicker
-                schemas={schemas ?? []}
-                value={schema}
-                onChange={setSchema}
-              />
-              <AddTableDialog projectId={projectId} schema={schema ?? "public"} />
-              <SlidersHorizontal />
-            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-evenly fullwidth mt-6 mb-2">
+                <SchemaPicker
+                  schemas={schemas ?? []}
+                  value={schema}
+                  onChange={setSchema}
+                />
+                <Button
+                  variant={"ghost"}
+                  onClick={() => setIsCreateTableDialogOpen(true)}
+                >
+                  <PlusIcon className="w-12 h-12"/>
+                </Button>
+                <SlidersHorizontal />
+              </div>
 
-            {!tables ? (
-              <div className="fullwidth p-2">
-                <Skeleton className="h-6 fullwidth bg-gray-700 mb-2" />
-                <Skeleton className="h-6 fullwidth bg-gray-700 mb-2" />
-                <Skeleton className="h-6 fullwidth bg-gray-700" />
-              </div>
-            ) : (
-              <div className="fullwidth">
-                {tables.map((t) => (
-                  <SidebarTable 
-                    handleTableClick={handleTableClick}
-                    name={t}
-                    projectId={projectId}
-                    schema={schema}
-                    selectedTable={selectedTable}
-                    key={t}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </aside>
+              {!tables ? (
+                <div className="fullwidth p-2">
+                  <Skeleton className="h-6 fullwidth bg-gray-700 mb-2" />
+                  <Skeleton className="h-6 fullwidth bg-gray-700 mb-2" />
+                  <Skeleton className="h-6 fullwidth bg-gray-700" />
+                </div>
+              ) : (
+                <div className="fullwidth">
+                  {tables.map((t) => (
+                    <SidebarTable 
+                      handleTableClick={handleTableClick}
+                      name={t}
+                      projectId={projectId}
+                      schema={schema}
+                      selectedTable={selectedTable}
+                      key={t}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <AddTableSheet 
+        onOpenChange={setIsCreateTableDialogOpen}
+        open={isCreateTableDialogOpen}
+        projectId={projectId}
+        schema={schema}
+      />
+    </>
   );
 };
 
