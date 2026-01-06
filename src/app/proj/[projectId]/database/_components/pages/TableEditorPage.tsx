@@ -2,7 +2,6 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { getTableData } from "@/lib/actions/database/getActions";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -36,6 +35,7 @@ import AddRowSheet from "../sheets/AddRowSheet";
 import AddColumnSheet from "../sheets/AddColumnSheet";
 import { Button } from "@/components/ui/button";
 import { useSavePreselection } from "@/hooks/useSavePreselection";
+import { getTableData } from "@/lib/actions/database/tables/cache-actions";
 
 
 

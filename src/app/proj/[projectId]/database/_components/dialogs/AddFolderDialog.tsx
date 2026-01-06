@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createFolderSchema } from '@/lib/types/schemas';
-import { addTable, createFolder } from '@/lib/actions/database/actions';
+import { createFolder } from '@/lib/actions/database/sql';
 
 const AddFolderDialog = ({ 
   projectId, open, onOpenChange, hideTrigger

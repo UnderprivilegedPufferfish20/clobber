@@ -10,8 +10,14 @@ import TriggersPage from "./_components/pages/TriggersPage";
 import { Suspense } from "react";
 import EnumsPage from "./_components/pages/EnumsPage";
 import Loader from "@/components/Loader";
-import { getEnums, getFolders, getFunctions, getIndexes, getQueries, getSchema, getSchemas, getTables, getTriggers } from "@/lib/actions/database/getActions";
 import SchemaEditorPage from "./_components/pages/SchemaEditorPage";
+import { getSchemas, getSchema } from "@/lib/actions/database/cache-actions";
+import { getEnums } from "@/lib/actions/database/enums/cache-actions";
+import { getFunctions } from "@/lib/actions/database/functions/cache-actions";
+import { getIndexes } from "@/lib/actions/database/indexes/cache-actions";
+import { getFolders, getQueries } from "@/lib/actions/database/sql/cache-actions";
+import { getTables } from "@/lib/actions/database/tables/cache-actions";
+import { getTriggers } from "@/lib/actions/database/triggers/cache-actions";
 
 type PageType = 
   | 'schema_editor'

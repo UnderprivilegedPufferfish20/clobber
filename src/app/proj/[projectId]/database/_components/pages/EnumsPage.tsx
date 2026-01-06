@@ -12,9 +12,8 @@ import AddEnumSheet from "../sheets/AddEnumSheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import DeleteDialog from "../dialogs/DeleteDialog";
 import { usePathname } from "next/navigation";
-import { deleteEnum } from "@/lib/actions/database/deleteActions";
-import { addValueToEnum, createEnum, renameEnum, renameEnumValue } from "@/lib/actions/database/actions";
 import { toast } from "sonner";
+import { renameEnum, renameEnumValue, addValueToEnum, deleteEnum } from "@/lib/actions/database/enums";
 
 type Props = {
   projectId: string;

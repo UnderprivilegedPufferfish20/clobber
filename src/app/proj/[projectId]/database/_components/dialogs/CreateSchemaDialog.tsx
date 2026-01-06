@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createSchemaScheam, createTableSchema } from '@/lib/types/schemas';
-import { addSchema, addTable } from '@/lib/actions/database/actions';
+import { addSchema } from '@/lib/actions/database/actions';
 
 const CreateSchemaDialog = ({ 
   triggerText, 
@@ -59,7 +59,7 @@ const CreateSchemaDialog = ({
   })
 
   const onSubmit = useCallback(
-    (values: z.infer<typeof createTableSchema>) => {
+    (values: z.infer<typeof createSchemaScheam>) => {
       toast.loading("Creating...", { id:"create-Schema" });
       mutate(values)
     },

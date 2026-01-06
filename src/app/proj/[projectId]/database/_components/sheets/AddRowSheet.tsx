@@ -14,10 +14,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { addRow } from "@/lib/actions/database/actions";
 import { useQuery } from "@tanstack/react-query"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getCols } from "@/lib/actions/database/getActions"
+import { getCols } from "@/lib/actions/database/columns/cache-actions"
+import { addRow } from "@/lib/actions/database/tables"
 
 function AddRowSheet({
     projectId,
@@ -88,7 +88,7 @@ function AddRowSheet({
                   </Label>
                   <Input
                     id={colName}
-                    type={getInputType(colType as string)}
+                    type={getInputType(colType.dtype as string)}
                     placeholder={`Enter ${colName}...`}
                     onChange={(e) => handleInputChange(colName, e.target.value)}
                   />

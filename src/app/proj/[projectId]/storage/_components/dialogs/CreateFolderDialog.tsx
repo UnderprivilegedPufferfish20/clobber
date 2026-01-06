@@ -8,8 +8,8 @@ import React, { Dispatch, SetStateAction } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createFolder } from '@/lib/actions/storage/actions';
 import { toast } from 'sonner';
+import { createFolder } from '@/lib/actions/storage/files/folder';
 
 type Props = {
   projectId: string,

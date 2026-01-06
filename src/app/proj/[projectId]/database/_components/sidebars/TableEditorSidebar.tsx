@@ -32,10 +32,10 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { toast } from "sonner";
-import { getTableSchema } from "@/lib/actions/database/getActions";
-import { deleteTable } from "@/lib/actions/database/deleteActions";
 import DeleteDialog from "../dialogs/DeleteDialog";
 import AddTableSheet from "../sheets/AddTableSheet";
+import { deleteTable } from "@/lib/actions/database/tables";
+import { getTableSchema } from "@/lib/actions/database/tables/cache-actions";
 
 const TableEditorSidebar = ({
   schemas,

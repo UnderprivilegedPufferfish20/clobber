@@ -25,12 +25,11 @@ import { toast } from "sonner";
 import AddFolderDialog from '../dialogs/AddFolderDialog';
 import AddQueryDialog, { FolderSelect } from '../dialogs/AddQueryDialog';
 import { cn } from '@/lib/utils';
-import { deleteFolder, deleteQuery } from '@/lib/actions/database/deleteActions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CustomDialogHeader from '@/components/CustomDialogHeader';
 import { useMutation } from '@tanstack/react-query';
-import { createQuery, moveQueryIntoFolder, moveQueryToRoot, renameFolder, renameQuery } from '@/lib/actions/database/actions';
+import { renameFolder, createQuery, moveQueryToRoot, moveQueryIntoFolder, renameQuery, deleteQuery, deleteFolder } from '@/lib/actions/database/sql';
 
 
 

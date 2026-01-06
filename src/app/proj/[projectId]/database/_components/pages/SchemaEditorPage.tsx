@@ -25,9 +25,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import '@xyflow/react/dist/style.css';
 import AddColumnSheet from "../sheets/AddColumnSheet";
-import { t } from "@/lib/utils";
+import '@xyflow/react/dist/style.css';
+
 
 // ---------------------------
 // 1) Custom node that shows columns in a table UI
@@ -316,7 +316,7 @@ const SchemaEditorPage = (props: Props) => {
 
   return (
     <div className="fullscreen flex flex-col">
-      <header className="h-12 shrink-0 flex items-center justify-between border-b-2 p-4">
+      <header className="h-12 flex items-center justify-between border-b-2 p-4">
         <SchemaPicker
           schemas={props.schemas ?? []}
           value={schema}
@@ -324,11 +324,10 @@ const SchemaEditorPage = (props: Props) => {
         />
       </header>
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1">
         <ReactFlowProvider>
           <ReactFlow
             colorMode={theme === "dark" ? "dark" : "light"}
-            className="fullscreen"
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}

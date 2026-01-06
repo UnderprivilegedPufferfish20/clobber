@@ -9,8 +9,6 @@ import { Dialog, DialogClose, DialogContent, DialogFooter } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { createFolder, downloadFolder, downloadObject, getURL, renameObject, uploadFile } from '@/lib/actions/storage/actions';
-import { getFolderData } from '@/lib/actions/storage/getActions';
 import { mimeTypeToIcon } from '@/lib/constants';
 import { childName, formatGCSFileSize } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
@@ -22,10 +20,13 @@ import { toast } from 'sonner';
 import { Object as DbObject } from '@/lib/db/generated';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { deleteFolder, deleteObject } from '@/lib/actions/storage/deleteActions';
 import CreateFolderDialog from '../dialogs/CreateFolderDialog';
 import MoveObjectSheet from '../sheets/MoveSheet';
 import { Checkbox } from '@/components/ui/checkbox';
+import { deleteFolder } from '@/lib/actions/database/sql';
+import { downloadFolder } from '@/lib/actions/storage/files/folder';
+import { getFolderData } from '@/lib/actions/storage/files/folder/cache-actions';
+import { uploadFile, downloadObject, deleteObject, renameObject, getURL } from '@/lib/actions/storage/files/object';
 
 type Props = {
   bucketName: string,

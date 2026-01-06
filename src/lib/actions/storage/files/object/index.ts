@@ -1,11 +1,29 @@
-'use server';
+"use server";
 
-import { revalidateTag } from "next/cache";
-import getBucket from "."
-import { joinPosix, t } from "@/lib/utils";
 import prisma from "@/lib/db";
+import { joinPosix, t } from "@/lib/utils";
+import { revalidateTag } from "next/cache";
+import getBucket from "..";
 import pathPosix from 'path/posix'
-import JSZip from 'jszip'
+
+export async function deleteObject(
+  path: string,
+  objectId: string
+) {
+  const bucket = getBucket()
+  if (!bucket) throw new Error("Cannot connect to bucket");
+
+  const file = bucket.file(path)
+  if (!file) throw new Error("File not found");
+
+  await file.delete()
+
+  await prisma.object.delete({
+    where: { id: objectId }
+  })
+
+  revalidateTag(t("folder-data", path.split("/").slice(0, -1).join("/")), 'max')
+}
 
 export async function uploadFile(
   projectId: string,
@@ -52,62 +70,7 @@ export async function uploadFile(
   revalidateTag(t('folder-data', `${projectId}/${path}`), "max")
 }
 
-export async function createFolder(
-  projectId: string,
-  name: string,
-  path: string
-) { 
-  const bucket = getBucket()
-  if (!bucket) throw new Error("Cannot connect to bucket");
 
-  const fullPath = `${projectId}/${path}/${name}/.placeholder`;
-  const file = bucket.file(fullPath);
-  const content = Buffer.from('placeholder', 'utf-8');
-  
-  await file.save(content, {
-    metadata: { contentType: 'text/plain' }
-  });
-
-  const dbBucket = await prisma.bucket.findUnique({ where: { name: path.split("/")[0] } })
-  if (!dbBucket) throw new Error("Bucket doesn't exist in prisma");
-
-  await prisma.object.create({
-    data: {
-      lastAccessedAt: new Date(),
-      name: fullPath,
-      bucketId: dbBucket.id
-    }
-  })
-
-  revalidateTag(t("folder-data", `${projectId}/${path}`), "max")
-}
-
-export async function createBucket(
-  projectId: string,
-  name: string
-) {
-  const bucket = getBucket()
-  if (!bucket) throw new Error("Cannot connect to bucket");
-
-  const result =  prisma.bucket.create({
-    data: {
-      name,
-      projectId
-    }
-  })
-
-  revalidateTag(t("buckets", projectId), "max")
-
-  const fullPath = `${projectId}/${name}/.placeholder`;
-  const file = bucket.file(fullPath);
-  const content = Buffer.from('placeholder', 'utf-8');
-
-  await file.save(content, {
-    metadata: { contentType: 'text/plain' }
-  });
-
-  return result
-}
 
 export async function getURL(
   path: string,
@@ -142,53 +105,6 @@ export async function downloadObject(
   
   return { data: result, fileType: metadata.contentType };
 }
-
-export async function downloadFolder(
-  projectId: string,
-  path: string  // e.g. 'projects/123/folder/'
-) {
-  const bucket = getBucket();
-  if (!bucket) throw new Error("Cannot connect to bucket");
-
-  const zip = new JSZip();
-
-  const [files] = await bucket.getFiles({ prefix: path });
-
-  for (const file of files) {
-    const fullPath = file.name;  // Full path like 'projects/123/folder/subdir/file.txt' [web:24]
-    const pathParts = fullPath.split("/");  // ['projects', '123', 'folder', 'subdir', 'file.txt']
-
-    // Skip if outside target path (edge case)
-    if (!fullPath.startsWith(path)) continue;
-
-    // Relative parts after the target path prefix
-    const relParts = fullPath.replace(path, '').split("/").filter(Boolean);  // ['subdir', 'file.txt']
-    if (relParts.length === 0) continue;
-
-    let currentFolder = zip;
-    // Recursively create nested folders up to the parent
-    for (let i = 0; i < relParts.length - 1; i++) {
-      currentFolder = currentFolder.folder(relParts[i])!;  // zip.folder('subdir') [web:29][web:30]
-    }
-
-    const filename = relParts.at(-1)!;  // 'file.txt' or '.placeholder'
-
-    if (filename === ".placeholder") {
-      // Create the folder (don't add empty file)
-      currentFolder.folder("");  // Ensures folder exists [web:29]
-    } else {
-      // Add the file to the final folder
-      const stream = file.createReadStream();
-      currentFolder.file(filename, stream, { binary: true });  // [web:29][web:19]
-    }
-  }
-
-  return zip.generateAsync({ 
-    type: 'blob',
-    streamFiles: true  // Lower memory usage for large folders [web:38]
-  });
-}
-
 
 export async function renameObject(
   projectId: string,

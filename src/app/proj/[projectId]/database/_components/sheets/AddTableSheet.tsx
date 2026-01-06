@@ -37,7 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { addColumn, addTable } from '@/lib/actions/database/actions'
 import CustomDialogHeader from '@/components/CustomDialogHeader'
 import { DATA_TYPES_LIST, FKEY_REFERENCED_ROW_ACTION_DELETED_LIST, FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST } from '@/lib/constants'
 import { DATA_TYPE_TYPE, DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE, FKEY_REFERENCED_ROW_ACTION_UPDATED, FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE } from '@/lib/types'
@@ -45,10 +44,13 @@ import { Label } from '@/components/ui/label'
 import z from 'zod'
 import { createColumnSchema, createForeignKeySchema } from '@/lib/types/schemas'
 import { Separator } from '@/components/ui/separator'
-import { getCols, getSchemas, getTables } from '@/lib/actions/database/getActions'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { se } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
+import { getSchemas } from '@/lib/actions/database/cache-actions'
+import { getCols } from '@/lib/actions/database/columns/cache-actions'
+import { addTable } from '@/lib/actions/database/tables'
+import { getTables } from '@/lib/actions/database/tables/cache-actions'
 
 function AddTableSheet({
   projectId,

@@ -6,8 +6,8 @@ import { Dialog, DialogFooter, DialogClose, DialogContent } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator"
-import { createBucket } from "@/lib/actions/storage/actions";
-import { getBucketNames } from "@/lib/actions/storage/getActions";
+import { createBucket } from "@/lib/actions/storage/files/actions";
+import { getBucketNames } from "@/lib/actions/storage/files/cache-actions";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { BoxIcon, FunctionSquare, FunctionSquareIcon, InboxIcon, Loader2, PackageOpenIcon, Search } from "lucide-react"

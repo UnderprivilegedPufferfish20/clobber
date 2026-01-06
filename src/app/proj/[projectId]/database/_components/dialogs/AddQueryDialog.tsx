@@ -30,8 +30,8 @@ import { Input } from '@/components/ui/input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createQuerySchema } from '@/lib/types/schemas';
-import { addTable, createQuery } from '@/lib/actions/database/actions';
 import { sql, SqlFolder } from '@/lib/db/generated';
+import { createQuery } from '@/lib/actions/database/sql';
 
 const AddQueryDialog = ({ 
   projectId, open, onOpenChange, hideTrigger, folders

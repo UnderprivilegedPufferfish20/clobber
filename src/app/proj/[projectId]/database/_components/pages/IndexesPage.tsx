@@ -11,10 +11,10 @@ import { INDEX_TYPES } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import AddIndexSheet from "../sheets/AddIndexSheet";
-import { deleteIndex } from "@/lib/actions/database/deleteActions";
 import { usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import DeleteDialog from "../dialogs/DeleteDialog";
+import { deleteIndex } from "@/lib/actions/database/indexes";
 
 type Props = {
   projectId: string;

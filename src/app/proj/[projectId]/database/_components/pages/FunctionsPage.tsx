@@ -15,13 +15,12 @@ import { getPostgresType, mapPostgresType } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
-import { deleteFunction } from "@/lib/actions/database/deleteActions";
 import { Editor } from "@monaco-editor/react";
 import { toast } from "sonner";
-import { changeFunctionSchema, createFunction, renameFunction } from "@/lib/actions/database/actions";
 import { Popover } from "@/components/ui/popover";
 import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { changeFunctionSchema, renameFunction, createFunction, deleteFunction } from "@/lib/actions/database/functions";
 
 type Props = {
   projectId: string;

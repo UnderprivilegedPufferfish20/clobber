@@ -35,10 +35,10 @@ import {
 } from "@/components/ui/select";
 
 import { createEnumSchema } from "@/lib/types/schemas";
-import { createEnum } from "@/lib/actions/database/actions";
 import CustomDialogHeader from "@/components/CustomDialogHeader";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { createEnum } from "@/lib/actions/database/enums";
 
 function AddEnumSheet({
   projectId,

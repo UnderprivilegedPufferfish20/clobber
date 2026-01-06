@@ -45,8 +45,9 @@ import {
   TRIGGER_ORIENTATION,
   TRIGGER_TYPE,
 } from "@/lib/types";
-import { createTrigger } from "@/lib/actions/database/actions";
-import { getFunctions, getTables } from "@/lib/actions/database/getActions";
+import { getFunctions } from "@/lib/actions/database/functions/cache-actions";
+import { getTables } from "@/lib/actions/database/tables/cache-actions";
+import { createTrigger } from "@/lib/actions/database/triggers";
 
 type FormValues = z.infer<typeof createTriggerSchema>;
 

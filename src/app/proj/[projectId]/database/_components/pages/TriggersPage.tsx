@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import AddTriggerSheet from "../sheets/AddTriggerSheet";
 import { usePathname } from "next/navigation";
-import { deleteTrigger } from "@/lib/actions/database/deleteActions";
+import { deleteTrigger } from "@/lib/actions/database/triggers";
 
 type Props = {
   projectId: string;

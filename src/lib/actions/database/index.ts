@@ -2,7 +2,7 @@
 
 import { getUser } from "../auth";
 import { ExecuteQuery } from "@/lib/types";
-import { getProjectById } from "./getActions";
+import { getProjectById } from "./cache-actions";
 import { 
   SqlUsersServiceClient,
   SqlDatabasesServiceClient,

@@ -2,7 +2,7 @@ import { getUser, getUserById } from '@/lib/actions/auth'
 import { redirect } from 'next/navigation'
 import InviteUsersDialog from './_components/InviteDialog'
 import { Separator } from '@/components/ui/separator'
-import { getProjectById } from '@/lib/actions/database/getActions'
+import { getProjectById } from '@/lib/actions/database/cache-actions'
 
 const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
 

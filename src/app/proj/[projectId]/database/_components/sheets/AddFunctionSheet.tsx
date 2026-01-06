@@ -35,13 +35,13 @@ import {
 } from "@/components/ui/select";
 
 import { createFunctionSchema } from "@/lib/types/schemas";
-import { createFunction } from "@/lib/actions/database/actions";
 import CustomDialogHeader from "@/components/CustomDialogHeader";
 import { DATA_TYPES_LIST, FUNCTION_RETURN_TYPES_LIST } from "@/lib/constants";
 import { DATA_TYPES } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { createFunction } from "@/lib/actions/database/functions";
 
 function AddFunctionSheet({
   projectId,

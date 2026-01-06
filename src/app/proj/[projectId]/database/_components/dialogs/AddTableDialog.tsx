@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createTableSchema } from '@/lib/types/schemas';
-import { addTable } from '@/lib/actions/database/actions';
+import { addTable } from '@/lib/actions/database/tables';
 
 const AddTableDialog = ({ 
   triggerText, 

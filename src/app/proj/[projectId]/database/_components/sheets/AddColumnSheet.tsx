@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { addColumn } from '@/lib/actions/database/actions'
 import CustomDialogHeader from '@/components/CustomDialogHeader'
 import { DATA_TYPES_LIST, FKEY_REFERENCED_ROW_ACTION_DELETED_LIST, FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST } from '@/lib/constants'
 import { DATA_TYPE_TYPE, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE, FKEY_REFERENCED_ROW_ACTION_UPDATED, FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE } from '@/lib/types'
@@ -29,7 +28,10 @@ import { Label } from '@/components/ui/label'
 import z from 'zod'
 import { createForeignKeySchema } from '@/lib/types/schemas'
 import { Separator } from '@/components/ui/separator'
-import { getCols, getSchemas, getTables } from '@/lib/actions/database/getActions'
+import { getSchemas } from '@/lib/actions/database/cache-actions'
+import { addColumn } from '@/lib/actions/database/columns'
+import { getCols } from '@/lib/actions/database/columns/cache-actions'
+import { getTables } from '@/lib/actions/database/tables/cache-actions'
 
 function AddColumnSheet({
   projectId,

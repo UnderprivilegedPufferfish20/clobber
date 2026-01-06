@@ -3,9 +3,9 @@ import { Separator } from '@/components/ui/separator'
 import React, { Suspense } from 'react'
 import { StorageNavbar } from './_components/NavBar';
 import FilesPage from './_components/pages/FilesPage';
-import { getBucketNames, getFolderData } from '@/lib/actions/storage/getActions';
-import prisma from '@/lib/db';
+import { getBucketNames } from '@/lib/actions/storage/files/cache-actions';
 import FoldersPage from './_components/pages/FoldersPage';
+import { getFolderData } from '@/lib/actions/storage/files/folder/cache-actions';
 
 type PageType = 
   | "files"

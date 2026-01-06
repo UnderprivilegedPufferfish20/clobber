@@ -37,9 +37,10 @@ import { cn } from "@/lib/utils";
 import CustomDialogHeader from "@/components/CustomDialogHeader";
 
 import { createIndexSchema } from "@/lib/types/schemas";
-import { createIndex } from "@/lib/actions/database/actions";
 import { INDEX_TYPES } from "@/lib/types";
-import { getCols, getTables } from "@/lib/actions/database/getActions";
+import { getTables } from "@/lib/actions/database/tables/cache-actions";
+import { getCols } from "@/lib/actions/database/columns/cache-actions";
+import { createIndex } from "@/lib/actions/database/indexes";
 
 type FormValues = z.infer<typeof createIndexSchema>;
 

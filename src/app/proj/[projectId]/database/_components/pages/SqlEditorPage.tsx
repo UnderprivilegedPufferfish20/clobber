@@ -19,9 +19,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { executeQuery } from "@/lib/actions/database";
-import { updateSqlQuery } from "@/lib/actions/database/actions";
 import { useSavePreselection } from "@/hooks/useSavePreselection";
-import { getSqlQueryById } from "@/lib/actions/database/getActions";
+import { updateSqlQuery } from "@/lib/actions/database/sql";
+import { getSqlQueryById } from "@/lib/actions/database/sql/cache-actions";
 
 
 

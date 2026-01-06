@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
-import { getProjectById } from '@/lib/actions/database/getActions';
+import { getProjectById } from '@/lib/actions/database/cache-actions';
 import { MobileSidebar } from './Sidebar';
 import { Separator } from '@/components/ui/separator';
 import CreateProjectDialog from './CreateProjectDialog';
