@@ -105,6 +105,13 @@ export const createTableSchema = z.object({
   columns: createColumnSchema.array()
 })
 
+export const createEdgeFunctionSchema = z.object({
+  files: z.object({
+    code: z.string(),
+    name: z.string()
+  }).array()
+})
+
 
 
 

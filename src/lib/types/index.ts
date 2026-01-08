@@ -170,6 +170,15 @@ export type FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE = (typeof FKEY_REFERENCED_RO
 export type FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE = (typeof FKEY_REFERENCED_ROW_ACTION_UPDATED)
 export type SELECTED_FKEY_COLS_TYPE = { referencorCol: string, referenceeCol: string }[]
 
+export type EdgeFunctionType = {
+  files: { name: string, code: string }[],
+  url: string,
+  createdAt: any,
+  updatedAt: any,
+  deploymentCount: number,
+  slug: string
+}
+
 export type SchemaEditorTable = {
   schema: string;
   name: string;
