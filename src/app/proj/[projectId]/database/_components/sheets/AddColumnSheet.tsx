@@ -39,16 +39,12 @@ function AddColumnSheet({
   schema, // Ensure you pass the schema name (e.g., 'public')
   open,
   onOpenChange,
-  hideTrigger,
-  trigger
 }: {
-  hideTrigger: boolean;
   tableId: string;
   projectId: string;
   schema: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trigger?: ReactNode
 }) {
   const queryClient = useQueryClient()
 
@@ -117,16 +113,6 @@ function AddColumnSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {!hideTrigger && (
-        <SheetTrigger asChild>
-          <Button variant="outline">Add Column</Button>
-        </SheetTrigger>
-      )}
-      {trigger && (
-        <SheetTrigger asChild>
-          {trigger}
-        </SheetTrigger>
-      )}
       <SheetContent className="sm:max-w-2xl overflow-y-auto p-2 z-100">
         <SheetHeader className="mb-4">
           <CustomDialogHeader 

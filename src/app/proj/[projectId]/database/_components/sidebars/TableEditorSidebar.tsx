@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SchemaPicker from "../SchemaPicker";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CopyIcon, DownloadIcon, EllipsisVerticalIcon, FileJsonIcon, FileSpreadsheetIcon, PlusIcon, SlidersHorizontal, Table2Icon, Trash2Icon } from "lucide-react";
+import { CopyIcon, DownloadIcon, EditIcon, EllipsisVerticalIcon, FileJsonIcon, FileSpreadsheetIcon, PlusIcon, SlidersHorizontal, Table2Icon, Trash2Icon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ import DeleteDialog from "../dialogs/DeleteDialog";
 import AddTableSheet from "../sheets/AddTableSheet";
 import { deleteTable } from "@/lib/actions/database/tables";
 import { getTableSchema } from "@/lib/actions/database/tables/cache-actions";
+import EditTableSheet from "../sheets/EditTableSheet";
 
 const TableEditorSidebar = ({
   schemas,
@@ -160,6 +161,7 @@ function SidebarTable({
   schema: string
 }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
 
   return (
     <>
@@ -195,21 +197,6 @@ function SidebarTable({
             className="flex gap-2 items-center"
             onClick={async () => {
               try {
-                await navigator.clipboard.writeText(name)
-                toast.success("Table name copied!", { id: "copy-clipboard" })
-              } catch (error) {
-                toast.error(`Failed to copy table name: ${error}`, { id: "copy-clipboard" })
-              }
-              
-            }}
-          >
-            <CopyIcon className="h-4 w-4"/>
-            Copy Name
-          </ContextMenuItem>
-          <ContextMenuItem 
-            className="flex gap-2 items-center"
-            onClick={async () => {
-              try {
                 const result = await getTableSchema(projectId, schema, name)
                 await navigator.clipboard.writeText(result)
                 toast.success("Table schema copied!", { id: "copy-clipboard" })
@@ -221,6 +208,13 @@ function SidebarTable({
           >
             <CopyIcon className="h-4 w-4"/>
             Copy Schema
+          </ContextMenuItem>
+          <ContextMenuItem 
+            className="flex gap-2 items-center"
+            onClick={() => setIsEditSheetOpen(true)}
+          >
+            <EditIcon className="h-4 w-4"/>
+            Edit
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuSub>
@@ -258,6 +252,13 @@ function SidebarTable({
         projectId={projectId}
         schema={schema}
         toBeDeleted="Table"
+      />
+      <EditTableSheet 
+        onOpenChange={setIsEditSheetOpen}
+        open={isEditSheetOpen}
+        projectId={projectId}
+        schema={schema}
+        tableToBeEdited={name}
       />
     </>
   )

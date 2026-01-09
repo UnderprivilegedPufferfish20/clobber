@@ -29,9 +29,13 @@ export async function deleteColumn(
     database: project.db_name,
   });
 
-  await pool.query(`
-    ALTER TABLE ${schema}.${table} DROP COLUMN ${colName} CASCADE;
-  `)
+  const query = `
+    ALTER TABLE "${schema}"."${table}" DROP COLUMN "${colName}" CASCADE;
+  `
+
+  console.log("@@DELETE COL QUERY: ",query)
+
+  await pool.query(query)
   
   revalidateTag(t("table-schema", projectId, schema, table), "max")
   revalidateTag(t("schema", projectId, schema), "max")
@@ -74,11 +78,16 @@ export async function addColumn(
   if (!data.isNullable) constraints.push("NOT NULL");
   const constraintString = constraints.join(" ");
 
+  console.log("@@ DEFAULT: ", data.default)
+  console.log("@@ ISFUNC: ", data.default?.endsWith("()"))
+
   // 3) Default value (explicit cast)
   const defaultStatement =
     data.default && data.default.length > 0
-      ? `DEFAULT '${data.default.replace(/'/g, "''")}'::${finalType}`
-      : "";
+      ? data.default.endsWith("()") 
+        ? `DEFAULT ${data.default.replace(/'/g, "''")}`
+        : `DEFAULT '${data.default.replace(/'/g, "''")}'`
+      : ""
 
   // 4) Foreign key (added as a separate constraint)
   // Keep constraint name deterministic (and <= 63 chars)
@@ -90,21 +99,15 @@ export async function addColumn(
   try {
     await client.query("BEGIN");
 
-    // If adding a Primary Key, drop existing PK constraint (your prior behavior)
-    if (data.isPkey) {
-      await client.query(`
-        ALTER TABLE "${schema}"."${table}"
-        DROP CONSTRAINT IF EXISTS "${table}_pkey" CASCADE
-      `);
-    }
-
-    // Add the column
-    await client.query(
-      `
+    const q = `
       ALTER TABLE "${schema}"."${table}"
       ADD COLUMN IF NOT EXISTS "${data.name}" ${finalType} ${defaultStatement} ${constraintString}
       `.trim()
-    );
+
+    console.log("@@CREATE-col query: ", q)
+
+    // Add the column
+    await client.query(q);
 
     // Add FK constraint if provided
     if (fk) {

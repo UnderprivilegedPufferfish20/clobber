@@ -1,6 +1,8 @@
 import { LucideIcon } from "lucide-react";
 import { User } from "../db/generated";
 import { DATA_TYPES_LIST, FUNCTION_RETURN_TYPES_LIST } from "../constants";
+import z from "zod";
+import { createColumnSchema, createForeignKeyColumnSchema, createForeignKeySchema, createTableSchema } from "./schemas";
 
 export interface AuthContextType {
   user: User | null;
@@ -170,36 +172,12 @@ export type FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE = (typeof FKEY_REFERENCED_RO
 export type FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE = (typeof FKEY_REFERENCED_ROW_ACTION_UPDATED)
 export type SELECTED_FKEY_COLS_TYPE = { referencorCol: string, referenceeCol: string }[]
 
-export type SchemaEditorTable = {
-  schema: string;
-  name: string;
-  columns: SchemaEditorColumn[];
+export type ColumnType = z.infer<typeof createColumnSchema>
+export type TableType = z.infer<typeof createTableSchema>
+export type FkeyType = z.infer<typeof createForeignKeySchema>
+export type FkeyColumnType = z.infer<typeof createForeignKeyColumnSchema>
+
+export type JsonNodeData = {
+  title: string;
+  table: TableType;
 };
-
-export type SchemaEditorColumn = {
-  name: string;
-  datatype: DATA_TYPES;
-
-  // Column constraints
-  isPrimaryKey: boolean;
-  isUnique: boolean;
-  isNullable: boolean;
-
-  defaultValue?: string;
-
-
-  foreignKeys: SchemaEditorForeignKey[];
-};
-
-export type SchemaEditorForeignKey = {
-  name?: string; 
-
-  to: {
-    schema: string;
-    table: string;
-    column: string;
-  };
-
-  onDelete?: "NO ACTION" | "RESTRICT" | "CASCADE" | "SET NULL" | "SET DEFAULT";
-  onUpdate?: "NO ACTION" | "RESTRICT" | "CASCADE" | "SET NULL" | "SET DEFAULT";
-}

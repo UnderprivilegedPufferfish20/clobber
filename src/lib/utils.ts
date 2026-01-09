@@ -395,3 +395,16 @@ export function joinPosix(...parts: string[]) {
 export const childName = (o: DbObject, prefix: string) =>
     o.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? o.name;
 
+
+
+
+export function gridPosition(i: number) {
+  const colW = 520; // Increased for wider nodes
+  const rowH = 420; // Adjusted for potential height
+  const cols = 3; // tweak to taste
+  return {
+    x: (i % cols) * colW,
+    y: Math.floor(i / cols) * rowH,
+  };
+}
+

@@ -1,6 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import { DatabaseNavbar } from "./_components/NavMenu";
-import TableView from "./_components/pages/TableEditorPage";
+import TableView from "./_components/TableView";
 import TableEditorSidebar from "./_components/sidebars/TableEditorSidebar";
 import SqlEditorSidebar from "./_components/sidebars/SqlEditorSidebar";
 import SqlEditorPage from "./_components/pages/SqlEditorPage";
@@ -21,7 +21,6 @@ import { getTriggers } from "@/lib/actions/database/triggers/cache-actions";
 
 type PageType = 
   | 'schema_editor'
-  | 'table_editor' 
   | 'sql_editor' 
   | 'functions' 
   | 'indexes' 
@@ -44,18 +43,6 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   let pageContent: React.ReactNode;
 
   switch (currentPage) {
-    case 'table_editor': {
-      const tables = await getTables(schema, p.projectId);
-      pageContent = (
-        <>
-          <TableEditorSidebar schemas={schemas} tables={tables} />
-          <div className="flex-1">
-            <TableView projectId={p.projectId} />
-          </div>
-        </>
-      );
-      break;
-    }
 
     case 'sql_editor': {
       const [folders, queries] = await Promise.all([
@@ -127,7 +114,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
         <SchemaEditorPage 
           projectId={p.projectId} 
           schemas={schemas} 
-          schema={schemaEditorDisplay}
+          current_schema={schemaEditorDisplay}
         />
       )
       break

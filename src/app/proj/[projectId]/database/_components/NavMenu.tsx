@@ -13,7 +13,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 const routes = [
   "Schema Editor",
-  "Table Editor",
   "SQL Editor",
   "Functions",
   "Triggers",

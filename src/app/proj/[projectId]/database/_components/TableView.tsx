@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Database, PlusIcon } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Database, PlusIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { Input } from "@/components/ui/input";
@@ -30,11 +30,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { throttle } from "@/lib/utils";
 import { EditingCell, FilterConfig, QueryFilters, TableViewProps } from "@/lib/types";
-import Filter, { parseFiltersParam, stringifyFilters } from "../Filter";
-import AddRowSheet from "../sheets/AddRowSheet";
-import AddColumnSheet from "../sheets/AddColumnSheet";
+import Filter, { parseFiltersParam, stringifyFilters } from "./Filter";
+import AddRowSheet from "./sheets/AddRowSheet";
+import AddColumnSheet from "./sheets/AddColumnSheet";
 import { Button } from "@/components/ui/button";
-import { useSavePreselection } from "@/hooks/useSavePreselection";
 import { getTableData } from "@/lib/actions/database/tables/cache-actions";
 
 
@@ -46,8 +45,8 @@ function toCellString(v: any) {
 }
 
 const TableView = ({ projectId }: TableViewProps) => {
-  useSavePreselection(projectId)
   const router = useRouter();
+  const pathname = usePathname()
   const searchParams = useSearchParams();
   const table = searchParams.get("table");
   const schema = searchParams.get("schema") || "public";
@@ -128,6 +127,15 @@ const TableView = ({ projectId }: TableViewProps) => {
   const minPage = data?.pages[0]?.pagination.page || 1;
   const maxPage = data?.pages[data?.pages.length - 1]?.pagination.page || 1;
   const totalPages = data?.pages[0]?.pagination.totalPages || 0;
+
+  const closeTable = () => {
+    const sp = new URLSearchParams(searchParams)
+
+    sp.delete("table")
+
+    router.push(`${pathname}?${sp}`)
+  }
+  
 
   // Sync active filters with URL params
   useEffect(() => {
@@ -369,19 +377,18 @@ const TableView = ({ projectId }: TableViewProps) => {
     );
   }
 
-  // if (!data || allRows.length === 0) {
-  //   return (
-  //     <div className="fullscreen flex flex-col items-center justify-center">
-  //       <p className="text-muted-foreground">No data in this table</p>
-  //     </div>
-  //   );
-  // }
-
 return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between border-b p-2 shrink-0 overflow-hidden">
         <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-0">
+            <h1 className="font-semibold text-xl">{table}</h1>
+            <div className="flex fullwidth justify-between items-center text-muted-foreground text-xs">
+              <p>{allRows.length} rows</p>
+              <p>{columns.length} columns</p>
+            </div>
+          </div>
           <Filter 
             activeFilters={activeFilters}
             columns={columns}
@@ -417,6 +424,13 @@ return (
             </SelectContent>
           </Select>
           <span className="text-sm text-muted-foreground">out of {totalPages}</span>
+
+          <Button 
+            variant={"ghost"}
+            onClick={closeTable}
+          >
+            <XIcon className="w-6 h-6"/>
+          </Button>
         </div>
       </div>
 
