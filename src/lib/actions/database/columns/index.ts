@@ -89,11 +89,6 @@ export async function addColumn(
         : `DEFAULT '${data.default.replace(/'/g, "''")}'`
       : ""
 
-  // 4) Foreign key (added as a separate constraint)
-  // Keep constraint name deterministic (and <= 63 chars)
-  const fk = data.fkey;
-  const fkNameRaw = `${table}_${data.name}_fkey`;
-  const fkConstraintName = fkNameRaw.length > 63 ? fkNameRaw.slice(0, 63) : fkNameRaw;
 
   const client = await pool.connect();
   try {
@@ -108,26 +103,6 @@ export async function addColumn(
 
     // Add the column
     await client.query(q);
-
-    // Add FK constraint if provided
-    if (fk) {
-      const fkSql = `
-        ALTER TABLE "${schema}"."${table}"
-        ADD CONSTRAINT "${fkConstraintName}"
-        FOREIGN KEY ("${data.name}")
-        REFERENCES "${fk.keySchema}"."${fk.keyTable}" ("${fk.keyColumn}")
-        ON UPDATE ${fk.updateAction}
-        ON DELETE ${fk.deleteAction}
-      `.trim();
-
-      try {
-        await client.query(fkSql);
-      } catch (err: any) {
-        // If it already exists, ignore; otherwise rethrow
-        // Postgres duplicate_object: 42710
-        if (err?.code !== "42710") throw err;
-      }
-    }
 
     await client.query("COMMIT");
   } catch (e) {

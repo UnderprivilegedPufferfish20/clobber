@@ -63,7 +63,7 @@ const SqlEditorSidebar = ({
 
         <div className='flex flex-col mt-2'>
             <div className='mt-4'>
-              <div className='flex items-center gap-2 mb-4'>
+              <div className='flex items-center gap-2 mb-4 px-2'>
                 <Input 
                   placeholder="Search queries..." 
                   value={searchTerm} 

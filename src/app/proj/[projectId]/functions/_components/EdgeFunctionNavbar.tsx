@@ -10,6 +10,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
 
 const routes = [
   "Functions",
@@ -51,19 +52,19 @@ export function EdgeFunctionsNavbar() {
           return (
             <NavigationMenuItem key={r}>
               <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                <p
+                <Button
                   onClick={() => setPageParam(queryVal.toLowerCase())}
                   className={`
-                    cursor-pointer hover:bg-gray-400
+                    cursor-pointer
                     ${
                       isActive(queryVal)
-                        ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
-                        : 'text-black hover:bg-indigo-200! dark:text-white dark:hover:text-black!'
+                        ? 'bg-indigo-500! text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600'
+                        : 'text-black dark:text-white'
                     }
                   `}
                 >
                   {r}
-                </p>
+                </Button>
               </NavigationMenuLink>
             </NavigationMenuItem>
           )

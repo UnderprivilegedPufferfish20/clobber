@@ -78,49 +78,16 @@ const SchemaEditorPage = ({
     }) : [];
   }, [current_schema, schema]);
 
-  const initialEdges = useMemo(() => {
-    const edges: Edge[] = [];
 
-    current_schema.forEach((table) => {
-      const sourceId = `${schema}.${table.name}`;
-
-      table.columns.forEach((column) => {
-        if (column.fkey) {
-          const fk = column.fkey;
-          const targetId = `${fk.keySchema}.${fk.keyTable}`;
-
-          edges.push({
-            id: `${sourceId}-${column.name}-to-${targetId}-${fk.keyColumn}`,
-            source: sourceId,
-            target: targetId,
-            type: "smoothstep",
-
-            // ✅ match the Handle ids you rendered
-            sourceHandle: `out:${column.name}`,
-            targetHandle: `in:${fk.keyColumn}`,
-
-            markerEnd: { type: MarkerType.ArrowClosed },
-            label: `${column.name} -> ${fk.keyColumn}`,
-          });
-        }
-      });
-    });
-
-    return edges;
-  }, [current_schema, schema]);
 
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Keep nodes in sync if props.schema changes
   useEffect(() => {
     setNodes(initialNodes);
   }, [initialNodes, setNodes]);
 
-  useEffect(() => {
-    setEdges(initialEdges);
-  }, [initialEdges, setEdges]);
 
   const { theme } = useTheme()
 
@@ -152,10 +119,8 @@ const SchemaEditorPage = ({
                       zoom: 1
                     }}
                     nodes={nodes}
-                    edges={edges}
                     nodeTypes={nodeTypes}
                     onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
                     style={{ width: "100%", height: "100%" }}
                     colorMode={theme === 'dark' ? "dark" : "light"}
                   >

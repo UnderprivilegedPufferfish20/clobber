@@ -1,4 +1,4 @@
-import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation } from "lucide-react";
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
 import { DATA_TYPES, DataTypeType } from "../types";
 
@@ -52,20 +52,61 @@ export const SidebarRoutes = [
     label: "Database",
     icon: DatabaseIcon,
   },
+
+
   {
     href: "/storage",
     label: "Storage",
     icon: FolderSymlinkIcon,
   },
+    {
+    href: "/auth",
+    label: "Authentication",
+    icon: FingerprintIcon,
+  },
   {
     href: "/functions",
-    label: "Functions",
-    icon: GitCompareArrows,
+    label: "Edge Functions",
+    icon: GlobeLockIcon,
   },
+  {
+    href: "/realtime",
+    label: "Realtime",
+    icon: RadioIcon,
+  },
+
+
+  {
+    href: "/apis",
+    label: "APIs",
+    icon: SendIcon,
+  },
+  {
+    href: "/gateway",
+    label: "LLM Gateway",
+    icon: DoorOpenIcon
+  },
+  {
+    href: "/messaging",
+    label: "Messaging",
+    icon: MessageSquareIcon
+  },
+
+
   {
     href: "/billing",
     label: "Billing",
-    icon: CoinsIcon,
+    icon: ReceiptCentIcon,
+  },
+  {
+    href: "/people",
+    label: "People",
+    icon: UsersIcon,
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: SettingsIcon,
   }
 ]
 
@@ -272,7 +313,7 @@ export const DTypes: DataTypeType[] = [
   {
     dtype: DATA_TYPES.FLOAT,
     description: "Any precision floating-point number",
-    icon: HashIcon
+    icon: DecimalsArrowRightIcon
   },
   {
     dtype: DATA_TYPES.BOOL,
@@ -282,7 +323,7 @@ export const DTypes: DataTypeType[] = [
   {
     dtype: DATA_TYPES.DateTime,
     description: "Date and time, including time zone",
-    icon: HashIcon
+    icon: CalendarIcon
   },
   {
     dtype: DATA_TYPES.JSON,

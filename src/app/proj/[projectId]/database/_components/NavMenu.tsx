@@ -10,6 +10,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
 
 const routes = [
   "Schema Editor",
@@ -56,19 +57,20 @@ export function DatabaseNavbar() {
           return (
             <NavigationMenuItem key={r}>
               <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                <p
+                <Button
+                  variant={"ghost"}
                   onClick={() => setPageParam(queryVal)}
                   className={`
                     cursor-pointer hover:bg-gray-400
                     ${
                       isActive(queryVal)
-                        ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
-                        : 'text-black hover:bg-indigo-200! dark:text-white dark:hover:text-black!'
+                        ? 'bg-indigo-500! focus:bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
+                        : 'text-black dark:text-white'
                     }
                   `}
                 >
                   {r}
-                </p>
+                </Button>
               </NavigationMenuLink>
             </NavigationMenuItem>
           )

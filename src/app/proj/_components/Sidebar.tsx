@@ -58,58 +58,85 @@ const Sidebar = () => {
     return `${basePath}${routeHref.startsWith('/') ? '' : '/'}${routeHref}`;
   }
 
+  // Render function for a single route, handling expanded/collapsed
+  const renderRoute = (route: typeof currentRoutes[0], key: string) => {
+    const isActive = isRouteActive(route.href, pathname, basePath);
+    const targetPath = constructPath(basePath, route.href);
+
+    return isExpanded ? (
+      // Expanded view with labels
+      <Button
+        key={key}
+        variant="ghost"
+        onClick={() => router.push(targetPath)} 
+        className={`w-full justify-start p-0! px-2! h-9 ${
+          isActive
+            ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
+            : 'dark:text-white dark:hover:text-white! text-muted-foreground!'
+        }`}
+      >
+        <route.icon className='dark:hover:fill-black'/>
+        <span className='text-md'>{route.label}</span>
+      </Button>
+    ) : (
+      // Collapsed view with tooltips
+      <Tooltip key={key}>
+        <TooltipTrigger asChild className='w-12 h-12'>
+          <Button
+            variant="ghost"
+            onClick={() => router.push(targetPath)} 
+            className={`p-0! w-9 h-9 ${
+              isActive
+                ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
+                : 'dark:text-white dark:hover:text-black!'
+            }`}
+          >
+            <route.icon size={22} className={`${!isActive && "stroke-muted-foreground"} hover:stroke-black`} />
+          </Button> 
+        </TooltipTrigger>
+        <TooltipContent side="right" className='text-md'>
+          {route.label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  // Build the content with separators if not in database view
+  let navContent: React.ReactNode[] = [];
+  if (inDbView) {
+    currentRoutes.forEach((route, index) => {
+      navContent.push(renderRoute(route, route.href || `route-${index}`));
+    });
+  } else {
+    const groups = [
+      currentRoutes.slice(0, 2),
+      currentRoutes.slice(2, 6),
+      currentRoutes.slice(6, 9),
+      currentRoutes.slice(9, 12),
+    ];
+    groups.forEach((group, groupIndex) => {
+      group.forEach((route, routeIndex) => {
+        navContent.push(renderRoute(route, `${groupIndex}-${route.href || routeIndex}`));
+      });
+      if (groupIndex < groups.length - 1) {
+        navContent.push(
+          <div key={`sep-${groupIndex}`} className={`h-px ${isExpanded ? "w-[190px]" : "w-[45px]" } mx-auto bg-border my-2`} />
+        );
+      }
+    });
+  }
+
   // --- Render the sidebar with expand toggle at the bottom ---
   return (
     <TooltipProvider>
       <div 
-        className={`bg-gray-50 dark:bg-black/5 dark:text-white hidden mt-[65px] md:flex flex-col justify-between overflow-y-clip text-muted-foreground border-r-2 border-separate transition-all duration-300 sticky top-0
-        ${isExpanded ? 'w-60 items-stretch' : 'w-[70px] items-center'}`}
+        className={`bg-gray-50 dark:bg-black/5 dark:text-white hidden mt-[65px] md:flex flex-col justify-between overflow-y-clip text-muted-foreground border-r-2 border-separate transition-all duration-300 sticky top-0 p-0!
+        ${isExpanded ? 'w-48' : 'w-[70px]'}`}
       >
 
         {/* Navigation Links */}
-        <div className='bg-gray-50 dark:bg-black/5 dark:text-white relative flex flex-col p-2 gap-2 items-start pt-4 w-full'>
-          {currentRoutes.map((route) => {
-            const isActive = isRouteActive(route.href, pathname, basePath)
-            const targetPath = constructPath(basePath, route.href)
-            
-            return isExpanded ? (
-              // Expanded view with labels
-              <Button
-                key={route.href}
-                variant="ghost"
-                onClick={() => router.push(targetPath)} 
-                className={`w-full justify-start gap-3 h-12 py-2! ${
-                  isActive
-                    ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
-                    : 'text-black hover:bg-indigo-200! dark:text-white dark:hover:text-black!'
-                }`}
-              >
-                <route.icon size={32} className='dark:hover:fill-black'/>
-                <span className='font-semibold text-lg'>{route.label}</span>
-              </Button>
-            ) : (
-              // Collapsed view with tooltips
-              <Tooltip key={route.href}>
-                <TooltipTrigger asChild className='w-12 h-12'>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => router.push(targetPath)} 
-                    className={`${
-                      isActive
-                        ? 'bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600!' 
-                        : 'text-black hover:bg-indigo-200! dark:text-white dark:hover:text-black!'
-                    }`}
-                  >
-                    <route.icon size={20} />
-                  </Button> 
-                </TooltipTrigger>
-                <TooltipContent side="right" className='text-md'>
-                  {route.label}
-                </TooltipContent>
-              </Tooltip>
-            )
-          })}
+        <div className='bg-gray-50 dark:bg-black/5 dark:text-white relative flex flex-col p-2 gap-1 items-center w-full'>
+          {navContent}
         </div>
 
         {/* Bottom expand / collapse control */}
@@ -174,6 +201,59 @@ export function MobileSidebar() {
     return `${basePath}${routeHref.startsWith('/') ? '' : '/'}${routeHref}`;
   }
 
+  // Build the content with separators if not in database view
+  let mobileContent: React.ReactNode[] = [];
+  if (inDbView) {
+    currentRoutes.forEach((route, index) => {
+      const isActive = isRouteActive(route.href, pathname, basePath);
+      const targetPath = constructPath(basePath, route.href);
+      mobileContent.push(
+        <button 
+          key={route.href || `route-${index}`}
+          onClick={() => {
+            router.push(targetPath)
+            setIsOpen(false)
+          }} 
+          className={`flex p-2 rounded-md justify-start gap-2 bg-transparent text-black hover:bg-indigo-200 ${isActive && '!bg-indigo-500 !text-white'}`}
+        >
+          <route.icon size={20} />
+          {route.label}
+        </button>
+      );
+    });
+  } else {
+    const groups = [
+      currentRoutes.slice(0, 2),
+      currentRoutes.slice(2, 6),
+      currentRoutes.slice(6, 9),
+      currentRoutes.slice(9, 12),
+    ];
+    groups.forEach((group, groupIndex) => {
+      group.forEach((route, routeIndex) => {
+        const isActive = isRouteActive(route.href, pathname, basePath);
+        const targetPath = constructPath(basePath, route.href);
+        mobileContent.push(
+          <button 
+            key={`${groupIndex}-${route.href || routeIndex}`}
+            onClick={() => {
+              router.push(targetPath)
+              setIsOpen(false)
+            }} 
+            className={`flex p-2 rounded-md justify-start gap-2 bg-transparent text-black hover:bg-indigo-200 ${isActive && '!bg-indigo-500 !text-white'}`}
+          >
+            <route.icon size={20} />
+            {route.label}
+          </button>
+        );
+      });
+      if (groupIndex < groups.length - 1) {
+        mobileContent.push(
+          <div key={`sep-${groupIndex}`} className="h-px w-3xs bg-border my-2" />
+        );
+      }
+    });
+  }
+
   return (
     <div className="block border-separate bg-background md:hidden">
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -186,24 +266,7 @@ export function MobileSidebar() {
           <div className="flex flex-col h-full">
             <Logo />
             <div className="flex flex-col gap-1 p-2 mt-4">
-              {currentRoutes.map((route) => {
-                const isActive = isRouteActive(route.href, pathname, basePath)
-                const targetPath = constructPath(basePath, route.href)
-                
-                return (
-                  <button 
-                    key={route.href}
-                    onClick={() => {
-                      router.push(targetPath)
-                      setIsOpen(false)
-                    }} 
-                    className={`flex p-2 rounded-md justify-start gap-2 bg-transparent text-black hover:bg-indigo-200 ${isActive && '!bg-indigo-500 !text-white'}`}
-                  >
-                    <route.icon size={20} />
-                    {route.label}
-                  </button>
-                )
-              })}
+              {mobileContent}
             </div>
           </div>
         </SheetContent>

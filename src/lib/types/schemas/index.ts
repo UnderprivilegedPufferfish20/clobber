@@ -98,14 +98,7 @@ export const createColumnSchema = z.object({
   default: z.string().optional(),
   isPkey: z.boolean(),
   isUnique: z.boolean(),
-  isNullable: z.boolean(),
-  fkey: z.object({
-    keySchema: z.string(),
-    keyTable: z.string(),
-    keyColumn: z.string(),
-    updateAction: z.enum(FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST),
-    deleteAction: z.enum(FKEY_REFERENCED_ROW_ACTION_DELETED_LIST)
-  }).optional()
+  isNullable: z.boolean()
 })
 
 export const createTableSchema = z.object({

@@ -11,6 +11,14 @@ export interface AuthContextType {
   loading: boolean;
 }
 
+export type EdgeFunctionType = {
+  files: { name: string, code: string }[],
+  url: string,
+  createdAt: any,
+  updatedAt: any,
+  deploymentCount: number,
+  slug: string
+}
 
 export interface UserCookie {
   id: string,

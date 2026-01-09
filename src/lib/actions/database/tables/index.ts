@@ -106,14 +106,6 @@ export async function addTable(
     }
 
     columnDefs.push(colDef);
-
-    if (col.fkey) {
-      const fk = col.fkey;
-      const constName = `fk_${data.name}_${col.name}`;
-      const refTable = `"${fk.keySchema}"."${fk.keyTable}"`;
-      const fkDef = `CONSTRAINT "${constName}" FOREIGN KEY ("${col.name}") REFERENCES ${refTable} ("${fk.keyColumn}") ON UPDATE ${fk.updateAction} ON DELETE ${fk.deleteAction}`;
-      constraints.push(fkDef);
-    }
   }
 
   if (pkeyCols.length > 0) {

@@ -51,6 +51,7 @@ import { getSchemas } from '@/lib/actions/database/cache-actions'
 import { getCols } from '@/lib/actions/database/columns/cache-actions'
 import { addTable } from '@/lib/actions/database/tables'
 import { getTables } from '@/lib/actions/database/tables/cache-actions'
+import DataTypeSelect from '../DataTypeSelect'
 
 function AddTableSheet({
   projectId,
@@ -63,13 +64,6 @@ function AddTableSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const DEFAULT_FKEY: FKeyForm = {
-    keySchema: "",
-    keyTable: "",
-    keyColumn: "",
-    updateAction: FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST[0],
-    deleteAction: FKEY_REFERENCED_ROW_ACTION_DELETED_LIST[0],
-  };
 
   const emptyColumn: ColumnForm = {
     name: "",
@@ -79,83 +73,11 @@ function AddTableSheet({
     isPkey: false,
     isUnique: false,
     isNullable: true,
-    fkey: undefined,
   };
 
-  const [fkEditor, setFkEditor] = useState<{
-    open: boolean;
-    colIdx: number | null;
-    draft: FKeyForm;
-  }>({
-    open: false,
-    colIdx: null,
-    draft: DEFAULT_FKEY,
-  });
-
-  const openFkeyEditor = (colIdx: number) => {
-    setFkEditor({
-      open: true,
-      colIdx,
-      draft: columns[colIdx].fkey ?? DEFAULT_FKEY,
-    });
-  };
-
-  const closeFkeyEditor = () => {
-    setFkEditor((s) => ({ ...s, open: false, colIdx: null }));
-  };
-
-  const updateDraftFkey = (patch: Partial<FKeyForm>) => {
-    setFkEditor((s) => ({ ...s, draft: { ...s.draft, ...patch } }));
-  };
-
-  const clearDraftFkey = () => {
-    setFkEditor((s) => ({ ...s, draft: DEFAULT_FKEY }));
-  };
-
-  // Commit draft into the column on Save
-  const saveDraftFkey = () => {
-    if (fkEditor.colIdx == null) return;
-
-    // Optional: basic validation
-    const { keySchema, keyTable, keyColumn } = fkEditor.draft;
-    if (!keySchema || !keyTable || !keyColumn) {
-      toast.error("Pick a schema, table, and column first.");
-      return;
-    }
-
-    const idx = fkEditor.colIdx;
-    setColumns((prev) =>
-      prev.map((c, i) => (i === idx ? { ...c, fkey: fkEditor.draft } : c))
-    );
-
-    closeFkeyEditor();
-  };
-
-  const fkSchema = fkEditor.draft.keySchema;
-  const fkTable = fkEditor.draft.keyTable;
-
-  const schemasQuery = useQuery({
-    queryKey: ["schemas", projectId],
-    queryFn: () => getSchemas(projectId),
-  });
-
-  const tablesQuery = useQuery({
-    queryKey: ["tables", projectId, fkSchema],
-    queryFn: () => getTables(fkSchema, projectId),
-    enabled: fkEditor.open && Boolean(projectId && fkSchema),
-    staleTime: 30_000,
-  });
-
-  const columnsQuery = useQuery({
-    queryKey: ["cols", projectId, fkSchema, fkTable],
-    queryFn: () => getCols(fkSchema, projectId, fkTable),
-    enabled: fkEditor.open && Boolean(projectId && fkSchema && fkTable),
-    staleTime: 30_000,
-  });
 
 
   type ColumnForm = z.infer<typeof createColumnSchema>;
-  type FKeyForm = NonNullable<ColumnForm["fkey"]>;
 
 
 
@@ -168,7 +90,6 @@ function AddTableSheet({
       isPkey: true,
       isUnique: true,
       default: "uuid_generate_v4()",
-      fkey: undefined
     },
     {
       name: "$createdAt",
@@ -178,7 +99,6 @@ function AddTableSheet({
       isPkey: false,
       isUnique: false,
       default: "now()",
-      fkey: undefined
     },
     {
       name: "$updatedAt",
@@ -188,7 +108,6 @@ function AddTableSheet({
       isPkey: false,
       isUnique: false,
       default: "now()",
-      fkey: undefined
     }
   ])
 
@@ -292,27 +211,6 @@ function AddTableSheet({
                           key={idx} 
                           className={`${col.isPkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border-b border-border`}
                         >
-                          <div className="flex items-center gap-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" onClick={() => openFkeyEditor(idx)}>
-                                  <Link2Icon />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent className='z-110'>
-                                {col.fkey ? "Edit Relation" : "Add Relation"}
-                              </TooltipContent>
-                            </Tooltip>
-                            {col.fkey && (
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <span>{col.fkey.keySchema}.{col.fkey.keyTable}.{col.fkey.keyColumn}</span>
-                                <XIcon 
-                                  className="h-3 w-3 cursor-pointer" 
-                                  onClick={() => updateColumn(idx, { fkey: undefined })}
-                                />
-                              </Badge>
-                            )}
-                          </div>
 
                           <Checkbox
                             className="w-10 h-10"
@@ -329,23 +227,13 @@ function AddTableSheet({
                             className="focus-visible:ring-0 focus-visible:ring-offset-0"
                           />
 
-                          <Select
+                          <DataTypeSelect
+                            triggerClassname="max-w-35 min-w-35 w-35 truncate" 
                             value={col.dtype}
-                            onValueChange={(v) => {
+                            onValueChange={(v: any) => {
                               updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: "" });
                             }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a type" />
-                            </SelectTrigger>
-                            <SelectContent className="z-110">
-                              {DATA_TYPES_LIST.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type.toUpperCase()}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
 
                           <div className="relative w-full">
                             <Input
@@ -475,148 +363,6 @@ function AddTableSheet({
           </div>
         </SheetContent>
       </Sheet>
-
-      <Sheet open={fkEditor.open} onOpenChange={(o) => (o ? null : closeFkeyEditor())}>
-        <SheetContent className="z-150 max-w-lg">
-          <SheetHeader className="mb-4">
-            <SheetTitle>Add a Foreign Key Relationship</SheetTitle>
-            <SheetDescription>
-              The ensures durable relationships between fields
-            </SheetDescription>
-          </SheetHeader>
-
-          <div className="space-y-6">
-            <div className="flex flex-col gap-2">
-              <Label>Select a Schema</Label>
-              <Select
-                value={fkEditor.draft.keySchema}
-                onValueChange={(v) =>
-                  updateDraftFkey({
-                    keySchema: v,
-                    keyTable: "",
-                    keyColumn: "",
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a schema" />
-                </SelectTrigger>
-                <SelectContent className="z-150">
-                  {schemasQuery.data?.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className={`flex flex-col gap-2 ${!fkEditor.draft.keySchema ? "hidden" : ""}`}>
-              <Label>Select a table to reference</Label>
-              <Select
-                value={fkEditor.draft.keyTable}
-                onValueChange={(v) =>
-                  updateDraftFkey({
-                    keyTable: v,
-                    keyColumn: "",
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a table" />
-                </SelectTrigger>
-                <SelectContent className="z-150">
-                  {tablesQuery.data?.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className={`flex flex-col gap-2 ${!fkEditor.draft.keyTable ? "hidden" : ""}`}>
-              <Label>Select a column to reference</Label>
-              <Select
-                value={fkEditor.draft.keyColumn}
-                onValueChange={(v) => updateDraftFkey({ keyColumn: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a column" />
-                </SelectTrigger>
-                <SelectContent className="z-150">
-                  {columnsQuery.data?.filter(c => (fkEditor.colIdx && columns[fkEditor.colIdx]) ? c.dtype === columns[fkEditor.colIdx!].dtype : true).map((c) => (
-                    <SelectItem key={c.name} value={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className={`flex flex-col gap-2 ${!fkEditor.draft.keyColumn ? "hidden" : ""}`}>
-              <h1>Action if referenced row is updated</h1>
-              <Select
-                value={fkEditor.draft.updateAction}
-                onValueChange={(v) =>
-                  updateDraftFkey({ updateAction: v as FKEY_REFERENCED_ROW_ACTION_UPDATED })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select action" />
-                </SelectTrigger>
-                <SelectContent className="z-150">
-                  {FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST.map((a) => (
-                    <SelectItem key={a} value={a}>
-                      {a}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className={`flex flex-col gap-2 ${!fkEditor.draft.keyColumn ? "hidden" : ""}`}>
-              <h1>Action if referenced row is deleted</h1>
-              <Select
-                value={fkEditor.draft.deleteAction}
-                onValueChange={(v) =>
-                  updateDraftFkey({ deleteAction: v as FKEY_REFERENCED_ROW_ACTION_DELETED })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select action" />
-                </SelectTrigger>
-                <SelectContent className="z-150">
-                  {FKEY_REFERENCED_ROW_ACTION_DELETED_LIST.map((a) => (
-                    <SelectItem key={a} value={a}>
-                      {a}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={saveDraftFkey}>
-                Save
-              </Button>
-
-              <Button
-                className="flex-1"
-                variant="secondary"
-                onClick={() => {
-                  // discard draft and close
-                  clearDraftFkey();
-                  closeFkeyEditor();
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
     </>
   )
 }

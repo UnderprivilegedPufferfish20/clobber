@@ -76,7 +76,6 @@ function AddColumnSheet({
         isUnique,
         name,
         default: defaultValue,
-        fkey
       }, schema, projectId, tableId),
     onSuccess: () => {
       toast.success("Column added successfully", { id: "add-column" });

@@ -121,6 +121,13 @@
   }
 }
 
+::selection {
+  background: #3336e9;
+  color: white;
+}
+
+
+
 @layer components {
   /* Utility classes for the main page header container */
   .page-container {
