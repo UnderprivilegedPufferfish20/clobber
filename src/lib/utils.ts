@@ -74,8 +74,7 @@ export function mapPostgresType(pgType: string): DATA_TYPES {
 }
 
 export const defaultSuggestions = (dtype: (typeof DATA_TYPES_LIST)[number]) => {
-    const t = dtype.toLowerCase();
-    if (t === "uuid") {
+    if (dtype === "uuid") {
       return [
         {
           value: "uuid_generate_v4()",
@@ -83,13 +82,25 @@ export const defaultSuggestions = (dtype: (typeof DATA_TYPES_LIST)[number]) => {
         },
       ];
     }
-    if (t === "datetime" || t === "timestamp" || t === "timestamp with time zone") {
+    if (dtype === "datetime") {
       return [
         {
           value: "now()",
           desc: "Set the value to the current timestamp on insert.",
         },
       ];
+    }
+    if (dtype === "boolean") {
+      return [
+        {
+          value: "true",
+          desc: "logical true value (1)"
+        },
+        {
+          value: "false",
+          desc: "logical false value (0)"
+        }
+      ]
     }
     return [];
   };

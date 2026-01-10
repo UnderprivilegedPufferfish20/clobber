@@ -21,7 +21,7 @@ import {
   Handle,
   Position,
 } from "@xyflow/react";
-import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, RefreshCwOffIcon, GripVerticalIcon, PlusIcon, Edit2Icon, EditIcon, Trash2Icon, FingerprintIcon } from "lucide-react"; // Assuming "RecycleCwOffIcon" is a typo for "RefreshCwOffIcon"; adjust if needed
+import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, RefreshCwOffIcon, GripVerticalIcon, PlusIcon, Edit2Icon, EditIcon, Trash2Icon, FingerprintIcon, EllipsisVerticalIcon, CopyIcon, DownloadIcon, FileJson, FileSpreadsheetIcon } from "lucide-react"; // Assuming "RecycleCwOffIcon" is a typo for "RefreshCwOffIcon"; adjust if needed
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
@@ -37,6 +37,8 @@ import { useMutation } from "@tanstack/react-query";
 import { deleteColumn } from "@/lib/actions/database/columns";
 import { toast } from "sonner";
 import AddTableSheet from "../sheets/AddTableSheet";
+import EditColumnSheet from "../sheets/EditColumnSheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 
@@ -175,82 +177,127 @@ export default SchemaEditorPage;
 
 
 function TableColumn({
-  isNullable,
-  isUnique,
-  isPkey,
-  name,
-  dtype,
-  isArray,
-
+  projectId,
+  schema,
+  tableName,
+  column
 }: {
-  isNullable:boolean,
-  isUnique:boolean,
-  isPkey:boolean,
-  name: string,
-  dtype: (typeof DATA_TYPES_LIST)[number],
-  isArray: boolean
+  projectId: string,
+  schema: string,
+  tableName: string,
+  column: ColumnType
 }) {
-  const inId = `in:${name}`;
-  const outId = `out:${name}`;
+  const inId = `in:${column.name}`;
+  const outId = `out:${column.name}`;
+
+  const { mutate: delCol } = useMutation({
+    mutationFn: async (name: string) => {
+      await deleteColumn(projectId, schema, tableName, column.name)
+    },
+    onMutate: () => toast.loading("Deleting Column", { id: "del-col" }),
+    onError: (e) => toast.error(`Failed to delete column: ${e}`, { id: "del-col" }),
+    onSuccess: () => toast.success("Deleted column", { id: "del-col" })
+  })
+
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
+  
 
   return (
-    <div className="group relative flex items-center justify-between p-2 hover:bg-black/10 hover:dark:bg-black/90">
-      <Handle
-        type="target"
-        id={inId}
-        position={Position.Left}
-        className="flex! flex-1! min-h-10! w-4! opacity-0!"
-        style={{ top: "50%" }}
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger className="group relative flex items-center justify-between p-2 hover:bg-black/10 hover:dark:bg-black/90">
+          <Handle
+            type="target"
+            id={inId}
+            position={Position.Left}
+            className="flex! flex-1! min-h-10! w-4! opacity-0!"
+            style={{ top: "50%" }}
+          />
+
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              {column.isPkey && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <KeyRoundIcon className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Primary Key</TooltipContent>
+                </Tooltip>
+              )}
+              {column.isNullable && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <CircleIcon className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Nullable</TooltipContent>
+                </Tooltip>
+              )}
+              {column.isUnique && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <FingerprintIcon className="h-4 w-4" /> {/* Assuming typo; use RecycleCwOffIcon if it exists */}
+                  </TooltipTrigger>
+                  <TooltipContent>Unique</TooltipContent>
+                </Tooltip>
+              )}
+              {!column.isUnique && !column.isNullable && !column.isPkey && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <CircleIcon className="h-4 w-4 bg-white rounded-full" /> {/* Assuming typo; use RecycleCwOffIcon if it exists */}
+                  </TooltipTrigger>
+                  <TooltipContent>Non-nullable</TooltipContent>
+                </Tooltip>
+              )}
+            </TooltipProvider>
+            <h2 className={`text-base ${column.isPkey && "font-extrabold"}`}>{column.name}</h2>
+          </div>
+
+          <p className="text-muted-foreground text-sm">{column.isArray ? `${column.dtype}[]` : column.dtype}</p>
+
+          <Handle
+            type="source"
+            id={outId}
+            position={Position.Right}
+            className="flex! flex-1! min-h-10! w-4! opacity-0!"
+            style={{ top: "50%" }}
+          />
+        </ContextMenuTrigger>
+        <ContextMenuContent className="z-500">
+          <ContextMenuItem 
+            onClick={e => {
+              e.stopPropagation()
+              setIsEditSheetOpen(true)
+            }}
+            className="flex items-center gap-2"
+          >
+            <EditIcon className="w-6 h-6"/>
+            Edit Column
+          </ContextMenuItem>
+          
+          <ContextMenuSeparator />
+
+          <ContextMenuItem 
+            onClick={e => {
+              e.stopPropagation()
+              delCol(column.name)
+            }}
+            className="flex items-center gap-2"
+          >
+            <Trash2Icon className="w-6 h-6"/>
+            Delete Column
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <EditColumnSheet 
+        onOpenChange={setIsEditSheetOpen}
+        open={isEditSheetOpen}
+        projectId={projectId}
+        schema={schema}
+        column={column}
+        table={tableName}
       />
-
-      <div className="flex items-center gap-2">
-        <TooltipProvider>
-          {isPkey && (
-            <Tooltip>
-              <TooltipTrigger>
-                <KeyRoundIcon className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent>Primary Key</TooltipContent>
-            </Tooltip>
-          )}
-          {isNullable && (
-            <Tooltip>
-              <TooltipTrigger>
-                <CircleIcon className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent>Nullable</TooltipContent>
-            </Tooltip>
-          )}
-          {isUnique && (
-            <Tooltip>
-              <TooltipTrigger>
-                <FingerprintIcon className="h-4 w-4" /> {/* Assuming typo; use RecycleCwOffIcon if it exists */}
-              </TooltipTrigger>
-              <TooltipContent>Unique</TooltipContent>
-            </Tooltip>
-          )}
-          {!isUnique && !isNullable && !isPkey && (
-            <Tooltip>
-              <TooltipTrigger>
-                <CircleIcon className="h-4 w-4 bg-white rounded-full" /> {/* Assuming typo; use RecycleCwOffIcon if it exists */}
-              </TooltipTrigger>
-              <TooltipContent>Non-nullable</TooltipContent>
-            </Tooltip>
-          )}
-        </TooltipProvider>
-        <h2 className={`text-base ${isPkey && "font-extrabold"}`}>{name}</h2>
-      </div>
-
-      <p className="text-muted-foreground text-sm">{isArray ? `${dtype}[]` : dtype}</p>
-
-      <Handle
-        type="source"
-        id={outId}
-        position={Position.Right}
-        className="flex! flex-1! min-h-10! w-4! opacity-0!"
-        style={{ top: "50%" }}
-      />
-    </div>
+    </>
   )
 }
 
@@ -263,163 +310,137 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
 
   const projectId = pathname.split("/")[2]
 
-  const [addColumnSheetOpen, setAddColumnSheetOpen] = useState(false)
-  const [editSheetOpen, setIsEditSheetOpen] = useState(false)
-  const [editingCol, setEditingCol] = useState<ColumnType>()
-  const [editingColOpen, setEditingColOpen] = useState(false)
+  const [editTableSheetOpen, setEditTableSheetOpen] = useState(false)
 
-  const { mutate: delCol } = useMutation({
-    mutationFn: async (name: string) => {
-      await deleteColumn(projectId, schema, tableName, name)
-    },
-    onMutate: () => toast.loading("Deleting Column", { id: "del-col" }),
-    onError: (e) => toast.error(`Failed to delete column: ${e}`, { id: "del-col" }),
-    onSuccess: () => toast.success("Deleted column", { id: "del-col" })
-  })
 
-  useEffect(() => {
-    if (!editingCol) return;
-    setEditingColOpen(true)
-  }, [editingCol])
-
-  useEffect(() => {
-    if (editingColOpen === true) return;
-    setEditingCol(undefined)
-  }, [editingColOpen])
 
   return (
     <>
       <TooltipProvider>
         <div className="w-[480px] rounded-xl border bg-background shadow-sm drag-handle"> {/* Increased width for better table fit */}
           <div className="rounded-t-xl border-b px-3 py-2 flex items-center justify-between gap-2 font-semibold text-base dark:bg-white/10 bg-black/10">
-            <div className="flex items-center gap-2 ">
-              <Table2Icon className="h-4 w-4" />
-              {tableName}
-            </div>
+            <div className="flex fullwidth justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Table2Icon className="h-4 w-4" />
+                {tableName}
+              </div>
 
-            <div className="flex items-center gap-0">
+              <div className="flex items-center gap-2 px-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="nodrag nopan cursor-pointer" // ✅ key for React Flow
+                      onPointerDown={(e) => e.stopPropagation()} // ✅ prevents drag start
+                      onClick={(e) => {
+                        e.stopPropagation();
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="nodrag nopan"
-                    onPointerDown={(e) => {
-                      e.stopPropagation()
-                      setAddColumnSheetOpen(true)
-                    }}
-                  >
-                    <PlusIcon className="w-4 h-4" />
+                        const sp = new URLSearchParams(searchParams.toString());
+                        sp.set("schema", schema);
+                        sp.set("table", tableName);
+
+                        router.push(`${pathname}?${sp.toString()}`);
+                      }}
+                    >
+                      <SquareArrowOutUpRightIcon className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-  
-                <TooltipContent>Add Column</TooltipContent>
-              </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="nodrag nopan cursor-pointer" // ✅ key for React Flow
-                    onPointerDown={(e) => e.stopPropagation()} // ✅ prevents drag start
-                    onClick={(e) => {
-                      e.stopPropagation();
+                  <TooltipContent>See Data</TooltipContent>
+                </Tooltip>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="cursor-pointer">
+                    <EllipsisVerticalIcon className="w-4 h-4"/>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      
+                      className="flex items-center gap-2"
+                    >
+                      <CopyIcon className="w-6 h-6"/>
+                      Copy Name
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="flex items-center gap-2"
+                    >
+                      <CopyIcon className="w-6 h-6"/>
+                      Copy Schema
+                    </DropdownMenuItem>
 
-                      const sp = new URLSearchParams(searchParams.toString());
-                      sp.set("schema", schema);
-                      sp.set("table", tableName);
+                    <ContextMenuSeparator />
 
-                      router.push(`${pathname}?${sp.toString()}`);
-                    }}
-                  >
-                    <SquareArrowOutUpRightIcon className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
+                    <DropdownMenuItem
+                      onClick={() => setEditTableSheetOpen(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <EditIcon className="w-6 h-6"/>
+                      Edit Table
+                    </DropdownMenuItem>
 
-                <TooltipContent>See Data</TooltipContent>
-              </Tooltip>
+                    <DropdownMenuItem
+                      className="flex items-center gap-2"
+                    >
+                      <CopyIcon className="w-6 h-6"/>
+                      Duplicate Table
+                    </DropdownMenuItem>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={'ghost'}
-                    className="cursor-grab"
-                  >
-                    <GripVerticalIcon className="h-4 w-4 drag-handle cursor-grabbing" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Drag</TooltipContent>
-              </Tooltip>
-              
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger
+                        className="flex items-center gap-2"
+                      >
+                        <DownloadIcon className="w-6 h-6" />
+                        Downlaod
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem className="flex items-center gap-2">
+                          <FileJson className="w-6 h-6" />
+                          JSON
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="flex items-center gap-2">
+                          <FileSpreadsheetIcon className="w-6 h-6" />
+                          CSV
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    <ContextMenuSeparator />
+
+                    <DropdownMenuItem
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2Icon className="w-6 h-6"/>
+                      Delete Table
+                    </DropdownMenuItem>
+
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div> 
             </div>
           </div>
 
           <div className="flex flex-col divide-y divide-gray-600 cursor-default">
             {data.table.columns.map((col, idx) => (
-              <ContextMenu>
-                <ContextMenuTrigger>
-                  <TableColumn
-                    key={idx} 
-                    dtype={col.dtype}
-                    isArray={col.isArray}
-                    isNullable={col.isNullable}
-                    isPkey={col.isPkey}
-                    isUnique={col.isUnique}
-                    name={col.name}
-                  />
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                  <ContextMenuItem
-                    onClick={e => {
-                      e.stopPropagation()
-                      setEditingCol(col)
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <EditIcon className="w-4 h-4" />
-                    Edit Column
-                  </ContextMenuItem>
-
-                  <ContextMenuSeparator />
-
-                  <ContextMenuItem
-                    onClick={e => {
-                      e.stopPropagation()
-                      delCol(col.name)
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Trash2Icon className="w-4 h-4" />
-                    Delete Column
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
+              <TableColumn
+                projectId={projectId}
+                schema={schema}
+                tableName={data.table.name}
+                key={idx} 
+                column={col}
+              />
             ))}
           </div>
-
-          {/* Custom Legend */}
           
         </div>
       </TooltipProvider>
       
-      <AddColumnSheet
-        open={addColumnSheetOpen}
-        onOpenChange={setAddColumnSheetOpen}
-        projectId={projectId}
-        schema={schema}
-        tableId={tableName}
-      />
-
       <EditTableSheet 
-        onOpenChange={setIsEditSheetOpen}
-        open={editSheetOpen}
+        onOpenChange={setEditTableSheetOpen}
+        open={editTableSheetOpen}
         projectId={projectId}
         schema={schema}
-        tableToBeEdited={data.table.name}
+        tableToBeEdited={tableName}
       />
-          
     </>
   );
 }

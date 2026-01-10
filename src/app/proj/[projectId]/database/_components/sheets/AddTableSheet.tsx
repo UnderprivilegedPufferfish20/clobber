@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useEffect, useMemo, useState } from 'react'
+import { ChangeEvent, ReactNode, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Loader2, Columns, Table2Icon, Link2Icon, EllipsisVerticalIcon, XIcon, MenuIcon } from 'lucide-react'
@@ -54,6 +54,7 @@ import { getTables } from '@/lib/actions/database/tables/cache-actions'
 import DataTypeSelect from '../DataTypeSelect'
 import { defaultSuggestions } from '@/lib/utils'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import DefaultValueSelector from '../DefaultValueSelector'
 
 function AddTableSheet({
   projectId,
@@ -159,9 +160,18 @@ function AddTableSheet({
 
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
 
+  const isDirty = () => {
+    return columns === defaultCols && name === ""
+  }
+
   const handleOpenChange = (o: boolean) => {
     if (o) {
       onOpenChange(true);
+      return;
+    }
+
+    if (!isDirty()) {
+      onOpenChange(false);
       return;
     }
 
@@ -178,6 +188,8 @@ function AddTableSheet({
         return "";
     }
   };
+
+  
 
 
   return (
@@ -196,7 +208,7 @@ function AddTableSheet({
           <div className='space-y-6 p-6 flex-1'>
 
             <div className='flex flex-col gap-2'>
-              <Label htmlFor='table-name'>Name</Label>
+              <h1>Name</h1>
               <Input 
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -218,7 +230,9 @@ function AddTableSheet({
                 <div className='fullwidth flex flex-col gap-1'>
                   {columns.map((col, idx) => {
 
-                    const showDefaultMenu = defaultSuggestions(col.dtype).length > 0;
+                    const updateDefault = (value: string) => {
+                      updateColumn(idx, { default: value });
+                    };
 
                     return (
                         <div
@@ -239,50 +253,13 @@ function AddTableSheet({
                             value={col.dtype}
                             onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: getDefaultForType(v as DATA_TYPE_TYPE) })}
                           />
-  
-                          <div className="relative w-full">
-                            <Input
-                              value={col.default ?? ""}
-                              onChange={(e) => updateColumn(idx, { default: e.target.value })}
-                              placeholder="NULL"
-                              className={`truncate ${showDefaultMenu ? "pr-10" : ""} focus-visible:ring-0 focus-visible:ring-offset-0`}
-                            />
-  
-                            {showDefaultMenu && (
-                              <div className="absolute inset-y-0 right-1 flex items-center">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      aria-label="Default value suggestions"
-                                    >
-                                      <MenuIcon className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-  
-                                  <DropdownMenuContent align="end" className="w-72 z-110">
-                                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                      Suggested defaults
-                                    </DropdownMenuLabel>
-  
-                                    {defaultSuggestions(col.dtype).map((s) => (
-                                      <DropdownMenuItem
-                                        key={s.value}
-                                        className="flex flex-col items-start gap-1"
-                                        onClick={() => updateColumn(idx, { default: s.value })}
-                                      >
-                                        <div className="font-mono text-sm">{s.value}</div>
-                                        <div className="text-xs text-muted-foreground">{s.desc}</div>
-                                      </DropdownMenuItem>
-                                    ))}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            )}
-                          </div>
+                          
+                          <DefaultValueSelector 
+                            defaultValue={col.default ?? ""}
+                            dtype={col.dtype}
+                            setDefaultValue={updateDefault}
+                            className='truncate focus-visible:ring-0 focus-visible:ring-offset-0'
+                          />
   
                           <Checkbox
                             className={`w-6 h-6 ${col.isPkey ? "mr-30" : "mr-18"}`}
@@ -358,7 +335,7 @@ function AddTableSheet({
                 Cancel
               </Button>
             </SheetClose>
-            <Button onClick={() => mutate()} variant={"default"}>
+            <Button onClick={() => mutate()} variant={"default"} disabled={columns.length === 0 || !name}>
               {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
               Create Table
             </Button>

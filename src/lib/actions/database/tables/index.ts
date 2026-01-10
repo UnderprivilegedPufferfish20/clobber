@@ -8,7 +8,6 @@ import { getUser } from "../../auth";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
 import { ColumnType, DATA_TYPES, TableType } from "@/lib/types";
-import { addColumn } from "../columns";
 
 export async function deleteTable(
   projectId: string,
@@ -120,6 +119,36 @@ export async function addTable(
   console.log("@@ CREATE TABLE: ", result);
 
   revalidateTag(t("tables", projectId, schema), "max")
+}
+
+export async function renameTable(
+  projectId: string,
+  schema: string,
+  table: string,
+  newName: string
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  await pool.query(`
+    ALTER TABLE ${schema}.${table} RENAME TO ${newName};
+  `)
+
+  revalidateTag(t("table-schema", projectId, schema, table), "max")
+  revalidateTag(t("schema", projectId, schema), "max")
+  revalidateTag(t("columns", projectId, schema, table), "max")
+  revalidateTag(t("tables", projectId, schema), 'max')
+  revalidateTag(t("table-data", projectId, schema, table), "max")
 }
 
 export async function updateTable(

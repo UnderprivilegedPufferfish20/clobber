@@ -1,20 +1,15 @@
-'use client'
+"use client";
 
-import { ReactNode, useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { Loader2, Columns, MenuIcon } from 'lucide-react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
+import { ColumnType, DATA_TYPE_TYPE } from "@/lib/types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   Sheet,
   SheetClose,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet"
 import {
   DropdownMenu,
@@ -24,85 +19,94 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import CustomDialogHeader from '@/components/CustomDialogHeader'
-import { DATA_TYPES_LIST, FKEY_REFERENCED_ROW_ACTION_DELETED_LIST, FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST } from '@/lib/constants'
-import { DATA_TYPE_TYPE, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE, FKEY_REFERENCED_ROW_ACTION_UPDATED, FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE } from '@/lib/types'
-import { Label } from '@/components/ui/label'
-import z from 'zod'
-import { createForeignKeySchema } from '@/lib/types/schemas'
-import { Separator } from '@/components/ui/separator'
-import { getSchemas } from '@/lib/actions/database/cache-actions'
-import { addColumn } from '@/lib/actions/database/columns'
-import { getCols } from '@/lib/actions/database/columns/cache-actions'
-import { getTables } from '@/lib/actions/database/tables/cache-actions'
-import DataTypeSelect from '../DataTypeSelect'
-import { Switch } from '@/components/ui/switch'
-import { defaultSuggestions } from '@/lib/utils'
-import DefaultValueSelector from '../DefaultValueSelector'
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import DataTypeSelect from "../DataTypeSelect";
+import { Button } from "@/components/ui/button";
+import { Loader2, MenuIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { defaultSuggestions } from "@/lib/utils";
+import { editColumn } from "@/lib/actions/database/columns";
+import DefaultValueSelector from "../DefaultValueSelector";
 
-function AddColumnSheet({
+export default function EditColumnSheet({
   projectId,
-  tableId,
-  schema, // Ensure you pass the schema name (e.g., 'public')
+  schema,
+  table,
+  column,
   open,
-  onOpenChange,
+  onOpenChange
 }: {
-  tableId: string;
-  projectId: string;
-  schema: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  projectId: string,
+  schema: string,
+  table: string,
+  column: ColumnType,
+  open: boolean,
+  onOpenChange: Dispatch<SetStateAction<boolean>>
 }) {
+
   const queryClient = useQueryClient()
 
-  const [name, setName] = useState("")
-  const [dtype, setDtype] = useState<DATA_TYPE_TYPE>("string")
+  const [name, setName] = useState(column.name)
+  const [dtype, setDtype] = useState<DATA_TYPE_TYPE>(column.dtype)
 
-  const [isArray, setIsArray] = useState(false)
-  const [isPkey, setIsPkey] = useState(false)
-  const [isUnique, setIsUnique] = useState(false)
-  const [isNullable, setIsNullable] = useState(true)
+  const [isArray, setIsArray] = useState(column.isArray)
+  const [isPkey, setIsPkey] = useState(column.isPkey)
+  const [isUnique, setIsUnique] = useState(column.isUnique)
+  const [isNullable, setIsNullable] = useState(column.isNullable)
 
-  const [defaultValue, setDefaultValue] = useState("")
+  const [defaultValue, setDefaultValue] = useState(column.default)
 
   const { mutate, isPending } = useMutation({
     mutationFn: () =>
-      addColumn({
-        dtype,
-        isArray,
-        isNullable,
-        isPkey,
-        isUnique,
-        name,
-        default: defaultValue,
-      }, schema, projectId, tableId),
+      editColumn(
+        projectId, 
+        schema, 
+        table, 
+        column, {
+          dtype,
+          isArray,
+          isNullable,
+          isPkey,
+          isUnique,
+          name,
+          default: defaultValue
+        }),
     onSuccess: () => {
-      toast.success("Column added successfully", { id: "add-column" });
+      toast.success("Column updated successfully", { id: "updated-column" });
       
       onOpenChange(false);
-      queryClient.invalidateQueries(['table-details', tableId] as any);
+      queryClient.invalidateQueries(['table-details', table] as any);
     },
     onMutate(variables, context) {
-      toast.loading("Creating Column...", { id: "add-column" })
+      toast.loading("Updating Column...", { id: "updated-column" })
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to add column", { id: "add-column" });
+      toast.error(error.message || "Failed to update column", { id: "updated-column" });
     }
   })
 
 
+  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
+  
+  const isDirty = () => {
+    return isArray !== column.isArray || isPkey !== column.isPkey || isNullable !== column.isNullable || isUnique !== column.isUnique || name !== column.name || dtype !== column.dtype
+   }
+  
   const handleOpenChange = (o: boolean) => {
     if (o) {
       onOpenChange(true);
       return;
     }
 
+    if (!isDirty()) {
+      onOpenChange(false);
+      return;
+    }
+
     setIsConfirmCloseOpen(true);
   };
 
-
-
-  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
 
   return (
     <>
@@ -111,7 +115,7 @@ function AddColumnSheet({
         <SheetContent className="sm:max-w-2xl overflow-y-auto z-100 fullheight flex-1 p-0!">
           <SheetHeader className="mb-4">
             
-            <SheetTitle>Add Column to {tableId}</SheetTitle>
+            <SheetTitle>Edit Column {column.name}</SheetTitle>
           </SheetHeader>
           <Separator />
 
@@ -141,12 +145,11 @@ function AddColumnSheet({
             <div className='flex flex-col gap-2'>
               <h1>Default Value</h1>
               <DefaultValueSelector 
-                defaultValue={defaultValue}
+                defaultValue={defaultValue ?? ""}
                 setDefaultValue={setDefaultValue}
                 dtype={dtype}
               />
             </div>
-
 
             <Separator />
 
@@ -155,6 +158,7 @@ function AddColumnSheet({
               
               <div className='flex gap-2 items-center'>
                 <Switch
+                  defaultChecked={isPkey}
                   onClick={() => setIsPkey(p => !p)}
                 /> 
                 
@@ -162,7 +166,8 @@ function AddColumnSheet({
               </div>
 
               <div className='flex gap-2 items-center'>
-                <Switch 
+                <Switch
+                  defaultChecked={isNullable} 
                   disabled={isPkey}
                   onClick={() => setIsNullable(p => !p)} 
                 /> 
@@ -173,6 +178,7 @@ function AddColumnSheet({
               <div className='flex gap-2 items-center'>
                 <Switch 
                   disabled={isPkey}
+                  defaultChecked={isUnique}
                   onClick={() => setIsUnique(p => !p)} 
                 /> 
                 
@@ -182,6 +188,7 @@ function AddColumnSheet({
               <div className='flex gap-2 items-center'>
                 <Switch 
                   disabled={isPkey}
+                  defaultChecked={isArray}
                   onClick={() => setIsArray(p => !p)} 
                 /> 
                 
@@ -228,13 +235,13 @@ function AddColumnSheet({
               setIsConfirmCloseOpen(false);
               onOpenChange(false);
 
-              setName("")
-              setDefaultValue("")
-              setDtype("string")
-              setIsUnique(false)
-              setIsArray(false)
-              setIsPkey(false)
-              setIsNullable(false)
+              setName(column.name)
+              setDefaultValue(column.default)
+              setDtype(column.dtype)
+              setIsUnique(column.isUnique)
+              setIsArray(column.isArray)
+              setIsPkey(column.isPkey)
+              setIsNullable(column.isNullable)
             }}
           >
             Discard
@@ -245,5 +252,3 @@ function AddColumnSheet({
     </>
   )
 }
-
-export default AddColumnSheet;
