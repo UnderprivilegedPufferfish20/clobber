@@ -36,6 +36,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { useMutation } from "@tanstack/react-query";
 import { deleteColumn } from "@/lib/actions/database/columns";
 import { toast } from "sonner";
+import AddTableSheet from "../sheets/AddTableSheet";
 
 
 
@@ -91,6 +92,8 @@ const SchemaEditorPage = ({
 
   const { theme } = useTheme()
 
+  const [isAddTableSheetOpen, setIsAddTableSheetOpen] = useState(false)
+
   return (
     <div className="flex-1 min-h-0 w-full flex flex-col">
       <ResizablePanelGroup
@@ -99,12 +102,23 @@ const SchemaEditorPage = ({
       >
         <ResizablePanel defaultSize={100} className="min-h-0">
           <div className="h-full min-h-0 flex flex-col">
-            <header className="h-12 shrink-0 flex items-center justify-between border-b-2 p-4">
+            <header className="h-12 shrink-0 flex items-center justify-between border-b-2 p-8">
               <SchemaPicker
                 schemas={schemas ?? []}
                 value={schema}
                 onChange={setSchema}
               />
+
+              <Button
+                className="flex items-center gap-2"
+                variant={"default"}
+                onClick={() => setIsAddTableSheetOpen(true)}
+              >
+                <PlusIcon className="w-8 h-8"/>
+                Add Table
+              </Button>
+
+              
             </header>
 
             {/* THIS must actually have height */}
@@ -145,6 +159,13 @@ const SchemaEditorPage = ({
         )}
 
       </ResizablePanelGroup>
+
+      <AddTableSheet 
+        open={isAddTableSheetOpen}
+        onOpenChange={setIsAddTableSheetOpen}
+        projectId={projectId}
+        schema={schema}
+      />
     </div>
   );
 

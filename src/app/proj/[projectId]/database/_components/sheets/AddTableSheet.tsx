@@ -138,6 +138,15 @@ function AddTableSheet({
     );
   }
 
+  function deleteColumn(idx: number) {
+    setColumns((prev) => {
+      const col = prev[idx];
+      if (!col) return prev;
+
+      return prev.filter((_, i) => i !== idx);
+    });
+  }
+
   const defaultSuggestions = (col: any) => {
     const t = col.dtype?.toLowerCase();
     if (t === "uuid") {
@@ -168,18 +177,16 @@ function AddTableSheet({
     <>
     
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="sm:max-w-2xl overflow-y-auto p-2 z-100 focus:outline-none">
+        <SheetContent className="sm:max-w-2xl overflow-y-auto p-0! z-100 focus:outline-none fullheight">
           <SheetHeader className="mb-4">
-            <CustomDialogHeader 
-              icon={Table2Icon}
-              title="Add New Table"
-            />
+            <SheetTitle>Create Table</SheetTitle>
             <SheetDescription>
               Define the properties for your new PostgreSQL table.
             </SheetDescription>
           </SheetHeader>
+          <Separator />
 
-          <div className='space-y-6'>
+          <div className='space-y-6 p-6 flex-1'>
 
             <div className='flex flex-col gap-2'>
               <Label htmlFor='table-name'>Name</Label>
@@ -190,15 +197,15 @@ function AddTableSheet({
               />
             </div>
 
-            <div className='flex flex-col gap-2'>
+            <div className="flex flex-col gap-6">
               <h1>Columns</h1>
 
-              <div className='flex flex-col gap-4'>
-                <div className='fullwidth flex items-center gap-18 pl-7 text-muted-foreground'>
+              <div className="flex flex-col gap-1">
+                <div className="fullwidth flex items-center pl-2 text-muted-foreground text-sm">
+                  <h1 className="pr-25">Name</h1>
+                  <h1 className="pr-32">Type</h1>
+                  <h1 className="pr-16">Default Value</h1>
                   <h1>Primary Key</h1>
-                  <h1>Name</h1>
-                  <h1>Type</h1>
-                  <h1>Default Value</h1>
                 </div>
 
                 <div className='fullwidth flex flex-col gap-1'>
@@ -208,33 +215,24 @@ function AddTableSheet({
 
                     return (
                         <div
-                          key={idx} 
-                          className={`${col.isPkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border-b border-border`}
+                          key={`${col.name ?? "new"}:${idx}`}
+                          className={`${col.isPkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border border-border`}
                         >
-
-                          <Checkbox
-                            className="w-10 h-10"
-                            checked={col.isPkey}
-                            onCheckedChange={(v) => updateColumn(idx, { isPkey: Boolean(v), isArray:false })}
-                          />
-
+  
+                          
+  
                           <Input
                             value={col.name}
-                            onChange={(e) => {
-                              e.stopPropagation()
-                              updateColumn(idx, { name: e.target.value })
-                            }}
-                            className="focus-visible:ring-0 focus-visible:ring-offset-0"
+                            onChange={(e) => updateColumn(idx, { name: e.target.value })}
+                            className="focus-visible:ring-0 focus-visible:ring-offset-0 max-w-32 min-w-32 w-32"
                           />
-
+  
                           <DataTypeSelect
                             triggerClassname="max-w-35 min-w-35 w-35 truncate" 
                             value={col.dtype}
-                            onValueChange={(v: any) => {
-                              updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: "" });
-                            }}
+                            onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: "" })}
                           />
-
+  
                           <div className="relative w-full">
                             <Input
                               value={col.default ?? ""}
@@ -242,7 +240,7 @@ function AddTableSheet({
                               placeholder="NULL"
                               className={`truncate ${showDefaultMenu ? "pr-10" : ""} focus-visible:ring-0 focus-visible:ring-offset-0`}
                             />
-
+  
                             {showDefaultMenu && (
                               <div className="absolute inset-y-0 right-1 flex items-center">
                                 <DropdownMenu>
@@ -257,16 +255,15 @@ function AddTableSheet({
                                       <MenuIcon className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-
+  
                                   <DropdownMenuContent align="end" className="w-72 z-110">
                                     <DropdownMenuLabel className="text-xs text-muted-foreground">
                                       Suggested defaults
                                     </DropdownMenuLabel>
-
+  
                                     {defaultSuggestions(col).map((s) => (
                                       <DropdownMenuItem
                                         key={s.value}
-                                        // prevent menu closing weirdness if you later add nested controls
                                         onSelect={(e) => e.preventDefault()}
                                         className="flex flex-col items-start gap-1"
                                         onClick={() => updateColumn(idx, { default: s.value })}
@@ -280,25 +277,25 @@ function AddTableSheet({
                               </div>
                             )}
                           </div>
-
+  
+                          <Checkbox
+                            className={`w-6 h-6 ${col.isPkey ? "mr-30" : "mr-18"}`}
+                            checked={col.isPkey}
+                            onCheckedChange={(v) => updateColumn(idx, { isPkey: Boolean(v), isArray: false })}
+                          />
+  
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant={"ghost"}
-                                className='relative'
-                              >
+                              <Button variant="ghost" className={`${col.isPkey && "hidden"} relative`} type="button">
                                 {getCheckedOptions(col) > 0 && (
-                                  <Badge
-                                    className='absolute top-0 left-0 w-3 h-4'
-                                  >
-                                    {getCheckedOptions(col)}
-                                  </Badge>
+                                  <Badge className="absolute top-0 left-0 w-3 h-4">{getCheckedOptions(col)}</Badge>
                                 )}
-                                <EllipsisVerticalIcon className='w-6 h-6' />
+                                <EllipsisVerticalIcon className="w-6 h-6" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className='z-140' align='end'>
+                            <DropdownMenuContent className="z-140" align="end">
                               <DropdownMenuLabel>More Options</DropdownMenuLabel>
+  
                               <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
                                 <Checkbox
                                   id={`isNullable-${idx}`}
@@ -307,7 +304,7 @@ function AddTableSheet({
                                 />
                                 <Label htmlFor={`isNullable-${idx}`}>Is Nullable</Label>
                               </DropdownMenuItem>
-
+  
                               <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
                                 <Checkbox
                                   id={`isUnique-${idx}`}
@@ -316,8 +313,9 @@ function AddTableSheet({
                                 />
                                 <Label htmlFor={`isUnique-${idx}`}>Is Unique</Label>
                               </DropdownMenuItem>
+  
                               {!col.isPkey && (
-                                <DropdownMenuItem className={`flex items-center gap-2`} onSelect={(e) => e.preventDefault()}>
+                                <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
                                   <Checkbox
                                     id={`isArray-${idx}`}
                                     checked={col.isArray}
@@ -326,39 +324,43 @@ function AddTableSheet({
                                   <Label htmlFor={`isArray-${idx}`}>Is Array</Label>
                                 </DropdownMenuItem>
                               )}
-
                             </DropdownMenuContent>
                           </DropdownMenu>
-
-                          <Button
-                            variant="ghost"
-                            onClick={() =>
-                              setColumns((prev) => prev.filter((_, i) => i !== idx))
-                            }
-                          >
+  
+                          <Button variant="ghost" type="button" onClick={() => deleteColumn(idx)}>
                             <XIcon className="w-6 h-6" />
                           </Button>
-
                         </div>
                     )
                   })}
                 </div>
-
-                <Button
-                  variant="secondary"
-                  className="max-w-3xs"
-                  onClick={() => setColumns((prev) => [...prev, emptyColumn])}
+                
+                <div
+                  className={`flex items-center justify-center fullwidth relative rounded-md border border-border py-2 mt-2`}
                 >
-                  Add Column
-                </Button>
+                  <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setColumns((p) => [...p, emptyColumn])}>
+                    Add Column
+                  </Button>
+                </div>
               </div>
             </div>
 
-    
+            <Separator />
 
-            <Button onClick={() => mutate()} className="w-full" disabled={isPending || !name}>
+            <div className="flex flex-col gap-2">
+              <h1>Foreign Keys</h1> 
+            </div>
+          </div>
+
+         <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
+            <SheetClose asChild>
+              <Button variant={"secondary"}>
+                Cancel
+              </Button>
+            </SheetClose>
+            <Button onClick={() => mutate()} variant={"default"}>
               {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
-              Create Column
+              Create Table
             </Button>
           </div>
         </SheetContent>

@@ -22,7 +22,7 @@ import { useState } from "react";
 export default function DataTypeSelect({
   value,
   onValueChange,
-  triggerClassname
+  triggerClassname,
 }: {
   value: string,
   onValueChange: (value: string) => void;

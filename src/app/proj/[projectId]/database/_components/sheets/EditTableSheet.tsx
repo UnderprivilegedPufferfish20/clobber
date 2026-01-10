@@ -244,7 +244,7 @@ function EditTableSheet({
     <>
       {/* Main editor */}
       <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent className="sm:max-w-2xl overflow-y-auto p-2 z-100 focus:outline-none overflow-x-hidden">
+        <SheetContent className="sm:max-w-2xl overflow-y-auto z-100 focus:outline-none overflow-x-hidden p-0! fullheight">
           <SheetHeader className="mb-4">
             <SheetTitle>Edit {table?.name}</SheetTitle>
             <SheetDescription>Update columns and name</SheetDescription>
@@ -252,7 +252,7 @@ function EditTableSheet({
           <Separator />
           
 
-          <div className="space-y-6">
+          <div className="space-y-6 p-6 flex-1">
             <div className="flex flex-col gap-2">
               <h1>Name</h1>
               <Input value={name} onChange={(e) => setName(e.target.value)} id="table-name" />
@@ -413,17 +413,27 @@ function EditTableSheet({
               <h1>Foreign Keys</h1> 
             </div>
             
-            <div className="w-full overflow-x-hidden flex items-center justify-end absolute bottom-0 border-t gap-2 p-3 pr-6">
-              <SheetClose asChild>
-                <Button variant={"secondary"}>
-                  Cancel
-                </Button>
-              </SheetClose>
-              <Button onClick={() => mutate()} disabled={disableSave} variant={"default"}>
-                {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
-                Update Table
+          </div>
+
+          <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
+            <SheetClose asChild>
+              <Button 
+                variant={"secondary"}
+                className="text-sm"
+              >
+                Cancel
               </Button>
-            </div>
+            </SheetClose>
+            <Button 
+              onClick={() => mutate()} 
+              disabled={disableSave} 
+              variant={"default"}
+              size={"sm"}
+              className="text-sm"
+            >
+              {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
+              Update Table
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -433,7 +443,7 @@ function EditTableSheet({
         open={isConfirmCloseOpen}
         onOpenChange={setIsConfirmCloseOpen}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="z-160">
         <AlertDialogHeader>
           <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
           <AlertDialogDescription>

@@ -335,5 +335,10 @@ export const DTypes: DataTypeType[] = [
     description: "Variable-length binary string",
     icon: BinaryIcon
   },
+  {
+    dtype: DATA_TYPES.UUID,
+    description: "Universally unique identifier",
+    icon: FingerprintIcon
+  }
   
 ]
