@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Loader2, Columns, Table2Icon, Link2Icon, EllipsisVerticalIcon, XIcon, MenuIcon } from 'lucide-react'
@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/select"
 import CustomDialogHeader from '@/components/CustomDialogHeader'
 import { DATA_TYPES_LIST, FKEY_REFERENCED_ROW_ACTION_DELETED_LIST, FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST } from '@/lib/constants'
-import { DATA_TYPE_TYPE, DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE, FKEY_REFERENCED_ROW_ACTION_UPDATED, FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE } from '@/lib/types'
+import { DATA_TYPE_TYPE, DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE, FKEY_REFERENCED_ROW_ACTION_UPDATED, FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE, FkeyType } from '@/lib/types'
 import { Label } from '@/components/ui/label'
 import z from 'zod'
 import { createColumnSchema, createForeignKeySchema } from '@/lib/types/schemas'
@@ -52,6 +52,8 @@ import { getCols } from '@/lib/actions/database/columns/cache-actions'
 import { addTable } from '@/lib/actions/database/tables'
 import { getTables } from '@/lib/actions/database/tables/cache-actions'
 import DataTypeSelect from '../DataTypeSelect'
+import { defaultSuggestions } from '@/lib/utils'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 
 function AddTableSheet({
   projectId,
@@ -79,9 +81,7 @@ function AddTableSheet({
 
   type ColumnForm = z.infer<typeof createColumnSchema>;
 
-
-
-  const [columns, setColumns] = useState<ColumnForm[]>([
+  const defaultCols: ColumnForm[] = [
     {
       name: "id",
       dtype: "uuid",
@@ -109,7 +109,13 @@ function AddTableSheet({
       isUnique: false,
       default: "now()",
     }
-  ])
+  ]
+
+
+  const [columns, setColumns] = useState<ColumnForm[]>(defaultCols)
+
+  const [fkeys, setFkeys] = useState<FkeyType[]>([])
+  const [isFkeyOpen, setIsFkeyOpen] = useState(false)
 
   const [name, setName] = useState("")
 
@@ -147,36 +153,37 @@ function AddTableSheet({
     });
   }
 
-  const defaultSuggestions = (col: any) => {
-    const t = col.dtype?.toLowerCase();
-    if (t === "uuid") {
-      return [
-        {
-          value: "uuid_generate_v4()",
-          desc: "Generate a v4 UUID automatically for new rows.",
-        },
-      ];
-    }
-    if (t === "datetime" || t === "timestamp" || t === "timestamp with time zone") {
-      return [
-        {
-          value: "now()",
-          desc: "Set the value to the current timestamp on insert.",
-        },
-      ];
-    }
-    return [];
-  };
-
   const getCheckedOptions = (col: any) => {
     return [col.isArray, col.isNullable, col.isUnique].filter(t => t === true).length
   }
+
+  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
+
+  const handleOpenChange = (o: boolean) => {
+    if (o) {
+      onOpenChange(true);
+      return;
+    }
+
+    setIsConfirmCloseOpen(true);
+  };
+
+  const getDefaultForType = (dtype: DATA_TYPE_TYPE) => {
+    switch (dtype) {
+      case "uuid":
+        return "uuid_generate_v4()";
+      case "datetime":
+        return "now()";
+      default:
+        return "";
+    }
+  };
 
 
   return (
     <>
     
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent className="sm:max-w-2xl overflow-y-auto p-0! z-100 focus:outline-none fullheight">
           <SheetHeader className="mb-4">
             <SheetTitle>Create Table</SheetTitle>
@@ -211,7 +218,7 @@ function AddTableSheet({
                 <div className='fullwidth flex flex-col gap-1'>
                   {columns.map((col, idx) => {
 
-                    const showDefaultMenu = defaultSuggestions(col).length > 0;
+                    const showDefaultMenu = defaultSuggestions(col.dtype).length > 0;
 
                     return (
                         <div
@@ -230,7 +237,7 @@ function AddTableSheet({
                           <DataTypeSelect
                             triggerClassname="max-w-35 min-w-35 w-35 truncate" 
                             value={col.dtype}
-                            onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: "" })}
+                            onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: getDefaultForType(v as DATA_TYPE_TYPE) })}
                           />
   
                           <div className="relative w-full">
@@ -261,10 +268,9 @@ function AddTableSheet({
                                       Suggested defaults
                                     </DropdownMenuLabel>
   
-                                    {defaultSuggestions(col).map((s) => (
+                                    {defaultSuggestions(col.dtype).map((s) => (
                                       <DropdownMenuItem
                                         key={s.value}
-                                        onSelect={(e) => e.preventDefault()}
                                         className="flex flex-col items-start gap-1"
                                         onClick={() => updateColumn(idx, { default: s.value })}
                                       >
@@ -344,12 +350,6 @@ function AddTableSheet({
                 </div>
               </div>
             </div>
-
-            <Separator />
-
-            <div className="flex flex-col gap-2">
-              <h1>Foreign Keys</h1> 
-            </div>
           </div>
 
          <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
@@ -365,6 +365,40 @@ function AddTableSheet({
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog
+        open={isConfirmCloseOpen}
+        onOpenChange={setIsConfirmCloseOpen}
+      >
+        <AlertDialogContent className="z-160">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have unsaved changes. Are you sure you want to discard them?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setIsConfirmCloseOpen(false);
+            }}
+          >
+            Stay
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setIsConfirmCloseOpen(false);
+              onOpenChange(false);
+
+              setName("")
+              setColumns(defaultCols)
+            }}
+          >
+            Discard
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -406,13 +406,6 @@ function EditTableSheet({
                 </div>
               </div>
             </div>
-
-            <Separator />
-
-            <div className="flex flex-col gap-2">
-              <h1>Foreign Keys</h1> 
-            </div>
-            
           </div>
 
           <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">

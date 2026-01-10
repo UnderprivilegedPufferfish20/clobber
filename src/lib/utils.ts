@@ -1,7 +1,8 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { Object as DbObject } from "@/lib/db/generated"
-import { DATA_TYPE_TYPE, DATA_TYPES, FilterOperator, FUNCTION_RETURN_TYPE_TYPE, FUNCTION_RETURN_TYPES, QueryFilters } from "./types";
+import { ColumnType, DATA_TYPE_TYPE, DATA_TYPES, FilterOperator, FUNCTION_RETURN_TYPE_TYPE, FUNCTION_RETURN_TYPES, QueryFilters } from "./types";
+import { DATA_TYPES_LIST } from "./constants";
 
 
 export function cn(...inputs: ClassValue[]) {
@@ -67,9 +68,31 @@ export function mapPostgresType(pgType: string): DATA_TYPES {
   if (type.includes('timestamp') || type.includes('date') || type.includes('time')) return DATA_TYPES.DateTime;
   if (type.includes('bytea')) return DATA_TYPES.BYTES;
   if (type.includes('json')) return DATA_TYPES.JSON;
+  if (type.includes('uuid')) return DATA_TYPES.UUID;
   
   return DATA_TYPES.STRING; // default fallback
 }
+
+export const defaultSuggestions = (dtype: (typeof DATA_TYPES_LIST)[number]) => {
+    const t = dtype.toLowerCase();
+    if (t === "uuid") {
+      return [
+        {
+          value: "uuid_generate_v4()",
+          desc: "Generate a v4 UUID automatically for new rows.",
+        },
+      ];
+    }
+    if (t === "datetime" || t === "timestamp" || t === "timestamp with time zone") {
+      return [
+        {
+          value: "now()",
+          desc: "Set the value to the current timestamp on insert.",
+        },
+      ];
+    }
+    return [];
+  };
 
 export function getPostgresType(type: DATA_TYPE_TYPE | FUNCTION_RETURN_TYPE_TYPE | string): string {
   switch (type) {

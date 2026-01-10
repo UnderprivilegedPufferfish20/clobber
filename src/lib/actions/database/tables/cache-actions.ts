@@ -130,8 +130,10 @@ export async function getTableSchema(
 }
 
 
+
+
 export async function getTables(schemaName: string, projectId: string) {
-  cacheTag(t("tables", projectId,schemaName))
+  cacheTag(t("tables", projectId, schemaName))
 
   const project = await getProjectById(projectId);
 

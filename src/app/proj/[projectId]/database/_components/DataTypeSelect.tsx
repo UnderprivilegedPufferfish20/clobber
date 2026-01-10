@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { DTypes } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, mapPostgresType } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 
@@ -28,9 +28,11 @@ export default function DataTypeSelect({
   onValueChange: (value: string) => void;
   triggerClassname: string,
 }) {
+  console.log("@@DTYPE SELECTOR: ", value)
+
   const [open, setOpen] = useState(false)
 
-  const selectedType = DTypes.find(d => d.dtype === value);
+  const selectedType = DTypes.find(d => d.dtype === mapPostgresType(value));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

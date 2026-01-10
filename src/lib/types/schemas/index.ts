@@ -103,7 +103,8 @@ export const createColumnSchema = z.object({
 
 export const createTableSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
-  columns: createColumnSchema.array()
+  columns: createColumnSchema.array(),
+  fkeys: createForeignKeySchema.array().optional()
 })
 
 export const createEdgeFunctionSchema = z.object({

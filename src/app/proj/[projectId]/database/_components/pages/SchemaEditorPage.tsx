@@ -21,7 +21,7 @@ import {
   Handle,
   Position,
 } from "@xyflow/react";
-import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, RefreshCwOffIcon, GripVerticalIcon, PlusIcon, Edit2Icon, EditIcon, Trash2Icon } from "lucide-react"; // Assuming "RecycleCwOffIcon" is a typo for "RefreshCwOffIcon"; adjust if needed
+import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, RefreshCwOffIcon, GripVerticalIcon, PlusIcon, Edit2Icon, EditIcon, Trash2Icon, FingerprintIcon } from "lucide-react"; // Assuming "RecycleCwOffIcon" is a typo for "RefreshCwOffIcon"; adjust if needed
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
@@ -199,7 +199,7 @@ function TableColumn({
         type="target"
         id={inId}
         position={Position.Left}
-        className="w-2.5! h-2.5! bg-muted-foreground!"
+        className="flex! flex-1! min-h-10! w-4! opacity-0!"
         style={{ top: "50%" }}
       />
 
@@ -224,7 +224,7 @@ function TableColumn({
           {isUnique && (
             <Tooltip>
               <TooltipTrigger>
-                <RefreshCwOffIcon className="h-4 w-4" /> {/* Assuming typo; use RecycleCwOffIcon if it exists */}
+                <FingerprintIcon className="h-4 w-4" /> {/* Assuming typo; use RecycleCwOffIcon if it exists */}
               </TooltipTrigger>
               <TooltipContent>Unique</TooltipContent>
             </Tooltip>
@@ -247,7 +247,7 @@ function TableColumn({
         type="source"
         id={outId}
         position={Position.Right}
-        className="w-2.5! h-2.5! bg-muted-foreground!"
+        className="flex! flex-1! min-h-10! w-4! opacity-0!"
         style={{ top: "50%" }}
       />
     </div>
@@ -315,23 +315,6 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
                   </TooltipTrigger>
   
                 <TooltipContent>Add Column</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={"ghost"}
-                    onClick={e => {
-                      e.stopPropagation()
-                      setIsEditSheetOpen(true)
-                    }}
-                  >
-                    <Edit2Icon className="w-4 h-4"/>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Edit Table
-                </TooltipContent>
               </Tooltip>
 
               <Tooltip>

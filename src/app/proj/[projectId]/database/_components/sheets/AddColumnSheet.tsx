@@ -1,26 +1,29 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2, Columns } from 'lucide-react'
+import { Loader2, Columns, MenuIcon } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import CustomDialogHeader from '@/components/CustomDialogHeader'
 import { DATA_TYPES_LIST, FKEY_REFERENCED_ROW_ACTION_DELETED_LIST, FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST } from '@/lib/constants'
 import { DATA_TYPE_TYPE, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE, FKEY_REFERENCED_ROW_ACTION_UPDATED, FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE } from '@/lib/types'
@@ -32,6 +35,9 @@ import { getSchemas } from '@/lib/actions/database/cache-actions'
 import { addColumn } from '@/lib/actions/database/columns'
 import { getCols } from '@/lib/actions/database/columns/cache-actions'
 import { getTables } from '@/lib/actions/database/tables/cache-actions'
+import DataTypeSelect from '../DataTypeSelect'
+import { Switch } from '@/components/ui/switch'
+import { defaultSuggestions } from '@/lib/utils'
 
 function AddColumnSheet({
   projectId,
@@ -55,14 +61,6 @@ function AddColumnSheet({
   const [isPkey, setIsPkey] = useState(false)
   const [isUnique, setIsUnique] = useState(false)
   const [isNullable, setIsNullable] = useState(true)
-
-  const [fkey, setFkey] = useState<{ 
-    keySchema: string, 
-    keyTable: string, 
-    keyColumn: string, 
-    updateAction: (typeof FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST)[number];
-    deleteAction: (typeof FKEY_REFERENCED_ROW_ACTION_DELETED_LIST)[number];
-  }>({ keySchema: "", keyTable: "", keyColumn: "", updateAction: "NO ACTION", deleteAction: "NO ACTION" })
 
   const [defaultValue, setDefaultValue] = useState("")
 
@@ -91,220 +89,211 @@ function AddColumnSheet({
     }
   })
 
-  const { data: schemas, isPending: isSchemasPending } = useQuery({
-    queryKey: ["schemas", projectId],
-    queryFn: () => getSchemas(projectId)
-  })
 
-  const { data: tables, isPending: isTablesPending } = useQuery({
-    queryKey: ["tables", projectId, fkey.keySchema],
-    queryFn: () => getTables(fkey.keySchema, projectId),
-    enabled: fkey.keySchema !== ""
-  })
+  const handleOpenChange = (o: boolean) => {
+    if (o) {
+      onOpenChange(true);
+      return;
+    }
 
-  const { data: cols, isPending: isColsPending } = useQuery({
-    queryKey: ["cols", projectId, fkey.keySchema, fkey.keyTable],
-    queryFn: () => getCols(fkey.keySchema, projectId, fkey.keyTable),
-    enabled: Boolean(fkey.keySchema !== "" && fkey.keyTable !== "")
-  })
+    setIsConfirmCloseOpen(true);
+  };
 
-  const effectiveDtype = isArray ? `${dtype}[]` : dtype;
+
+  
+  useEffect(() => {
+    switch (dtype) {
+      case "uuid":
+        setDefaultValue("uuid_generate_v4()");
+        break
+      case "datetime":
+        setDefaultValue("now()");
+        break
+      default:
+        setDefaultValue("")
+    }
+  }, [dtype])
+
+  const showDefaultMenu = dtype === "datetime" || dtype === "uuid"
+  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-2xl overflow-y-auto p-2 z-100">
-        <SheetHeader className="mb-4">
-          <CustomDialogHeader 
-            icon={Columns}
-            title="Add New Column"
-          />
-          <SheetDescription>
-            Define the properties for your new PostgreSQL column.
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className='space-y-6'>
-
-          <div className='flex flex-col gap-2'>
-            <Label htmlFor='column-name'>Column Name</Label>
-            <Input 
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder='e.g. user_email'
-              id='column-name'
-            />
-          </div>
-
-          <div className='flex flex-col gap-2'>
-            <Label htmlFor='data-type'>Data Type</Label>
-            <Select onValueChange={v => setDtype(v as DATA_TYPE_TYPE)} defaultValue={dtype}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a type" />
-              </SelectTrigger>
-              <SelectContent className="z-110">
-                {DATA_TYPES_LIST.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type.toUpperCase()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className='flex flex-col gap-2'>
-            <Label htmlFor='default-value'>Default Value (optional)</Label>
-            <Input 
-              value={defaultValue}
-              onChange={e => setDefaultValue(e.target.value)}
-              placeholder="e.g. 'anonymous' or 0"
-              id='default-value'
-            />
-          </div>
-
+    <>
+    
+      <Sheet open={open} onOpenChange={handleOpenChange}>
+        <SheetContent className="sm:max-w-2xl overflow-y-auto z-100 fullheight flex-1 p-0!">
+          <SheetHeader className="mb-4">
+            
+            <SheetTitle>Add Column to {tableId}</SheetTitle>
+          </SheetHeader>
           <Separator />
 
-          <div className="space-y-2">
-            <Label>Column Constraints</Label>
-            <div className="grid grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/30">
-              <div className='flex items-center gap-4'>
-                <Checkbox checked={isNullable} onCheckedChange={checked => setIsNullable(checked as boolean)} id="isNullable" />
-                <Label className="font-normal cursor-pointer" htmlFor='isNullable'>Nullable</Label>
+          <div className='space-y-6 p-6 flex-1'>
+
+            <div className='flex flex-col gap-2'>
+              <h1>Name</h1>
+              <Input 
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder='e.g. user_email'
+                id='column-name'
+              />
+            </div>
+
+            <Separator />
+
+            <div className='flex flex-col gap-2'>
+              <h1>Data Type</h1>
+              <DataTypeSelect 
+                onValueChange={v => setDtype(v as DATA_TYPE_TYPE)}
+                value={dtype}
+                triggerClassname=''
+              />
+            </div>
+
+            <div className='flex flex-col gap-2'>
+              <h1>Default Value</h1>
+
+              <div className='relative w-full'>
+                <Input 
+                  value={defaultValue}
+                  onChange={e => setDefaultValue(e.target.value)}
+                  placeholder="e.g. 'anonymous' or 0"
+                  id='default-value'
+                />
+
+                {showDefaultMenu && (
+                  <div className="absolute inset-y-0 right-1 flex items-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label="Default value suggestions"
+                        >
+                          <MenuIcon className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent align="end" className="w-72 z-110">
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          Suggested defaults
+                        </DropdownMenuLabel>
+
+                        {defaultSuggestions(dtype).map((s) => (
+                          <DropdownMenuItem
+                            key={s.value}
+                            className="flex flex-col items-start gap-1"
+                            onClick={() => setDefaultValue(s.value)}
+                          >
+                            <div className="font-mono text-sm">{s.value}</div>
+                            <div className="text-xs text-muted-foreground">{s.desc}</div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
               </div>
-              <div className='flex items-center gap-4'>
-                <Checkbox checked={isPkey} onCheckedChange={checked => setIsPkey(checked as boolean)} id="isPkey" />
-                <Label className="font-normal cursor-pointer" htmlFor='isPkey'>Primary Key</Label>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <h1>Constraints</h1>
+              
+              <div className='flex gap-2 items-center'>
+                <Switch
+                  onClick={() => setIsPkey(p => !p)}
+                /> 
+                
+                <p className={`text-xl text-white`}>Primary Key</p>
               </div>
-              <div className='flex items-center gap-4'>
-                <Checkbox checked={isUnique} onCheckedChange={checked => setIsUnique(checked as boolean)} id="isUnique" />
-                <Label className="font-normal cursor-pointer" htmlFor='isUnique'>Unique</Label>
+
+              <div className='flex gap-2 items-center'>
+                <Switch 
+                  disabled={isPkey}
+                  onClick={() => setIsNullable(p => !p)} 
+                /> 
+                
+                <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Nullable</p>
               </div>
-              <div className='flex items-center gap-4'>
-                <Checkbox checked={isArray} onCheckedChange={checked => setIsArray(checked as boolean)} id="isArray" />
-                <Label className="font-normal cursor-pointer" htmlFor='isArray'>Array</Label>
+
+              <div className='flex gap-2 items-center'>
+                <Switch 
+                  disabled={isPkey}
+                  onClick={() => setIsUnique(p => !p)} 
+                /> 
+                
+                <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Unique</p>
+              </div>
+
+              <div className='flex gap-2 items-center'>
+                <Switch 
+                  disabled={isPkey}
+                  onClick={() => setIsArray(p => !p)} 
+                /> 
+                
+                <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Array</p>
               </div>
             </div>
           </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <Label>Foreign Key Constraint (optional)</Label>
-            <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
-              <div className='flex flex-col gap-2'>
-                <Label>Referenced Schema</Label>
-                <Select value={fkey.keySchema} onValueChange={v => setFkey(prev => ({ ...prev, keySchema: v, keyTable: "", keyColumn: "" }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a schema" />
-                  </SelectTrigger>
-                  <SelectContent className="z-110">
-                    {isSchemasPending ? (
-                      <div className="flex items-center justify-center p-2">
-                        <Loader2 className="animate-spin h-4 w-4" />
-                      </div>
-                    ) : (
-                      schemas?.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {fkey.keySchema !== "" && (
-                <div className='flex flex-col gap-2'>
-                  <Label>Referenced Table</Label>
-                  <Select value={fkey.keyTable} onValueChange={v => setFkey(prev => ({ ...prev, keyTable: v, keyColumn: "" }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a table" />
-                    </SelectTrigger>
-                    <SelectContent className="z-110">
-                      {isTablesPending ? (
-                        <div className="flex items-center justify-center p-2">
-                          <Loader2 className="animate-spin h-4 w-4" />
-                        </div>
-                      ) : (
-                        tables?.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {fkey.keyTable !== "" && (
-                <div className='flex flex-col gap-2'>
-                  <Label>Referenced Column</Label>
-                  <Select value={fkey.keyColumn} onValueChange={v => setFkey(prev => ({ ...prev, keyColumn: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a column" />
-                    </SelectTrigger>
-                    <SelectContent className="z-110">
-                      {isColsPending ? (
-                        <div className="flex items-center justify-center p-2">
-                          <Loader2 className="animate-spin h-4 w-4" />
-                        </div>
-                      ) : (
-                        cols?.filter(c => c.dtype === effectiveDtype).map((s) => (
-                          <SelectItem key={s.name} value={s.name}>
-                            {s.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {fkey.keyColumn !== "" && (
-                <div className="space-y-4">
-                  <div className='flex flex-col gap-2'>
-                    <Label>Action if Referenced Row is Updated</Label>
-                    <Select value={fkey.updateAction} onValueChange={v => setFkey(prev => ({ ...prev, updateAction: v as FKEY_REFERENCED_ROW_ACTION_UPDATED }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an action" />
-                      </SelectTrigger>
-                      <SelectContent className="z-110">
-                        {FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className='flex flex-col gap-2'>
-                    <Label>Action if Referenced Row is Deleted</Label>
-                    <Select value={fkey.deleteAction} onValueChange={v => setFkey(prev => ({ ...prev, deleteAction: v as FKEY_REFERENCED_ROW_ACTION_DELETED }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an action" />
-                      </SelectTrigger>
-                      <SelectContent className="z-110">
-                        {FKEY_REFERENCED_ROW_ACTION_DELETED_LIST.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
+            <SheetClose asChild>
+              <Button variant={"secondary"}>
+                Cancel
+              </Button>
+            </SheetClose>
+            <Button onClick={() => mutate()} disabled={isPending || !name}>
+              {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
+              Create Column
+            </Button>
           </div>
+        </SheetContent>
 
-          <Button onClick={() => mutate()} className="w-full" disabled={isPending || !name}>
-            {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
-            Create Column
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+      </Sheet>
+
+      <AlertDialog
+        open={isConfirmCloseOpen}
+        onOpenChange={setIsConfirmCloseOpen}
+      >
+        <AlertDialogContent className="z-160">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have unsaved changes. Are you sure you want to discard them?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setIsConfirmCloseOpen(false);
+            }}
+          >
+            Stay
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setIsConfirmCloseOpen(false);
+              onOpenChange(false);
+
+              setName("")
+              setDefaultValue("")
+              setDtype("string")
+              setIsUnique(false)
+              setIsArray(false)
+              setIsPkey(false)
+              setIsNullable(false)
+            }}
+          >
+            Discard
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
