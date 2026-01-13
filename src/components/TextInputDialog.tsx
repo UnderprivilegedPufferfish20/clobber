@@ -16,7 +16,6 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 type Props = {
-  defaultState: string,
   open: boolean,
   onOpenChange: Dispatch<SetStateAction<boolean>>,
   value: string,

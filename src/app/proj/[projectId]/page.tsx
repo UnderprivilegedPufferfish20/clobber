@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import InviteUsersDialog from './_components/InviteDialog'
 import { Separator } from '@/components/ui/separator'
 import { getProjectById } from '@/lib/actions/database/cache-actions'
+import { Suspense } from 'react'
+import Loader from '@/components/Loader'
 
 const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
 
@@ -30,13 +32,13 @@ const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
 
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 className="page-header-heading">Home</h1>
-        <InviteUsersDialog projectId={projectId}/>
+      <div className="page-container">
+        <div className="page-header">
+          <h1 className="page-header-heading">Home</h1>
+          <InviteUsersDialog projectId={projectId}/>
+        </div>
+        <Separator />
       </div>
-      <Separator />
-    </div>
   )
 }
 

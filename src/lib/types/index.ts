@@ -1,6 +1,5 @@
 import { LucideIcon } from "lucide-react";
 import { User } from "../db/generated";
-import { DATA_TYPES_LIST, FUNCTION_RETURN_TYPES_LIST } from "../constants";
 import z from "zod";
 import { createColumnSchema, createForeignKeyColumnSchema, createForeignKeySchema, createTableSchema } from "./schemas";
 
@@ -51,14 +50,80 @@ export interface PlansRecord {
 }
 
 export enum DATA_TYPES {
-  STRING = 'string',
-  INT = 'integer',
-  FLOAT = 'float',
-  BOOL = 'boolean',
-  DateTime = 'datetime',
-  BYTES = "bytes",
-  JSON = "JSON",
-  UUID = "uuid"
+  BIGINT = "bigint", // int8
+  BIGSERIAL = "bigserial", // serial8
+
+  BIT = "bit", // bit(n)
+  BIT_VARYING = "bit varying", // varbit(n)
+
+  BOOLEAN = "boolean", // bool
+
+  BOX = "box",
+  BYTEA = "bytea",
+
+  CHARACTER = "character", // char(n)
+  CHARACTER_VARYING = "character varying", // varchar(n)
+
+  CIDR = "cidr",
+  CIRCLE = "circle",
+
+  DATE = "date",
+
+  DOUBLE_PRECISION = "double precision", // float8
+  INET = "inet",
+
+  INTEGER = "integer", // int4 / int
+  INTERVAL = "interval", // interval [fields] [(p)]
+
+  JSON = "json",
+  JSONB = "jsonb",
+
+  LINE = "line",
+  LSEG = "lseg",
+
+  MACADDR = "macaddr",
+  MACADDR8 = "macaddr8",
+
+  MONEY = "money",
+
+  NUMERIC = "numeric", // numeric(p,s) / decimal(p,s)
+
+  PATH = "path",
+
+  PG_LSN = "pg_lsn",
+  PG_SNAPSHOT = "pg_snapshot",
+
+  POINT = "point",
+  POLYGON = "polygon",
+
+  REAL = "real", // float4
+
+  SMALLINT = "smallint", // int2
+  SMALLSERIAL = "smallserial", // serial2
+  SERIAL = "serial", // serial4
+
+  TEXT = "text",
+
+  TIME = "time", // time(p) [without time zone]
+  TIME_TZ = "time with time zone", // timetz
+
+  TIMESTAMP = "timestamp", // timestamp(p) [without time zone]
+  TIMESTAMPTZ = "timestamp with time zone", // timestamptz
+
+  TSQUERY = "tsquery",
+  TSVECTOR = "tsvector",
+
+  TXID_SNAPSHOT = "txid_snapshot", // deprecated (see pg_snapshot)
+
+  UUID = "uuid",
+  XML = "xml",
+}
+
+export interface DatabaseObjectAddSheetProps {
+  projectId: string,
+  schemas: string[],
+  open: boolean,
+  onOpenChange: (open: boolean) => void;
 }
 
 export type TableViewProps = {
@@ -169,9 +234,13 @@ export enum TRIGGER_ORIENTATION {
 
 export type QueryFilters = Record<string, [FilterOperator, string]>
 
+export enum DATA_EXPORT_FORMATS {
+  CSV = "CSV",
+  JSON = "JSON",
+  SQL = "SQL"
+}
 
-export type FUNCTION_RETURN_TYPE_TYPE = (typeof FUNCTION_RETURN_TYPES_LIST)[number]
-export type DATA_TYPE_TYPE = (typeof DATA_TYPES_LIST)[number]
+
 export type INDEX_TYPE = (typeof INDEX_TYPES)
 export type TRIGGER_EVENT_TYPE = (typeof TRIGGER_EVENTS)
 export type TRIGGER_TYPE_TYPE = (typeof TRIGGER_TYPE)
@@ -189,3 +258,38 @@ export type JsonNodeData = {
   title: string;
   table: TableType;
 };
+
+export type TriggerType = {
+  name: string,
+  table_name: string,
+  schema_name: string,
+  function_name: string,
+  events: string[],
+  timing: string[],
+  orientation: string
+}
+
+export type IndexType = {
+  schema_name: string,
+  table_name: string,
+  index_name: string,
+  access_method: string,
+  index_definition: string,
+  is_unique: boolean,
+  is_primary: boolean
+}
+
+export type DatabaseFunctionType = {
+  schema_name: string,
+  function_name: string,
+  function_type: string,
+  data_type: string,
+  arguments: string,
+  definition: string
+}
+
+export type EnumType = {
+  enum_schema: string,
+  enum_name: string,
+  enum_values: string
+}

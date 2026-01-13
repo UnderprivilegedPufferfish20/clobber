@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { DATA_TYPES_LIST } from "@/lib/constants";
+import { DATA_TYPES } from "@/lib/types";
 import { defaultSuggestions } from "@/lib/utils";
 import { MenuIcon } from "lucide-react";
 import { useEffect } from "react";
@@ -11,7 +11,7 @@ import { useEffect } from "react";
 type Props = {
   defaultValue: string
   setDefaultValue: (value: string) => void
-  dtype: (typeof DATA_TYPES_LIST)[number]
+  dtype: typeof DATA_TYPES[keyof typeof DATA_TYPES]
   className?: string
 }
 
@@ -26,7 +26,7 @@ export default function DefaultValueSelector({
       case "uuid":
         setDefaultValue("uuid_generate_v4()");
         break
-      case "datetime":
+      case "timestamp with time zone":
         setDefaultValue("now()");
         break
       default:
@@ -34,7 +34,7 @@ export default function DefaultValueSelector({
     }
   }, [dtype])
 
-  const showDefaultMenu = dtype === "datetime" || dtype === "uuid" || dtype === "boolean"
+  const showDefaultMenu = dtype === "timestamp with time zone" || dtype === "uuid" || dtype === "boolean"
 
   return (
 

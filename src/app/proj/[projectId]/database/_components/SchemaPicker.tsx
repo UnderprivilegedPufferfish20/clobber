@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import CreateSchemaDialog from "./dialogs/CreateSchemaDialog";
+import CreateSchemaDialog from "./CreateSchemaDialog";
 import { Separator } from "@/components/ui/separator";
 
 type ComboboxButtonProps = React.ComponentPropsWithoutRef<typeof Button> & {

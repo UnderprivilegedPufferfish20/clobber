@@ -41,6 +41,7 @@ import CustomDialogHeader from "@/components/CustomDialogHeader";
 
 import { createTriggerSchema } from "@/lib/types/schemas";
 import {
+  DatabaseObjectAddSheetProps,
   TRIGGER_EVENTS,
   TRIGGER_ORIENTATION,
   TRIGGER_TYPE,
@@ -61,14 +62,7 @@ function AddTriggerSheet({
   schemas,
   open,
   onOpenChange,
-  hideTrigger,
-}: {
-  hideTrigger: boolean;
-  projectId: string;
-  schemas: string[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+}: DatabaseObjectAddSheetProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<FormValues>({
@@ -168,14 +162,6 @@ function AddTriggerSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {!hideTrigger && (
-        <SheetTrigger asChild>
-          <Button variant="outline" className="bg-indigo-500 text-white">
-            Create Trigger
-          </Button>
-        </SheetTrigger>
-      )}
-
       <SheetContent className="sm:max-w-md overflow-y-auto p-3 z-100">
         <SheetHeader className="mb-4">
           <CustomDialogHeader icon={PlayCircleIcon} title="Create Trigger" />

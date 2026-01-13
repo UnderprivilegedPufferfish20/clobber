@@ -4,6 +4,7 @@ import { t } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
+import { IndexType } from "@/lib/types";
 
 export async function getIndexes(
   projectId: string,
@@ -52,5 +53,7 @@ ORDER BY
 
     `);
 
-  return result.rows
+    console.log("@@GET INDEXES: ", result.rows)
+
+  return result.rows as IndexType[]
 }

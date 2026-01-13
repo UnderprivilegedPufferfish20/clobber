@@ -8,7 +8,7 @@ import { InboxIcon, Search, BookTypeIcon, EllipsisVerticalIcon, PencilIcon, Plus
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import DeleteDialog from "../../../database/_components/dialogs/DeleteDialog";
+import DeleteDialog from "../../../database/_components/DeleteDialog";
 import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { EdgeFunctionType } from "@/lib/types";

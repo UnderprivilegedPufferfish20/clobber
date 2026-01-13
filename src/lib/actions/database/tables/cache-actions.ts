@@ -1,7 +1,7 @@
 "use cache";
 
 import { DATA_TYPES } from "@/lib/types";
-import { t, mapPostgresType, buildWhereClause } from "@/lib/utils";
+import { t, buildWhereClause } from "@/lib/utils";
 import { QueryFilters } from "@/lib/types";
 import { cacheTag } from "next/cache";
 import { getProjectById } from "../cache-actions";
@@ -44,7 +44,7 @@ export async function getTableData(
   // Build column type map
   const columnTypes = new Map<string, DATA_TYPES>();
   for (const col of columnsResult.rows) {
-    columnTypes.set(col.column_name, mapPostgresType(col.data_type));
+    columnTypes.set(col.column_name, col.data_type);
   }
 
   // Build WHERE clause with type safety
@@ -80,7 +80,7 @@ export async function getTableData(
     rows: dataResult.rows,
     columns: columnsResult.rows.map(col => ({
       ...col,
-      data_type_enum: mapPostgresType(col.data_type)
+      data_type_enum: col.data_type
     })),
     pagination: {
       total,

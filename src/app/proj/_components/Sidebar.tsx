@@ -19,32 +19,15 @@ import {
 import { DatabaseSidebarRoutes, SidebarRoutes } from '@/lib/constants'
 
 
-/**
- * Determines if we are in the database view based on the URL segments.
- * URL: /proj/P_ID/database/D_ID/...
- */
-const isInDatabaseView = (pathname: string): boolean => {
-  const segments = pathname.split('/').filter(Boolean);
-  // Check if the 3rd segment exists and is exactly 'database'
-  return segments.length >= 4 && segments[2] === 'database';
-};
-
-
 const Sidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
-  
-  // 1. Decide which routes and base path to use dynamically
-  const inDbView = isInDatabaseView(pathname);
-  
-  const currentRoutes = inDbView ? DatabaseSidebarRoutes : SidebarRoutes;
+
   
   // Base path calculation is dynamic:
   const segments = pathname.split('/').filter(Boolean);
-  const basePath = inDbView 
-    ? '/' + segments.slice(0, 4).join('/') // Database Base: /proj/P_ID/database/D_ID
-    : '/' + segments.slice(0, 2).join('/'); // Project Base: /proj/P_ID
+  const basePath = '/' + segments.slice(0, 2).join('/'); // Project Base: /proj/P_ID
 
 
   // Helper functions adapted for this dynamic setup
@@ -59,7 +42,7 @@ const Sidebar = () => {
   }
 
   // Render function for a single route, handling expanded/collapsed
-  const renderRoute = (route: typeof currentRoutes[0], key: string) => {
+  const renderRoute = (route: typeof SidebarRoutes[0], key: string) => {
     const isActive = isRouteActive(route.href, pathname, basePath);
     const targetPath = constructPath(basePath, route.href);
 
@@ -103,16 +86,11 @@ const Sidebar = () => {
 
   // Build the content with separators if not in database view
   let navContent: React.ReactNode[] = [];
-  if (inDbView) {
-    currentRoutes.forEach((route, index) => {
-      navContent.push(renderRoute(route, route.href || `route-${index}`));
-    });
-  } else {
     const groups = [
-      currentRoutes.slice(0, 2),
-      currentRoutes.slice(2, 6),
-      currentRoutes.slice(6, 9),
-      currentRoutes.slice(9, 12),
+      SidebarRoutes.slice(0, 2),
+      SidebarRoutes.slice(2, 6),
+      SidebarRoutes.slice(6, 9),
+      SidebarRoutes.slice(9, 12),
     ];
     groups.forEach((group, groupIndex) => {
       group.forEach((route, routeIndex) => {
@@ -124,7 +102,6 @@ const Sidebar = () => {
         );
       }
     });
-  }
 
   // --- Render the sidebar with expand toggle at the bottom ---
   return (
@@ -183,13 +160,9 @@ export function MobileSidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  
-  const inDbView = isInDatabaseView(pathname);
-  const currentRoutes = inDbView ? DatabaseSidebarRoutes : SidebarRoutes;
+  ;
   const segments = pathname.split('/').filter(Boolean);
-  const basePath = inDbView 
-    ? '/' + segments.slice(0, 4).join('/') 
-    : '/' + segments.slice(0, 2).join('/');
+  const basePath = '/' + segments.slice(0, 2).join('/');
 
   const isRouteActive = (routeHref: string, currentPathname: string, basePath: string) => {
     const targetPath = routeHref === "" ? basePath : `${basePath}${routeHref}`;
@@ -203,8 +176,7 @@ export function MobileSidebar() {
 
   // Build the content with separators if not in database view
   let mobileContent: React.ReactNode[] = [];
-  if (inDbView) {
-    currentRoutes.forEach((route, index) => {
+    SidebarRoutes.forEach((route, index) => {
       const isActive = isRouteActive(route.href, pathname, basePath);
       const targetPath = constructPath(basePath, route.href);
       mobileContent.push(
@@ -221,12 +193,11 @@ export function MobileSidebar() {
         </button>
       );
     });
-  } else {
     const groups = [
-      currentRoutes.slice(0, 2),
-      currentRoutes.slice(2, 6),
-      currentRoutes.slice(6, 9),
-      currentRoutes.slice(9, 12),
+      SidebarRoutes.slice(0, 2),
+      SidebarRoutes.slice(2, 6),
+      SidebarRoutes.slice(6, 9),
+      SidebarRoutes.slice(9, 12),
     ];
     groups.forEach((group, groupIndex) => {
       group.forEach((route, routeIndex) => {
@@ -252,7 +223,6 @@ export function MobileSidebar() {
         );
       }
     });
-  }
 
   return (
     <div className="block border-separate bg-background md:hidden">

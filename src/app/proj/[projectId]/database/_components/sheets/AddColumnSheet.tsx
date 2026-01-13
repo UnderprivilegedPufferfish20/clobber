@@ -1,44 +1,25 @@
 'use client'
 
-import { ReactNode, useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2, Columns, MenuIcon } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Sheet,
   SheetClose,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import CustomDialogHeader from '@/components/CustomDialogHeader'
-import { DATA_TYPES_LIST, FKEY_REFERENCED_ROW_ACTION_DELETED_LIST, FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST } from '@/lib/constants'
-import { DATA_TYPE_TYPE, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE, FKEY_REFERENCED_ROW_ACTION_UPDATED, FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE } from '@/lib/types'
-import { Label } from '@/components/ui/label'
-import z from 'zod'
-import { createForeignKeySchema } from '@/lib/types/schemas'
 import { Separator } from '@/components/ui/separator'
-import { getSchemas } from '@/lib/actions/database/cache-actions'
 import { addColumn } from '@/lib/actions/database/columns'
-import { getCols } from '@/lib/actions/database/columns/cache-actions'
-import { getTables } from '@/lib/actions/database/tables/cache-actions'
 import DataTypeSelect from '../DataTypeSelect'
 import { Switch } from '@/components/ui/switch'
-import { defaultSuggestions } from '@/lib/utils'
 import DefaultValueSelector from '../DefaultValueSelector'
+import { DATA_TYPES } from '@/lib/types'
 
 function AddColumnSheet({
   projectId,
@@ -56,7 +37,7 @@ function AddColumnSheet({
   const queryClient = useQueryClient()
 
   const [name, setName] = useState("")
-  const [dtype, setDtype] = useState<DATA_TYPE_TYPE>("string")
+  const [dtype, setDtype] = useState<typeof DATA_TYPES[keyof typeof DATA_TYPES]>("character varying")
 
   const [isArray, setIsArray] = useState(false)
   const [isPkey, setIsPkey] = useState(false)
@@ -132,7 +113,7 @@ function AddColumnSheet({
             <div className='flex flex-col gap-2'>
               <h1>Data Type</h1>
               <DataTypeSelect 
-                onValueChange={v => setDtype(v as DATA_TYPE_TYPE)}
+                onValueChange={v => setDtype(v as typeof DATA_TYPES[keyof typeof DATA_TYPES])}
                 value={dtype}
                 triggerClassname=''
               />

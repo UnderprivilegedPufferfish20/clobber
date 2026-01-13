@@ -1,13 +1,13 @@
 'use server';
 
 import { createTableSchema } from "@/lib/types/schemas";
-import { getPostgresType, mapPostgresType, t } from "@/lib/utils";
+import { rowsToCsv, rowsToJson, rowsToSql, t } from "@/lib/utils";
 import { revalidateTag } from "next/cache";
 import z from "zod";
 import { getUser } from "../../auth";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
-import { ColumnType, DATA_TYPES, TableType } from "@/lib/types";
+import { ColumnType, DATA_EXPORT_FORMATS, DATA_TYPES, TableType } from "@/lib/types";
 
 export async function deleteTable(
   projectId: string,
@@ -36,6 +36,88 @@ export async function deleteTable(
   revalidateTag(t("columns", projectId, schema, name), "max")
   revalidateTag(t("tables", projectId, schema), 'max')
   revalidateTag(t("table-data", projectId, schema, name), "max")
+}
+
+export async function exportTableData(
+  projectId: string,
+  schema: string,
+  name: string,
+  format: DATA_EXPORT_FORMATS
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const result = await pool.query(`SELECT * FROM "${schema}"."${name}"`)
+
+  console.log("@@esult", result)
+
+  switch (format) {
+    case DATA_EXPORT_FORMATS.JSON:
+      return {
+        fileName: `${name}.json`,
+        contentType: "application/json; charset=utf-8",
+        data: rowsToJson(result.rows, result.fields),
+      }
+    case DATA_EXPORT_FORMATS.CSV:
+      return {
+        fileName: `${name}.csv`,
+        contentType: "text/csv; charset=utf-8",
+        data: rowsToCsv(result.rows, result.fields),
+      }
+    case DATA_EXPORT_FORMATS.SQL:
+      return {
+        fileName: `${name}.sql`,
+        contentType: "application/sql; charset=utf-8",
+        data: rowsToSql(schema, name, result.rows, result.fields)
+      }
+  }
+
+
+  
+}
+
+export async function duplicateTable(
+  projectId: string,
+  schema: string,
+  table: string,
+  newName: string,
+  schemaOnly = false
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const dataStatement = schemaOnly ? " WITH NO DATA" : ""
+
+
+  await pool.query(`
+    CREATE TABLE "${schema}"."${newName}" AS TABLE "${schema}"."${table}"${dataStatement};
+  `)
+
+  revalidateTag(t("table-schema", projectId, schema, table), "max")
+  revalidateTag(t("schema", projectId, schema), "max")
+  revalidateTag(t("columns", projectId, schema, table), "max")
+  revalidateTag(t("tables", projectId, schema), 'max')
+  revalidateTag(t("table-data", projectId, schema, table), "max")
 }
 
 export async function addTable(
@@ -70,34 +152,12 @@ export async function addTable(
   const pkeyCols: string[] = [];
 
   for (const col of data.columns) {
-    let colDef = `"${col.name}" ${getPostgresType(col.dtype)}${col.isArray ? '[]' : ''}`;
+    let colDef = `"${col.name}" ${col.dtype}${col.isArray ? '[]' : ''}`;
     if (!col.isNullable) colDef += ' NOT NULL';
     if (col.isUnique) colDef += ' UNIQUE';
 
     if (col.default !== undefined) {
-      let quotedDefault: string;
-      switch (col.dtype) {
-        case 'string':
-        case 'datetime':
-        case 'JSON':
-          quotedDefault = `'${col.default.replace(/'/g, "''")}'`;
-          if (col.dtype === 'JSON') quotedDefault += '::JSONB';
-          break;
-        case 'boolean':
-          quotedDefault = col.default.toUpperCase();
-          break;
-        case 'integer':
-        case 'float':
-          quotedDefault = col.default;
-          break;
-        case 'uuid':
-        case 'bytes':
-          quotedDefault = col.default; // Assume raw value (e.g., function call or hex)
-          break;
-        default:
-          quotedDefault = col.default;
-      }
-      colDef += ` DEFAULT ${quotedDefault}`;
+      colDef += ` DEFAULT ${col.default}`;
     }
 
     if (col.isPkey) {
@@ -119,6 +179,7 @@ export async function addTable(
   console.log("@@ CREATE TABLE: ", result);
 
   revalidateTag(t("tables", projectId, schema), "max")
+  revalidateTag(t("schema", projectId, schema), "max")
 }
 
 export async function renameTable(
@@ -229,7 +290,7 @@ export async function updateTable(
   if (newCols.length > 0) {
     const addActions = newCols
       .map((nc) => {
-        const baseType = `${getPostgresType(nc.dtype)}${nc.isArray ? "[]" : ""}`;
+        const baseType = `${nc.dtype}${nc.isArray ? "[]" : ""}`;
         const notNull = nc.isNullable ? "" : "NOT NULL";
         const def =
           nc.default
@@ -283,7 +344,7 @@ export async function updateTable(
 
     // TYPE change (handle dtype and array together so you don’t emit two TYPE commands)
     if (oldCol.dtype !== newCol.dtype || oldCol.isArray !== newCol.isArray) {
-      const targetType = `${getPostgresType(newCol.dtype)}${newCol.isArray ? "[]" : ""}`;
+      const targetType = `${newCol.dtype}${newCol.isArray ? "[]" : ""}`;
 
       // NOTE: your USING logic here is simplistic; adjust as needed for real conversions.
       // This version keeps your intent but avoids invalid syntax.
@@ -354,8 +415,6 @@ export async function updateTable(
   revalidateTag(t("table-data", projectId, schema, oldTable.name), "max");
 }
 
-
-
 export async function addRow(
   schema: string,
   projectId: string,
@@ -386,7 +445,7 @@ export async function addRow(
   const cols_to_dtype: Record<string, DATA_TYPES> = {}
 
   for (let i = 0; i < col_details.rows.length; i++) {
-    cols_to_dtype[col_details.rows[i].column_name] = mapPostgresType(col_details.rows[i].data_type)
+    cols_to_dtype[col_details.rows[i].column_name] = col_details.rows[i].data_type
   }
 
   console.log("@@Cols: ", cols_to_dtype)

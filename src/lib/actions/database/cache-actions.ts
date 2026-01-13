@@ -2,10 +2,9 @@
 
 import prisma from "@/lib/db";
 import { getTenantPool } from "./tennantPool";
-import { buildWhereClause, mapPostgresType, t } from "@/lib/utils";
+import { t } from "@/lib/utils";
 import { cacheTag } from "next/cache";
-import { DATA_TYPES, QueryFilters, TableType } from "@/lib/types";
-import { getUser } from "../auth";
+import { TableType } from "@/lib/types";
 
 export async function getProjectById(id: string) {
   cacheTag(t("project", id))

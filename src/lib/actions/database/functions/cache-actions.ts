@@ -4,6 +4,7 @@ import { t } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
+import { DatabaseFunctionType } from "@/lib/types";
 
 export async function getFunctions(projectId: string, schema: string) {
   cacheTag(t("functions", projectId, schema))
@@ -40,5 +41,7 @@ export async function getFunctions(projectId: string, schema: string) {
 
     `);
 
-  return result.rows
+    console.log("@@GET FUNCTIONS: ", result.rows)
+
+  return result.rows as DatabaseFunctionType[]
 }

@@ -39,20 +39,14 @@ import CustomDialogHeader from "@/components/CustomDialogHeader";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { createEnum } from "@/lib/actions/database/enums";
+import { DatabaseObjectAddSheetProps } from "@/lib/types";
 
 function AddEnumSheet({
   projectId,
   schemas,
   open,
   onOpenChange,
-  hideTrigger,
-}: {
-  hideTrigger: boolean;
-  projectId: string;
-  schemas: string[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+}: DatabaseObjectAddSheetProps) {
   const queryClient = useQueryClient();
 
   const [selectedSchema, setSelectedSchema] = React.useState<string>(
@@ -106,14 +100,6 @@ function AddEnumSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {!hideTrigger && (
-        <SheetTrigger asChild>
-          <Button variant="outline" className="bg-indigo-500 text-white">
-            Create Enum
-          </Button>
-        </SheetTrigger>
-      )}
-
       <SheetContent className="sm:max-w-md overflow-y-auto p-2 z-100">
         <SheetHeader className="mb-4">
           <CustomDialogHeader icon={BookTypeIcon} title="Create Enum" />

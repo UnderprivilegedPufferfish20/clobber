@@ -1,7 +1,7 @@
 "use server";
 
 import { createFunctionSchema } from "@/lib/types/schemas";
-import { getPostgresType, t } from "@/lib/utils";
+import { t } from "@/lib/utils";
 import { revalidateTag } from "next/cache";
 import z from "zod";
 import { getUser } from "../../auth";
@@ -69,12 +69,12 @@ export async function createFunction(
   });
 
   const argument_string = data.args
-    .map(({ name, dtype }) => `${name} ${getPostgresType(dtype)}`)
+    .map(({ name, dtype }) => `${name} ${dtype}`)
     .join(", ");
 
   await pool.query(`
     CREATE OR REPLACE FUNCTION ${data.schema}.${data.name}(${argument_string})
-    RETURNS ${getPostgresType(data.returnType)} AS $$
+    RETURNS ${data.returnType} AS $$
     BEGIN
       ${data.definition}
     END;

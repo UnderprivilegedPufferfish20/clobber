@@ -1,8 +1,7 @@
 "use server";
 
-import { DATA_TYPES_LIST } from "@/lib/constants";
 import { createColumnSchema } from "@/lib/types/schemas";
-import { getPostgresType, t } from "@/lib/utils";
+import { t } from "@/lib/utils";
 import { revalidateTag } from "next/cache";
 import z from "zod";
 import { getUser } from "../../auth";
@@ -69,7 +68,7 @@ export async function addColumn(
   });
 
   // 1) Resolve Postgres data type (handling arrays)
-  const baseType = getPostgresType(data.dtype);
+  const baseType = data.dtype;
   const finalType = data.isArray ? `${baseType}[]` : baseType;
 
   // 2) Column constraints
@@ -182,7 +181,7 @@ export async function editColumn(
   }
 
   if (oldCol.dtype !== newCol.dtype || oldCol.isArray !== newCol.isArray) {
-    const targetType = `${getPostgresType(newCol.dtype)}${newCol.isArray ? "[]" : ""}`;
+    const targetType = `${newCol.dtype}${newCol.isArray ? "[]" : ""}`;
 
     let using = "";
     if (oldCol.isArray !== newCol.isArray) {

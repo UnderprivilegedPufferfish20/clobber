@@ -4,6 +4,7 @@ import { t } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
+import { EnumType } from "@/lib/types";
 
 export async function getEnums(
   projectId: string,
@@ -41,5 +42,8 @@ ORDER BY
     enum_name;
     `);
 
-  return result.rows
+
+    console.log("@@GET ENUMS: ", result.rows)
+
+  return result.rows as EnumType[]
 }

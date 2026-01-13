@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Database, PlusIcon, XIcon } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Database, XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { Input } from "@/components/ui/input";
@@ -30,11 +30,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { throttle } from "@/lib/utils";
 import { EditingCell, FilterConfig, QueryFilters, TableViewProps } from "@/lib/types";
-import Filter, { parseFiltersParam, stringifyFilters } from "./Filter";
-import AddRowSheet from "./sheets/AddRowSheet";
-import AddColumnSheet from "./sheets/AddColumnSheet";
 import { Button } from "@/components/ui/button";
 import { getTableData } from "@/lib/actions/database/tables/cache-actions";
+import Filter, { parseFiltersParam, stringifyFilters } from "./Filter";
+import AddColumnSheet from "./sheets/AddColumnSheet";
+import AddRowSheet from "./sheets/AddRowSheet";
 
 
 
@@ -44,7 +44,7 @@ function toCellString(v: any) {
   return String(v);
 }
 
-const TableView = ({ projectId }: TableViewProps) => {
+const DataViewer = ({ projectId }: TableViewProps) => {
   const router = useRouter();
   const pathname = usePathname()
   const searchParams = useSearchParams();
@@ -565,7 +565,7 @@ return (
   );
 };
 
-export default TableView;
+export default DataViewer;
 
 function InsertButton({
   projectId,
@@ -593,8 +593,7 @@ function InsertButton({
         schema={schema}
         onOpenChange={setOpenCol}
         open={openCol}
-        projectId={projectId}
-        hideTrigger 
+        projectId={projectId} 
         tableId={tableId}
       />
 

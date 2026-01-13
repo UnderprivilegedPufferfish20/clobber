@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,7 +14,6 @@ import {
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   Form,
@@ -37,7 +36,7 @@ import { cn } from "@/lib/utils";
 import CustomDialogHeader from "@/components/CustomDialogHeader";
 
 import { createIndexSchema } from "@/lib/types/schemas";
-import { INDEX_TYPES } from "@/lib/types";
+import { DatabaseObjectAddSheetProps, INDEX_TYPES } from "@/lib/types";
 import { getTables } from "@/lib/actions/database/tables/cache-actions";
 import { getCols } from "@/lib/actions/database/columns/cache-actions";
 import { createIndex } from "@/lib/actions/database/indexes";
@@ -48,15 +47,8 @@ function AddIndexSheet({
   projectId,
   schemas,
   open,
-  onOpenChange,
-  hideTrigger,
-}: {
-  hideTrigger: boolean;
-  projectId: string;
-  schemas: string[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+  onOpenChange
+}: DatabaseObjectAddSheetProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<FormValues>({
@@ -188,14 +180,6 @@ function AddIndexSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {!hideTrigger && (
-        <SheetTrigger asChild>
-          <Button variant="outline" className="bg-indigo-500 text-white">
-            Create Index
-          </Button>
-        </SheetTrigger>
-      )}
-
       <SheetContent className="sm:max-w-md overflow-y-auto p-3 z-100">
         <SheetHeader className="mb-4">
           <CustomDialogHeader icon={ListTreeIcon} title="Create Index" />

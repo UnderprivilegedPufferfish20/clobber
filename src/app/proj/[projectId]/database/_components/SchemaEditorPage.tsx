@@ -2,9 +2,7 @@
 
 import { useMemo, useEffect, useState } from "react";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import SchemaPicker from "../SchemaPicker";
 import { ColumnType, JsonNodeData, TableType as SchemaEditorTable } from "@/lib/types";
-import { DATA_TYPES_LIST } from "@/lib/constants";
 import {
   Background,
   BackgroundVariant,
@@ -21,24 +19,24 @@ import {
   Handle,
   Position,
 } from "@xyflow/react";
-import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, RefreshCwOffIcon, GripVerticalIcon, PlusIcon, Edit2Icon, EditIcon, Trash2Icon, FingerprintIcon, EllipsisVerticalIcon, CopyIcon, DownloadIcon, FileJson, FileSpreadsheetIcon } from "lucide-react"; // Assuming "RecycleCwOffIcon" is a typo for "RefreshCwOffIcon"; adjust if needed
+import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, PlusIcon, EditIcon, Trash2Icon, FingerprintIcon, EllipsisVerticalIcon, CopyIcon, DownloadIcon, FileJson, FileSpreadsheetIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import '@xyflow/react/dist/style.css';
-import AddColumnSheet from "../sheets/AddColumnSheet";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import TableView from "../TableView";
 import { gridPosition } from "@/lib/utils";
-import EditTableSheet from "../sheets/EditTableSheet";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { useMutation } from "@tanstack/react-query";
 import { deleteColumn } from "@/lib/actions/database/columns";
 import { toast } from "sonner";
-import AddTableSheet from "../sheets/AddTableSheet";
-import EditColumnSheet from "../sheets/EditColumnSheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import DataViewer from "./DataViewer";
+import SchemaPicker from "./SchemaPicker";
+import AddTableSheet from "./sheets/AddTableSheet";
+import EditColumnSheet from "./sheets/EditColumnSheet";
+import EditTableSheet from "./sheets/EditTableSheet";
 
 
 
@@ -154,7 +152,7 @@ const SchemaEditorPage = ({
 
             <ResizablePanel defaultSize={100} className="min-h-0">
               <div className="h-full min-h-0">
-                <TableView projectId={projectId} />
+                <DataViewer projectId={projectId} />
               </div>
             </ResizablePanel>
           </>
@@ -439,7 +437,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
         open={editTableSheetOpen}
         projectId={projectId}
         schema={schema}
-        tableToBeEdited={tableName}
+        table={data.table}
       />
     </>
   );

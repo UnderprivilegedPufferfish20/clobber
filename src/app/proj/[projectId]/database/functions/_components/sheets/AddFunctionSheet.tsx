@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,7 +15,6 @@ import {
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   Form,
@@ -33,11 +32,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import { createFunctionSchema } from "@/lib/types/schemas";
 import CustomDialogHeader from "@/components/CustomDialogHeader";
-import { DATA_TYPES_LIST, FUNCTION_RETURN_TYPES_LIST } from "@/lib/constants";
-import { DATA_TYPES } from "@/lib/types";
+import { DATA_TYPES, DatabaseObjectAddSheetProps, FUNCTION_RETURN_TYPES } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -47,15 +44,8 @@ function AddFunctionSheet({
   projectId,
   schemas,
   open,
-  onOpenChange,
-  hideTrigger,
-}: {
-  hideTrigger: boolean;
-  projectId: string;
-  schemas: string[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+  onOpenChange
+}: DatabaseObjectAddSheetProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof createFunctionSchema>>({
@@ -63,7 +53,7 @@ function AddFunctionSheet({
     defaultValues: {
       name: "",
       schema: schemas?.[0] ?? "public",
-      returnType: DATA_TYPES.STRING,
+      returnType: DATA_TYPES.CHARACTER_VARYING,
       args: [],
       definition: "",
     },
@@ -88,7 +78,7 @@ function AddFunctionSheet({
       form.reset({
         name: "",
         schema: selectedSchema,
-        returnType: DATA_TYPES.STRING,
+        returnType: DATA_TYPES.CHARACTER_VARYING,
         args: [],
         definition: "",
       });
@@ -112,14 +102,6 @@ function AddFunctionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {!hideTrigger && (
-        <SheetTrigger asChild>
-          <Button variant="outline" className="bg-indigo-500 text-white">
-            Create Function
-          </Button>
-        </SheetTrigger>
-      )}
-
       <SheetContent className="sm:max-w-md overflow-y-auto p-2 z-100">
         <SheetHeader className="mb-4">
           <CustomDialogHeader icon={Columns} title="Create Function" />
@@ -188,7 +170,7 @@ function AddFunctionSheet({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="z-110">
-                      {FUNCTION_RETURN_TYPES_LIST.map((type) => (
+                      {Object.values(FUNCTION_RETURN_TYPES).map((type) => (
                         <SelectItem key={type} value={type}>
                           {type.toUpperCase()}
                         </SelectItem>
@@ -222,7 +204,7 @@ function AddFunctionSheet({
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        argsArray.append({ name: "", dtype: DATA_TYPES.STRING })
+                        argsArray.append({ name: "", dtype: DATA_TYPES.CHARACTER_VARYING })
                       }
                     >
                       <Plus className="mr-2 h-4 w-4" />
@@ -283,7 +265,7 @@ function AddFunctionSheet({
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent className="z-110">
-                                    {DATA_TYPES_LIST.map((type) => (
+                                    {Object.values(DATA_TYPES).map((type) => (
                                       <SelectItem key={type} value={type}>
                                         {type.toUpperCase()}
                                       </SelectItem>

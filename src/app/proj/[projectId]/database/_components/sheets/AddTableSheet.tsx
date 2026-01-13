@@ -1,9 +1,9 @@
 'use client'
 
-import { ChangeEvent, ReactNode, useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2, Columns, Table2Icon, Link2Icon, EllipsisVerticalIcon, XIcon, MenuIcon } from 'lucide-react'
+import { Loader2, EllipsisVerticalIcon, XIcon } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -14,47 +14,25 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import CustomDialogHeader from '@/components/CustomDialogHeader'
-import { DATA_TYPES_LIST, FKEY_REFERENCED_ROW_ACTION_DELETED_LIST, FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST } from '@/lib/constants'
-import { DATA_TYPE_TYPE, DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_DELETED_TYPE, FKEY_REFERENCED_ROW_ACTION_UPDATED, FKEY_REFERENCED_ROW_ACTION_UPDATED_TYPE, FkeyType } from '@/lib/types'
+import { DATA_TYPES, FkeyType } from '@/lib/types'
 import { Label } from '@/components/ui/label'
 import z from 'zod'
 import { createColumnSchema, createForeignKeySchema } from '@/lib/types/schemas'
 import { Separator } from '@/components/ui/separator'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { se } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
-import { getSchemas } from '@/lib/actions/database/cache-actions'
-import { getCols } from '@/lib/actions/database/columns/cache-actions'
 import { addTable } from '@/lib/actions/database/tables'
-import { getTables } from '@/lib/actions/database/tables/cache-actions'
 import DataTypeSelect from '../DataTypeSelect'
-import { defaultSuggestions } from '@/lib/utils'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import DefaultValueSelector from '../DefaultValueSelector'
+import AddFkeySheet from './AddFkeySheet'
 
 function AddTableSheet({
   projectId,
@@ -70,7 +48,7 @@ function AddTableSheet({
 
   const emptyColumn: ColumnForm = {
     name: "",
-    dtype: "integer",      // or DATA_TYPES.INT if that matches your enum
+    dtype: DATA_TYPES.INTEGER,      // or DATA_TYPES.INT if that matches your enum
     isArray: false,
     default: undefined,
     isPkey: false,
@@ -85,7 +63,7 @@ function AddTableSheet({
   const defaultCols: ColumnForm[] = [
     {
       name: "id",
-      dtype: "uuid",
+      dtype: DATA_TYPES.UUID,
       isArray: false,
       isNullable: false,
       isPkey: true,
@@ -94,7 +72,7 @@ function AddTableSheet({
     },
     {
       name: "$createdAt",
-      dtype: "datetime",
+      dtype: DATA_TYPES.TIMESTAMPTZ,
       isArray: false,
       isNullable: false,
       isPkey: false,
@@ -103,7 +81,7 @@ function AddTableSheet({
     },
     {
       name: "$updatedAt",
-      dtype: "datetime",
+      dtype: DATA_TYPES.TIMESTAMPTZ,
       isArray: false,
       isNullable: false,
       isPkey: false,
@@ -116,7 +94,7 @@ function AddTableSheet({
   const [columns, setColumns] = useState<ColumnForm[]>(defaultCols)
 
   const [fkeys, setFkeys] = useState<FkeyType[]>([])
-  const [isFkeyOpen, setIsFkeyOpen] = useState(false)
+  const [isFkeySheetOpen, setIsFkeySheetOpen] = useState(false)
 
   const [name, setName] = useState("")
 
@@ -127,15 +105,15 @@ function AddTableSheet({
         columns
       }, projectId, schema),
     onSuccess: () => {
-      toast.success("Column added successfully", { id: "add-column" });
+      toast.success("Table added successfully", { id: "add-table" });
       
       onOpenChange(false);
     },
     onMutate(variables, context) {
-      toast.loading("Creating Column...", { id: "add-column" })
+      toast.loading("Creating table...", { id: "add-table" })
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to add column", { id: "add-column" });
+      toast.error(error.message || "Failed to add table", { id: "add-table" });
     }
   })
 
@@ -161,7 +139,7 @@ function AddTableSheet({
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
 
   const isDirty = () => {
-    return columns === defaultCols && name === ""
+    return JSON.stringify(columns) !== JSON.stringify(defaultCols) || name !== "" || JSON.stringify(fkeys) !== JSON.stringify([])
   }
 
   const handleOpenChange = (o: boolean) => {
@@ -178,12 +156,10 @@ function AddTableSheet({
     setIsConfirmCloseOpen(true);
   };
 
-  const getDefaultForType = (dtype: DATA_TYPE_TYPE) => {
+  const getDefaultForType = (dtype: typeof DATA_TYPES[keyof typeof DATA_TYPES ]) => {
     switch (dtype) {
       case "uuid":
         return "uuid_generate_v4()";
-      case "datetime":
-        return "now()";
       default:
         return "";
     }
@@ -194,7 +170,6 @@ function AddTableSheet({
 
   return (
     <>
-    
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent className="sm:max-w-2xl overflow-y-auto p-0! z-100 focus:outline-none fullheight">
           <SheetHeader className="mb-4">
@@ -251,7 +226,7 @@ function AddTableSheet({
                           <DataTypeSelect
                             triggerClassname="max-w-35 min-w-35 w-35 truncate" 
                             value={col.dtype}
-                            onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: getDefaultForType(v as DATA_TYPE_TYPE) })}
+                            onValueChange={(v) => updateColumn(idx, { dtype: v as typeof DATA_TYPES[keyof typeof DATA_TYPES ], default: getDefaultForType(v as typeof DATA_TYPES[keyof typeof DATA_TYPES ]) })}
                           />
                           
                           <DefaultValueSelector 
@@ -327,6 +302,18 @@ function AddTableSheet({
                 </div>
               </div>
             </div>
+
+            <div className='flex flex-col gap-1'>
+              <h1>Foreign Keys</h1>
+
+              <div
+                  className={`flex items-center justify-center fullwidth relative rounded-md border border-border py-2 mt-2`}
+                >
+                <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setIsFkeySheetOpen(true)}>
+                  Add Foreign Key
+                </Button>
+              </div>
+            </div>
           </div>
 
          <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
@@ -376,6 +363,18 @@ function AddTableSheet({
         </AlertDialogFooter>
       </AlertDialogContent>
       </AlertDialog>
+
+      <AddFkeySheet 
+        projectId={projectId}
+        fkeys={fkeys}
+        setFkeys={setFkeys}
+        table={{ name, columns }}
+        open={isFkeySheetOpen}
+        onOpenChange={setIsFkeySheetOpen}
+        schema={schema}
+      />
+
+
     </>
   )
 }

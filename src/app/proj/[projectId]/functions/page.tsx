@@ -50,7 +50,6 @@ const FunctionsPage = async ({ params, searchParams }: PageProps<"/proj/[project
   }
 
   return (
-    <Suspense fallback={<Loader sz={168} />}>
       <div className="fullscreen flex flex-col overflow-hidden">
         <header className="w-full h-20 min-h-20 max-h-20 flex gap-2 items-center-safe p-2 px-4">
           <span className="font-semibold text-3xl mr-8">Edge Functions</span>
@@ -63,7 +62,6 @@ const FunctionsPage = async ({ params, searchParams }: PageProps<"/proj/[project
           {pageContent}
         </div>
       </div>
-    </Suspense>
   );
 }
 
