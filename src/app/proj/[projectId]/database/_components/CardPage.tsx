@@ -84,7 +84,7 @@ export default function CardPage<DataType>({
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-9 w-full sm:w-72"
-                placeholder="Search triggers"
+                placeholder={`Search ${title}`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

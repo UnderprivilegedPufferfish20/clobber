@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2, EllipsisVerticalIcon, XIcon } from 'lucide-react'
+import { Loader2, EllipsisVerticalIcon, XIcon, Table2Icon, ArrowRightIcon } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -294,7 +294,7 @@ function AddTableSheet({
                 </div>
                 
                 <div
-                  className={`flex items-center justify-center fullwidth relative rounded-md border border-border py-2 mt-2`}
+                  className={`flex items-center justify-center fullwidth relative rounded-md border-dashed border border-border py-2 mt-2`}
                 >
                   <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setColumns((p) => [...p, emptyColumn])}>
                     Add Column
@@ -304,10 +304,51 @@ function AddTableSheet({
             </div>
 
             <div className='flex flex-col gap-1'>
-              <h1>Foreign Keys</h1>
+              <h1 className='mb-5'>Foreign Keys</h1>
+
+              {fkeys.map((fkey, idx) => (
+                <div
+                  key={idx}
+                  className={`flex flex-col fullwidth p-2 relative rounded-md border border-border`}
+                >
+                  <div className='flex gap-1 items-center justify-between'>
+                    <div className='flex items-center gap-2'>
+                      <Table2Icon className='w-4 h-4' />
+                      <h2 className='text-md text-muted-foreground'>
+                        {fkey.cols[0]!.referenceeSchema}.
+                        <span className='text-white'>{fkey.cols[0]!.referenceeTable}</span>
+                      </h2>
+                    </div>
+
+                    <div className='flex items-center gap-2'>
+                      <Button
+                        variant={"outline"} 
+                        onClick={() => setFkeys(p => p.splice(idx, 1))}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        variant={"outline"}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className='ml-6 flex w-fit flex-col gap-1 text-sm'>
+                    {fkey.cols.map(c => (
+                      <div className='flex items-center justify-between p-1'>
+                        <span className='text-muted-foreground'>{c.referencorColumn}</span>
+                        <ArrowRightIcon className='w-4 h-4 mx-1' />
+                        <span className='text-white'>{c.referenceeColumn}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
 
               <div
-                  className={`flex items-center justify-center fullwidth relative rounded-md border border-border py-2 mt-2`}
+                  className={`flex items-center justify-center fullwidth relative rounded-md border border-dashed border-border py-2 mt-2`}
                 >
                 <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setIsFkeySheetOpen(true)}>
                   Add Foreign Key
@@ -366,7 +407,6 @@ function AddTableSheet({
 
       <AddFkeySheet 
         projectId={projectId}
-        fkeys={fkeys}
         setFkeys={setFkeys}
         table={{ name, columns }}
         open={isFkeySheetOpen}

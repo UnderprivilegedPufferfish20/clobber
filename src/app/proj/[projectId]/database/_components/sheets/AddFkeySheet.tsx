@@ -16,12 +16,11 @@ import { getTables } from "@/lib/actions/database/tables/cache-actions";
 import { getCols } from "@/lib/actions/database/columns/cache-actions";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRightIcon, BoxesIcon, Loader2, Table2Icon, XIcon } from "lucide-react";
+import { ArrowRightIcon, BoxesIcon, Table2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AddFkeySheet({
   projectId,
-  fkeys,
   setFkeys,
   table,
   schema,
@@ -29,7 +28,6 @@ export default function AddFkeySheet({
   onOpenChange
 }: {
   projectId: string,
-  fkeys: FkeyType[],
   setFkeys: Dispatch<SetStateAction<FkeyType[]>>,
   table: TableType,
   schema: string,
@@ -90,8 +88,18 @@ export default function AddFkeySheet({
     referencorColumn: ""
   }
 
+  const handleClose = () => {
+    setFkeyCols([])
+    setDelAction(FKEY_REFERENCED_ROW_ACTION_DELETED.NONE)
+    setUpdateAction(FKEY_REFERENCED_ROW_ACTION_UPDATED.NONE)
+    setSelectedTable("")
+    setSelectedSchema("")
+
+    onOpenChange(false)
+  }
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent className="p-0! z-250 sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Add foreign key to {table.name}</SheetTitle>
@@ -100,7 +108,7 @@ export default function AddFkeySheet({
         
         <Separator />
 
-        <div className="space-y-6 p-6 flex-1">
+        <div className="space-y-6 p-6 flex-1 overflow-y-auto">
           <div className="flex flex-col gap-2">
             <h1>Select schema</h1>
 
@@ -152,9 +160,22 @@ export default function AddFkeySheet({
             <Separator />
             <h1 className="mt-4">Columns</h1>
 
+            {!fkeyCols.
+              every(c => {
+                columns?.find(referenceeCol => referenceeCol.name === c.referenceeColumn)?.dtype 
+                === table.columns.find(referencorCol => referencorCol.name === c.referencorColumn)?.dtype
+                }
+              )
+            && (
+              <div className="bg-yellow-200/20 fullwidth rounded-lg flex p-2 gap-2 items-center">
+                <TriangleAlertIcon className="w-6 h-6" />
+                Columns must have matching data types
+              </div>
+            )}
+
 
             <div className="flex items-center text-muted-foreground fullwidth justify-between mt-4 pr-10">
-              <h4>{schema}.<span className="text-white">{table.name}</span></h4>
+              <h4>{schema}.<span className="text-white">{table.name === "" ? "[unnamed]" : table.name}</span></h4>
               <h4>{selectedSchema}.<span className="text-white">{selectedTable}</span></h4>
             </div>
 
@@ -192,7 +213,7 @@ export default function AddFkeySheet({
                       <SelectContent className="z-500">
                         <SelectGroup>
                           <SelectLabel className="font-bold!">Only matching data types</SelectLabel>
-                          {columns && columns.filter(c => c.dtype === table.columns.find(c => c.name === fkeyCols[idx].referencorColumn) ? table.columns.find(c => c.name === fkeyCols[idx].referencorColumn)!.dtype : DATA_TYPES.BOOLEAN).map(c => (
+                          {columns && columns.map(c => (
                             <SelectItem
                               className="flex items-center gap-2" 
                               key={c.name} 
@@ -282,8 +303,18 @@ export default function AddFkeySheet({
               Cancel
             </Button>
           </SheetClose>
-          <Button onClick={() => {}} variant={"default"} disabled={!fkeyCols.every(c => Boolean(c.referenceeColumn) && Boolean(c.referencorColumn)) || !selectedTable}>
-
+          <Button 
+            onClick={() => {
+              setFkeys(p => [...p, {
+                cols: fkeyCols,
+                updateAction,
+                deleteAction: delAction
+              }]);
+              handleClose()
+            }} 
+            variant={"default"} 
+            disabled={!fkeyCols.every(c => Boolean(c.referenceeColumn) && Boolean(c.referencorColumn)) || !selectedTable || fkeyCols.length === 0}
+          >
             Add Relation
           </Button>
         </div>

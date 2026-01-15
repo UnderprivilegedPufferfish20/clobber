@@ -278,7 +278,7 @@ const FunctionCard = ({
             .map((arg) => {
               if (arg.includes(")")) arg = arg.split(")")[0];
               return (
-                <div key={arg} className="flex items-center gap-2 w-md">
+                <div key={Math.random()} className="flex items-center gap-2 w-md">
                   <Input value={arg.split(" ")[0]} disabled className="cursor-not-allowed" />
                   <Input value={arg.split(" ")[1]} disabled className="cursor-not-allowed" />
                 </div>
