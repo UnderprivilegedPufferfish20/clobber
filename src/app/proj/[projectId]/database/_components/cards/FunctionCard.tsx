@@ -3,7 +3,7 @@
 import type * as monacoType from "monaco-editor";
 import React, { useEffect, useRef, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import DeleteDialog from "../DeleteDialog";
+import DeleteDialog from "../../../../../../components/DeleteDialog";
 import { Input } from "@/components/ui/input";
 import { FunctionSquare, EllipsisVerticalIcon, PencilIcon, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";

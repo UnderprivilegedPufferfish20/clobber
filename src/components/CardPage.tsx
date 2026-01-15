@@ -5,10 +5,10 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { InboxIcon, Search } from "lucide-react";
 import { ComponentType, ReactNode, useEffect, useMemo, useState } from "react";
-import SchemaPicker from "./SchemaPicker";
 import { Input } from "@/components/ui/input";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { DatabaseObjectAddSheetProps } from "@/lib/types";
+import SchemaPicker from "@/app/proj/[projectId]/database/_components/SchemaPicker";
 
 export default function CardPage<DataType>({
   projectId,
@@ -18,7 +18,8 @@ export default function CardPage<DataType>({
   description,
 
   DisplayCard,
-  AddSheet
+  AddSheet,
+  schemafilter = true
 }: {
   projectId: string,
   schemas: string[],
@@ -27,7 +28,9 @@ export default function CardPage<DataType>({
   description: string,
 
   DisplayCard: ComponentType<DataType>,
-  AddSheet: ComponentType<DatabaseObjectAddSheetProps>
+  AddSheet: ComponentType<DatabaseObjectAddSheetProps>,
+
+  schemafilter?: boolean
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
@@ -55,7 +58,7 @@ export default function CardPage<DataType>({
     );
   }, [searchTerm, data]);
 
-  const showEmptySchemaState = !searchTerm && (data?.length ?? 0) === 0;
+  const showEmptySchemaState = schemafilter ? !searchTerm && (data?.length ?? 0) === 0 : false;
   const showNoMatchesState = !!searchTerm && filteredData.length === 0;
 
   return (
@@ -90,7 +93,7 @@ export default function CardPage<DataType>({
               />
             </div>
 
-            <SchemaPicker schemas={schemas ?? []} value={schema} onChange={setSchema} />
+            {schemafilter && <SchemaPicker schemas={schemas ?? []} value={schema} onChange={setSchema} />}
           </div>
 
           <div className="text-xs text-muted-foreground">
@@ -140,13 +143,34 @@ export default function CardPage<DataType>({
               "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             )}
           >
-            {filteredData.map((i: DataType) => {
-              return (
-              <DisplayCard
-                key={Math.random()}
-                {...i}
-              />
-            )})}
+            <div className="fullscreen">
+              {!schemafilter && filteredData.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center">
+                  <InboxIcon size={96} className="text-muted-foreground" />
+                  
+                    <h2 className="text-2xl font-semibold">No {title}</h2>
+                    
+             
+
+                  <Button
+                    onClick={() => setOpen(true)}
+                    variant={"default"}
+                  >
+                    Create {title}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {filteredData.map((i: DataType) => {
+                    return (
+                    <DisplayCard
+                      key={Math.random()}
+                      {...i}
+                    />
+                  )})}
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

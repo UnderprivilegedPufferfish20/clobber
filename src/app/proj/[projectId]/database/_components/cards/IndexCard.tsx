@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import DeleteDialog from "../DeleteDialog";
+import DeleteDialog from "../../../../../../components/DeleteDialog";
 import { deleteIndex } from "@/lib/actions/database/indexes";
 
 const IndexCard = ({

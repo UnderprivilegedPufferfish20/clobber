@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Dispatch, SetStateAction, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -20,6 +20,7 @@ import DataTypeSelect from '../DataTypeSelect'
 import { Switch } from '@/components/ui/switch'
 import DefaultValueSelector from '../DefaultValueSelector'
 import { DATA_TYPES } from '@/lib/types'
+import SheetWrapper from '@/components/SheetWrapper'
 
 function AddColumnSheet({
   projectId,
@@ -32,12 +33,12 @@ function AddColumnSheet({
   projectId: string;
   schema: string;
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: Dispatch<SetStateAction<boolean>>;
 }) {
   const queryClient = useQueryClient()
 
   const [name, setName] = useState("")
-  const [dtype, setDtype] = useState<typeof DATA_TYPES[keyof typeof DATA_TYPES]>("character varying")
+  const [dtype, setDtype] = useState<typeof DATA_TYPES[keyof typeof DATA_TYPES]>("boolean")
 
   const [isArray, setIsArray] = useState(false)
   const [isPkey, setIsPkey] = useState(false)
@@ -72,157 +73,98 @@ function AddColumnSheet({
   })
 
 
-  const handleOpenChange = (o: boolean) => {
-    if (o) {
-      onOpenChange(true);
-      return;
-    }
-
-    setIsConfirmCloseOpen(true);
-  };
-
 
 
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
 
   return (
     <>
+
+    <SheetWrapper
+      title='Add Column'
+      description='New dimension of data to the table'
+      disabled={isPending || !name}
+      submitButtonText='Create Column'
+      open={open}
+      onOpenChange={onOpenChange}
+      onSubmit={() => mutate()}
+      isPending={isPending}
+
+    >
+      <div className='flex flex-col gap-2'>
+        <h1>Name</h1>
+        <Input 
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder='e.g. user_email'
+          id='column-name'
+        />
+      </div>
+
+      <Separator />
+
+      <div className='flex flex-col gap-2'>
+        <h1>Data Type</h1>
+        <DataTypeSelect 
+          onValueChange={v => setDtype(v as typeof DATA_TYPES[keyof typeof DATA_TYPES])}
+          value={dtype}
+          triggerClassname=''
+        />
+      </div>
+
+      <div className='flex flex-col gap-2'>
+        <h1>Default Value</h1>
+        <DefaultValueSelector 
+          defaultValue={defaultValue}
+          setDefaultValue={setDefaultValue}
+          dtype={dtype}
+        />
+      </div>
+
+
+      <Separator />
+
+      <div className="space-y-2">
+        <h1>Constraints</h1>
+        
+        <div className='flex gap-2 items-center'>
+          <Switch
+            onClick={() => setIsPkey(p => !p)}
+          /> 
+          
+          <p className={`text-xl text-white`}>Primary Key</p>
+        </div>
+
+        <div className='flex gap-2 items-center'>
+          <Switch 
+            disabled={isPkey}
+            onClick={() => setIsNullable(p => !p)} 
+          /> 
+          
+          <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Nullable</p>
+        </div>
+
+        <div className='flex gap-2 items-center'>
+          <Switch 
+            disabled={isPkey}
+            onClick={() => setIsUnique(p => !p)} 
+          /> 
+          
+          <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Unique</p>
+        </div>
+
+        <div className='flex gap-2 items-center'>
+          <Switch 
+            disabled={isPkey}
+            onClick={() => setIsArray(p => !p)} 
+          /> 
+          
+          <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Array</p>
+        </div>
+      </div>
+    </SheetWrapper>
     
-      <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent className="sm:max-w-2xl overflow-y-auto z-100 fullheight flex-1 p-0!">
-          <SheetHeader className="mb-4">
-            
-            <SheetTitle>Add Column to {tableId}</SheetTitle>
-          </SheetHeader>
-          <Separator />
 
-          <div className='space-y-6 p-6 flex-1'>
-
-            <div className='flex flex-col gap-2'>
-              <h1>Name</h1>
-              <Input 
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder='e.g. user_email'
-                id='column-name'
-              />
-            </div>
-
-            <Separator />
-
-            <div className='flex flex-col gap-2'>
-              <h1>Data Type</h1>
-              <DataTypeSelect 
-                onValueChange={v => setDtype(v as typeof DATA_TYPES[keyof typeof DATA_TYPES])}
-                value={dtype}
-                triggerClassname=''
-              />
-            </div>
-
-            <div className='flex flex-col gap-2'>
-              <h1>Default Value</h1>
-              <DefaultValueSelector 
-                defaultValue={defaultValue}
-                setDefaultValue={setDefaultValue}
-                dtype={dtype}
-              />
-            </div>
-
-
-            <Separator />
-
-            <div className="space-y-2">
-              <h1>Constraints</h1>
-              
-              <div className='flex gap-2 items-center'>
-                <Switch
-                  onClick={() => setIsPkey(p => !p)}
-                /> 
-                
-                <p className={`text-xl text-white`}>Primary Key</p>
-              </div>
-
-              <div className='flex gap-2 items-center'>
-                <Switch 
-                  disabled={isPkey}
-                  onClick={() => setIsNullable(p => !p)} 
-                /> 
-                
-                <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Nullable</p>
-              </div>
-
-              <div className='flex gap-2 items-center'>
-                <Switch 
-                  disabled={isPkey}
-                  onClick={() => setIsUnique(p => !p)} 
-                /> 
-                
-                <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Unique</p>
-              </div>
-
-              <div className='flex gap-2 items-center'>
-                <Switch 
-                  disabled={isPkey}
-                  onClick={() => setIsArray(p => !p)} 
-                /> 
-                
-                <p className={`${isPkey && "text-muted-foreground!"} text-xl text-white`}>Array</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
-            <SheetClose asChild>
-              <Button variant={"secondary"}>
-                Cancel
-              </Button>
-            </SheetClose>
-            <Button onClick={() => mutate()} disabled={isPending || !name}>
-              {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
-              Create Column
-            </Button>
-          </div>
-        </SheetContent>
-
-      </Sheet>
-
-      <AlertDialog
-        open={isConfirmCloseOpen}
-        onOpenChange={setIsConfirmCloseOpen}
-      >
-        <AlertDialogContent className="z-160">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
-          <AlertDialogDescription>
-            You have unsaved changes. Are you sure you want to discard them?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel
-            onClick={() => {
-              setIsConfirmCloseOpen(false);
-            }}
-          >
-            Stay
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              setIsConfirmCloseOpen(false);
-              onOpenChange(false);
-
-              setName("")
-              setDefaultValue("")
-              setDtype("string")
-              setIsUnique(false)
-              setIsArray(false)
-              setIsPkey(false)
-              setIsNullable(false)
-            }}
-          >
-            Discard
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }

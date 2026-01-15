@@ -1,31 +1,12 @@
 "use client";
 
-import React, { useCallback } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, BookTypeIcon } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -34,12 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { createEnumSchema } from "@/lib/types/schemas";
-import CustomDialogHeader from "@/components/CustomDialogHeader";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 import { createEnum } from "@/lib/actions/database/enums";
 import { DatabaseObjectAddSheetProps } from "@/lib/types";
+import SheetWrapper from "@/components/SheetWrapper";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 function AddEnumSheet({
   projectId,
@@ -49,208 +29,179 @@ function AddEnumSheet({
 }: DatabaseObjectAddSheetProps) {
   const queryClient = useQueryClient();
 
-  const [selectedSchema, setSelectedSchema] = React.useState<string>(
-    schemas?.[0] ?? "public"
-  );
-
-  const form = useForm<z.infer<typeof createEnumSchema>>({
-    resolver: zodResolver(createEnumSchema),
-    defaultValues: {
-      name: "",
-      values: [""], // start with one row so the UI is obvious
-    },
-    mode: "onSubmit",
-  });
-
-  const valuesArray = useFieldArray({
-    control: form.control,
-    name: "values" as never,
-  });
+  const [name, setName] = useState("");
+  const [schema, setSchema] = useState("");
+  const [values, setValues] = useState<string[]>([]);
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (payload: z.infer<typeof createEnumSchema>) =>
-      createEnum(payload, projectId, selectedSchema),
+    mutationFn: async () =>
+      createEnum(
+        {
+          name,
+          values,
+        },
+        projectId,
+        schema
+      ),
     onSuccess: () => {
       toast.success("Enum added successfully", { id: "add-enum" });
-      form.reset({ name: "", values: [""] });
-      onOpenChange(false);
-      queryClient.invalidateQueries(["enums", projectId, selectedSchema] as any);
+      queryClient.invalidateQueries(["enums", projectId, schema] as any);
+      setName("");
+      setSchema("");
+      setValues([]);
+      onOpenChange?.(false);
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to add enum", { id: "add-enum" });
     },
   });
 
-  const onSubmit = useCallback(
-    (payload: z.infer<typeof createEnumSchema>) => {
-      toast.loading("Adding enum...", { id: "add-enum" });
+  const handleAddValue = () => {
+    setValues((prev) => [...prev, ""]);
+  };
 
-      // optional: trim + drop empties so you don't create invalid enums accidentally
-      const cleaned = {
-        ...payload,
-        values: (payload.values ?? [])
-          .map((v) => v.trim())
-          .filter((v) => v.length > 0),
-      };
+  const handleRemoveValue = (index: number) => {
+    setValues((prev) => prev.filter((_, i) => i !== index));
+  };
 
-      mutate(cleaned);
-    },
-    [mutate]
-  );
+  const handleUpdateValue = (index: number, value: string) => {
+    setValues((prev) =>
+      prev.map((v, i) => (i === index ? value : v))
+    );
+  };
+
+  const handleSubmit = () => {
+    if (!name || !schema || values.length === 0) {
+      toast.error("Name, schema, and at least one value are required");
+      return;
+    }
+    mutate();
+  };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md overflow-y-auto p-2 z-100">
-        <SheetHeader className="mb-4">
-          <CustomDialogHeader icon={BookTypeIcon} title="Create Enum" />
-          <SheetDescription>
-            Define the enum name and the set of allowed values.
-          </SheetDescription>
-        </SheetHeader>
+    <SheetWrapper
+      title="Create Enum"
+      description="Data type with list of possible values"
+      disabled={false}
+      onOpenChange={onOpenChange}
+      open={open}
+      onSubmit={handleSubmit}
+      onDiscard={() => {
+        setName("");
+        setValues([]);
+        setSchema("");
+      }}
+      submitButtonText="Create Enum"
+      isPending={isPending}
+    >
+      <div className="flex flex-col gap-2">
+        <h1>Name</h1>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Enum Name */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Enum Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. user_status" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <Input
+          className="fullwidth"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
 
-            {/* Schema */}
-            <FormItem>
-              <FormLabel>Schema</FormLabel>
-              <Select
-                onValueChange={setSelectedSchema}
-                value={selectedSchema}
+      <div className="flex flex-col gap-2">
+        <h1>Schema</h1>
+
+        <Select
+          onValueChange={setSchema}
+          value={schema}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select schema" />
+          </SelectTrigger>
+          <SelectContent className="z-200">
+            {(schemas ?? []).map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-medium">Values</h2>
+            <p className="text-sm text-muted-foreground">
+              Add one value per row (e.g. <span className="font-mono">active</span>,{" "}
+              <span className="font-mono">inactive</span>).
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddValue}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add value
+          </Button>
+        </div>
+
+        {values.length === 0 ? (
+          <div className="mt-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+            No values yet. Add at least one value.
+          </div>
+        ) : (
+          <div className="mt-2 space-y-2">
+            {values.map((value, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "rounded-md border bg-background p-2",
+                  "flex items-start gap-2"
+                )}
               >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select schema" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="z-200">
-                  {(schemas ?? []).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                The enum will be created inside this schema.
-              </FormDescription>
-            </FormItem>
-
-            <Separator />
-
-            {/* Values list */}
-            <div className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <FormLabel>Values</FormLabel>
-                  <FormDescription>
-                    Add one value per row (e.g. <span className="font-mono">active</span>,{" "}
-                    <span className="font-mono">inactive</span>).
-                  </FormDescription>
+                <div className="flex-1">
+                  <Input
+                    placeholder={`value_${index + 1}`}
+                    value={value}
+                    onChange={(e) => handleUpdateValue(index, e.target.value)}
+                  />
                 </div>
 
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => valuesArray.append("")}
+                  variant="ghost"
+                  size="icon"
+                  className="mt-0.5"
+                  onClick={() => handleRemoveValue(index)}
+                  aria-label="Remove value"
+                  disabled={values.length === 1}
+                  title={
+                    values.length === 1
+                      ? "At least one value is required"
+                      : "Remove value"
+                  }
                 >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add value
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+            ))}
+          </div>
+        )}
 
-              {valuesArray.fields.length === 0 ? (
-                <div className="mt-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                  No values yet. Add at least one value.
-                </div>
-              ) : (
-                <div className="mt-2 space-y-2">
-                  {valuesArray.fields.map((row, index) => (
-                    <div
-                      key={row.id}
-                      className={cn(
-                        "rounded-md border bg-background p-2",
-                        "flex items-start gap-2"
-                      )}
-                    >
-                      <FormField
-                        control={form.control}
-                        name={`values.${index}` as const}
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel className="sr-only">Value</FormLabel>
-                            <FormControl>
-                              <Input placeholder={`value_${index + 1}`} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="mt-0.5"
-                        onClick={() => valuesArray.remove(index)}
-                        aria-label="Remove value"
-                        disabled={valuesArray.fields.length === 1}
-                        title={
-                          valuesArray.fields.length === 1
-                            ? "At least one value is required"
-                            : "Remove value"
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Preview */}
-              <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
-                Preview:{" "}
-                <span className="font-mono text-foreground">
-                  {selectedSchema || "schema"}.{form.watch("name") || "enum_name"} = [
-                  {(form.watch("values") ?? [])
-                    .map((v) => v?.trim())
-                    .filter(Boolean)
-                    .join(", ")}
-                  ]
-                </span>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? (
-                <>
-                  <Loader2 className="animate-spin mr-2" />
-                  Creating...
-                </>
-              ) : (
-                "Create Enum"
-              )}
-            </Button>
-          </form>
-        </Form>
-      </SheetContent>
-    </Sheet>
+        {/* Preview */}
+        <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+          Preview:{" "}
+          <span className="font-mono text-foreground">
+            {schema || "schema"}.{name || "enum_name"} = [
+            {values
+              .map((v) => v?.trim())
+              .filter(Boolean)
+              .join(", ")}
+            ]
+          </span>
+        </div>
+      </div>
+    </SheetWrapper>
   );
 }
 

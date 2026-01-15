@@ -9,8 +9,6 @@ export const createProjectSchema = z.object({
   name: z.string().min(5, { message: "Name must be at least 5 characters" }).max(30, { message: "Name cannot excede 30 characters" })
 })
 
-
-
 export const createSchemaScheam = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" })
 })
@@ -28,7 +26,13 @@ export const inviteUsersSchema = z.object({
     email: z.email({ message: "Please enter valid email" }) 
 })
 
-
+export const createRoleSchema = z.object({
+  name: z.string(),
+  can_login: z.boolean(),
+  can_create_roles: z.boolean(),
+  can_bypass_rls: z.boolean(),
+  is_superuser: z.boolean()
+})
 
 export const createFunctionSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
@@ -44,8 +48,6 @@ export const createFunctionSchema = z.object({
 export const createIndexSchema = z.object({
   schema: z.string().min(1, "Pick a schema"),
   table: z.string().min(1, "Pick a table"),
-
-  // ✅ field-array friendly: cols is [{ value: "col" }, ...]
   cols: z
     .array(z.object({ name: z.string().min(1, "Pick a column"), dtype: z.string() }))
     .min(1, "Add at least one column"),

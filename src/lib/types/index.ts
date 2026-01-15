@@ -2,6 +2,7 @@ import { LucideIcon } from "lucide-react";
 import { User } from "../db/generated";
 import z from "zod";
 import { createColumnSchema, createForeignKeyColumnSchema, createForeignKeySchema, createTableSchema } from "./schemas";
+import { Dispatch, SetStateAction } from "react";
 
 export interface AuthContextType {
   user: User | null;
@@ -123,7 +124,7 @@ export interface DatabaseObjectAddSheetProps {
   projectId: string,
   schemas: string[],
   open: boolean,
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: Dispatch<SetStateAction<boolean>>;
 }
 
 export type TableViewProps = {
@@ -292,4 +293,12 @@ export type EnumType = {
   enum_schema: string,
   enum_name: string,
   enum_values: string
+}
+
+export type RoleType = {
+  name: string,
+  can_login: boolean,
+  can_create_roles: boolean,
+  can_bypass_rls: boolean,
+  is_superuser: boolean
 }

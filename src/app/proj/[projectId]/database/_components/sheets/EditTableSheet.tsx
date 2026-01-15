@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -62,6 +62,8 @@ import { Separator } from "@/components/ui/separator";
 import DataTypeSelect from "../DataTypeSelect";
 import { defaultSuggestions } from "@/lib/utils";
 import DefaultValueSelector from "../DefaultValueSelector";
+import SheetActionsFooter from "@/components/SheetActionsFooter";
+import SheetWrapper from "@/components/SheetWrapper";
 
 
 function EditTableSheet({
@@ -75,7 +77,7 @@ function EditTableSheet({
   schema: string;
   table: TableType;
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: Dispatch<SetStateAction<boolean>>;
 }) {
   const emptyColumn: ColumnType = {
     name: "",
@@ -180,188 +182,144 @@ function EditTableSheet({
 
   return (
     <>
-    
-      <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent className="sm:max-w-2xl overflow-y-auto p-0! z-100 focus:outline-none fullheight">
-          <SheetHeader className="mb-4">
-            <SheetTitle>Edit {table.name}</SheetTitle>
-            <SheetDescription>
-              Change properties of {table.name}
-            </SheetDescription>
-          </SheetHeader>
-          <Separator />
+      <SheetWrapper
+        title={`Edit ${table.name}`}
+        description={`Change properties of ${table.name}`}
+        submitButtonText="Apply Changes"
+        onOpenChange={onOpenChange}
+        open={open}
+        onSubmit={() => mutate()}
+        isPending={isPending}
+        isDirty={isDirty}
+        disabled={columns.length === 0 || !name}
+        onDiscard={() => {
+          setName(table.name)
+          setColumns(table.columns)
+        }}
 
-          <div className='space-y-6 p-6 flex-1'>
-
-            <div className='flex flex-col gap-2'>
-              <h1>Name</h1>
-              <Input 
-                value={name}
-                onChange={e => setName(e.target.value)}
-                id='table-name'
-              />
-            </div>
-
-            <div className="flex flex-col gap-6">
-              <h1>Columns</h1>
-
-              <div className="flex flex-col gap-1">
-                <div className="fullwidth flex items-center pl-2 text-muted-foreground text-sm">
-                  <h1 className="pr-25">Name</h1>
-                  <h1 className="pr-32">Type</h1>
-                  <h1 className="pr-16">Default Value</h1>
-                  <h1>Primary Key</h1>
-                </div>
-
-                <div className='fullwidth flex flex-col gap-1'>
-                  {columns.map((col, idx) => {
-
-                    const updateDefault = (value: string) => {
-                      updateColumn(idx, { default: value });
-                    };
-
-                    return (
-                        <div
-                          key={`${col.name ?? "new"}:${idx}`}
-                          className={`${col.isPkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border border-border`}
-                        >
-  
-                          
-  
-                          <Input
-                            value={col.name}
-                            onChange={(e) => updateColumn(idx, { name: e.target.value })}
-                            className="focus-visible:ring-0 focus-visible:ring-offset-0 max-w-32 min-w-32 w-32"
-                          />
-  
-                          <DataTypeSelect
-                            triggerClassname="max-w-35 min-w-35 w-35 truncate" 
-                            value={col.dtype}
-                            onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: getDefaultForType(v as DATA_TYPE_TYPE) })}
-                          />
-                          
-                          <DefaultValueSelector 
-                            defaultValue={col.default ?? ""}
-                            dtype={col.dtype}
-                            setDefaultValue={updateDefault}
-                            className='truncate focus-visible:ring-0 focus-visible:ring-offset-0'
-                          />
-  
-                          <Checkbox
-                            className={`w-6 h-6 ${col.isPkey ? "mr-30" : "mr-18"}`}
-                            checked={col.isPkey}
-                            onCheckedChange={(v) => updateColumn(idx, { isPkey: Boolean(v), isArray: false })}
-                          />
-  
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className={`${col.isPkey && "hidden"} relative`} type="button">
-                                {getCheckedOptions(col) > 0 && (
-                                  <Badge className="absolute top-0 left-0 w-3 h-4">{getCheckedOptions(col)}</Badge>
-                                )}
-                                <EllipsisVerticalIcon className="w-6 h-6" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="z-140" align="end">
-                              <DropdownMenuLabel>More Options</DropdownMenuLabel>
-  
-                              <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
-                                <Checkbox
-                                  id={`isNullable-${idx}`}
-                                  checked={col.isNullable}
-                                  onCheckedChange={(v) => updateColumn(idx, { isNullable: Boolean(v) })}
-                                />
-                                <Label htmlFor={`isNullable-${idx}`}>Is Nullable</Label>
-                              </DropdownMenuItem>
-  
-                              <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
-                                <Checkbox
-                                  id={`isUnique-${idx}`}
-                                  checked={col.isUnique}
-                                  onCheckedChange={(v) => updateColumn(idx, { isUnique: Boolean(v) })}
-                                />
-                                <Label htmlFor={`isUnique-${idx}`}>Is Unique</Label>
-                              </DropdownMenuItem>
-  
-                              {!col.isPkey && (
-                                <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
-                                  <Checkbox
-                                    id={`isArray-${idx}`}
-                                    checked={col.isArray}
-                                    onCheckedChange={(v) => updateColumn(idx, { isArray: Boolean(v) })}
-                                  />
-                                  <Label htmlFor={`isArray-${idx}`}>Is Array</Label>
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-  
-                          <Button variant="ghost" type="button" onClick={() => deleteColumn(idx)}>
-                            <XIcon className="w-6 h-6" />
-                          </Button>
-                        </div>
-                    )
-                  })}
-                </div>
-                
-                <div
-                  className={`flex items-center justify-center fullwidth relative rounded-md border border-border py-2 mt-2`}
-                >
-                  <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setColumns((p) => [...p, emptyColumn])}>
-                    Add Column
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
-            <SheetClose asChild>
-              <Button variant={"secondary"}>
-                Cancel
-              </Button>
-            </SheetClose>
-            <Button onClick={() => mutate()} variant={"default"} disabled={columns.length === 0 || !name}>
-              {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
-              Create Table
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <AlertDialog
-        open={isConfirmCloseOpen}
-        onOpenChange={setIsConfirmCloseOpen}
       >
-        <AlertDialogContent className="z-160">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
-          <AlertDialogDescription>
-            You have unsaved changes. Are you sure you want to discard them?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel
-            onClick={() => {
-              setIsConfirmCloseOpen(false);
-            }}
-          >
-            Stay
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              setIsConfirmCloseOpen(false);
-              onOpenChange(false);
+        <div className='flex flex-col gap-2'>
+          <h1>Name</h1>
+          <Input 
+            value={name}
+            onChange={e => setName(e.target.value)}
+            id='table-name'
+          />
+        </div>
 
-              setName(table.name)
-              setColumns(table.columns)
-            }}
-          >
-            Discard
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-      </AlertDialog>
+        <div className="flex flex-col gap-6">
+          <h1>Columns</h1>
+
+          <div className="flex flex-col gap-1">
+            <div className="fullwidth flex items-center pl-2 text-muted-foreground text-sm">
+              <h1 className="pr-25">Name</h1>
+              <h1 className="pr-32">Type</h1>
+              <h1 className="pr-16">Default Value</h1>
+              <h1>Primary Key</h1>
+            </div>
+
+            <div className='fullwidth flex flex-col gap-1'>
+              {columns.map((col, idx) => {
+
+                const updateDefault = (value: string) => {
+                  updateColumn(idx, { default: value });
+                };
+
+                return (
+                    <div
+                      key={`${col.name ?? "new"}:${idx}`}
+                      className={`${col.isPkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border border-border`}
+                    >
+
+                      
+
+                      <Input
+                        value={col.name}
+                        onChange={(e) => updateColumn(idx, { name: e.target.value })}
+                        className="focus-visible:ring-0 focus-visible:ring-offset-0 max-w-32 min-w-32 w-32"
+                      />
+
+                      <DataTypeSelect
+                        triggerClassname="max-w-35 min-w-35 w-35 truncate" 
+                        value={col.dtype}
+                        onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: getDefaultForType(v as DATA_TYPE_TYPE) })}
+                      />
+                      
+                      <DefaultValueSelector 
+                        defaultValue={col.default ?? ""}
+                        dtype={col.dtype}
+                        setDefaultValue={updateDefault}
+                        className='truncate focus-visible:ring-0 focus-visible:ring-offset-0'
+                      />
+
+                      <Checkbox
+                        className={`w-6 h-6 ${col.isPkey ? "mr-30" : "mr-18"}`}
+                        checked={col.isPkey}
+                        onCheckedChange={(v) => updateColumn(idx, { isPkey: Boolean(v), isArray: false })}
+                      />
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className={`${col.isPkey && "hidden"} relative`} type="button">
+                            {getCheckedOptions(col) > 0 && (
+                              <Badge className="absolute top-0 left-0 w-3 h-4">{getCheckedOptions(col)}</Badge>
+                            )}
+                            <EllipsisVerticalIcon className="w-6 h-6" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="z-140" align="end">
+                          <DropdownMenuLabel>More Options</DropdownMenuLabel>
+
+                          <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
+                            <Checkbox
+                              id={`isNullable-${idx}`}
+                              checked={col.isNullable}
+                              onCheckedChange={(v) => updateColumn(idx, { isNullable: Boolean(v) })}
+                            />
+                            <Label htmlFor={`isNullable-${idx}`}>Is Nullable</Label>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
+                            <Checkbox
+                              id={`isUnique-${idx}`}
+                              checked={col.isUnique}
+                              onCheckedChange={(v) => updateColumn(idx, { isUnique: Boolean(v) })}
+                            />
+                            <Label htmlFor={`isUnique-${idx}`}>Is Unique</Label>
+                          </DropdownMenuItem>
+
+                          {!col.isPkey && (
+                            <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
+                              <Checkbox
+                                id={`isArray-${idx}`}
+                                checked={col.isArray}
+                                onCheckedChange={(v) => updateColumn(idx, { isArray: Boolean(v) })}
+                              />
+                              <Label htmlFor={`isArray-${idx}`}>Is Array</Label>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <Button variant="ghost" type="button" onClick={() => deleteColumn(idx)}>
+                        <XIcon className="w-6 h-6" />
+                      </Button>
+                    </div>
+                )
+              })}
+            </div>
+            
+            <div
+              className={`flex items-center justify-center fullwidth relative rounded-md border border-border py-2 mt-2`}
+            >
+              <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setColumns((p) => [...p, emptyColumn])}>
+                Add Column
+              </Button>
+            </div>
+          </div>
+        </div>
+
+      </SheetWrapper>
     </>
   );
 }

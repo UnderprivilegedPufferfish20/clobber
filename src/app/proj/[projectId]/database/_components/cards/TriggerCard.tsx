@@ -1,7 +1,7 @@
 "use client";
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import DeleteDialog from "../DeleteDialog";
+import DeleteDialog from "../../../../../../components/DeleteDialog";
 import { useState } from "react";
 import { PlayCircleIcon, EllipsisVerticalIcon } from "lucide-react";
 import { cn } from "@/lib/utils";

@@ -1,9 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useCallback, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Columns, Plus, Trash2 } from "lucide-react";
@@ -17,28 +14,18 @@ import {
   SheetHeader,
 } from "@/components/ui/sheet";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createFunctionSchema } from "@/lib/types/schemas";
-import CustomDialogHeader from "@/components/CustomDialogHeader";
 import { DATA_TYPES, DatabaseObjectAddSheetProps, FUNCTION_RETURN_TYPES } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { createFunction } from "@/lib/actions/database/functions";
+import SheetWrapper from "@/components/SheetWrapper";
 
 function AddFunctionSheet({
   projectId,
@@ -48,42 +35,34 @@ function AddFunctionSheet({
 }: DatabaseObjectAddSheetProps) {
   const queryClient = useQueryClient();
 
-  const form = useForm<z.infer<typeof createFunctionSchema>>({
-    resolver: zodResolver(createFunctionSchema),
-    defaultValues: {
-      name: "",
-      schema: schemas?.[0] ?? "public",
-      returnType: DATA_TYPES.CHARACTER_VARYING,
-      args: [],
-      definition: "",
-    },
-  });
-
-  const selectedSchema = form.watch("schema");
-
-
-
-  const argsArray = useFieldArray({
-    control: form.control,
-    name: "args",
-  });
+  const [name, setName] = useState("");
+  const [schema, setSchema] = useState("");
+  const [returnType, setReturnType] = useState<FUNCTION_RETURN_TYPES | string>("");
+  const [args, setArgs] = useState<{ name: string; dtype: DATA_TYPES }[]>([]);
+  const [definition, setDefinition] = useState("");
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (values: z.infer<typeof createFunctionSchema>) => {
-      console.log("Values being passed to createFunction:", values);
-      return createFunction(values, projectId)
+    mutationFn: async () => {
+      return createFunction(
+        {
+          args,
+          name,
+          definition,
+          returnType,
+          schema,
+        },
+        projectId
+      );
     },
     onSuccess: () => {
       toast.success("Function added successfully", { id: "add-function" });
-      form.reset({
-        name: "",
-        schema: selectedSchema,
-        returnType: DATA_TYPES.CHARACTER_VARYING,
-        args: [],
-        definition: "",
-      });
-      onOpenChange(false);
-      queryClient.invalidateQueries(["functions", projectId, selectedSchema] as any);
+      queryClient.invalidateQueries(["functions", projectId, schema] as any);
+      setName("");
+      setSchema("");
+      setReturnType("");
+      setArgs([]);
+      setDefinition("");
+      onOpenChange?.(false);
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to add function", {
@@ -92,269 +71,197 @@ function AddFunctionSheet({
     },
   });
 
-  const onSubmit = useCallback(
-    (values: z.infer<typeof createFunctionSchema>) => {
-      toast.loading("Adding function...", { id: "add-function" });
-      mutate(values);
-    },
-    [mutate]
-  );
+  const handleAddArg = () => {
+    setArgs((prev) => [...prev, { name: "", dtype: DATA_TYPES.CHARACTER_VARYING }]);
+  };
+
+  const handleRemoveArg = (index: number) => {
+    setArgs((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateArgName = (index: number, value: string) => {
+    setArgs((prev) =>
+      prev.map((arg, i) => (i === index ? { ...arg, name: value } : arg))
+    );
+  };
+
+  const handleUpdateArgType = (index: number, value: DATA_TYPES) => {
+    setArgs((prev) =>
+      prev.map((arg, i) => (i === index ? { ...arg, dtype: value } : arg))
+    );
+  };
+
+  const handleSubmit = () => {
+    if (!name || !schema) {
+      toast.error("Name and schema are required");
+      return;
+    }
+    mutate();
+  };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md overflow-y-auto p-2 z-100">
-        <SheetHeader className="mb-4">
-          <CustomDialogHeader icon={Columns} title="Create Function" />
-          <SheetDescription>
-            Define the properties for your new Postgres function.
-          </SheetDescription>
-        </SheetHeader>
+    <SheetWrapper
+      disabled={false}
+      onOpenChange={onOpenChange}
+      onSubmit={() => mutate()}
+      open={open}
+      submitButtonText="Create Function"
+      title="Create Function"
+      description="Reusable block of code"
+      isPending={isPending}
+      onDiscard={() => {
+        setArgs([])
+        setDefinition("")
+        setName("")
+        setReturnType(FUNCTION_RETURN_TYPES.BOOL)
+        setSchema("")
+      }}
+    >
+      <div className="flex flex-col gap-2">
+        <h1>Name</h1>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="fullwidth"
+        />
+      </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Function Name */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Function Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. get_user_stats" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <div className="flex flex-col gap-2">
+        <h1>Schema</h1>
+        <Select onValueChange={setSchema} value={schema}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select schema" />
+          </SelectTrigger>
+          <SelectContent className="z-200">
+            {(schemas ?? []).map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-            {/* Schema */}
-            <FormField
-              control={form.control}
-              name="schema"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Schema</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select schema" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="z-200">
-                      {(schemas ?? []).map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <div className="flex flex-col gap-2">
+        <h1>Return Type</h1>
+        <Select
+          onValueChange={setReturnType}
+          value={returnType}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select a type" />
+          </SelectTrigger>
+          <SelectContent className="z-110">
+            {Object.values(FUNCTION_RETURN_TYPES).map((type) => (
+              <SelectItem key={type} value={type}>
+                {type.toUpperCase()}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-            {/* Return Type */}
-            <FormField
-              control={form.control}
-              name="returnType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Return Type</FormLabel>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center fullwidth justify-between">
+          <h1>Arguments</h1>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddArg}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add argument
+          </Button>
+        </div>
+
+        {args.length === 0 ? (
+          <div className="mt-3 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+            No arguments yet. Add one if your function needs inputs.
+          </div>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {args.map((arg, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "rounded-md border bg-background p-2",
+                  "flex items-start gap-2"
+                )}
+              >
+                {/* Arg name */}
+                <div className="flex-1">
+                  <Input
+                    placeholder={`arg_${index + 1}`}
+                    value={arg.name}
+                    onChange={(e) => handleUpdateArgName(index, e.target.value)}
+                  />
+                </div>
+
+                {/* Arg type */}
+                <div className="w-44">
                   <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    onValueChange={(value) => handleUpdateArgType(index, value as DATA_TYPES)}
+                    value={arg.dtype}
                   >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a type" />
-                      </SelectTrigger>
-                    </FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a type" />
+                    </SelectTrigger>
                     <SelectContent className="z-110">
-                      {Object.values(FUNCTION_RETURN_TYPES).map((type) => (
+                      {Object.values(DATA_TYPES).map((type) => (
                         <SelectItem key={type} value={type}>
                           {type.toUpperCase()}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                </div>
 
-            <Separator />
+                {/* Remove */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="mt-0.5"
+                  onClick={() => handleRemoveArg(index)}
+                  aria-label="Remove argument"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
 
-            {/* Arguments UI */}
-            <FormField
-              control={form.control}
-              name="args"
-              render={() => (
-                <FormItem>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <FormLabel>Arguments</FormLabel>
-                      <FormDescription>
-                        Optional. These become parameters in your function
-                        signature.
-                      </FormDescription>
-                    </div>
+        {/* Signature preview */}
+        <div className="mt-3 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+          Signature preview:{" "}
+          <span className="font-mono text-foreground">
+            {name}(
+            {args
+              .filter((a) => a?.name || a?.dtype)
+              .map(
+                (a) =>
+                  `${a?.name || "arg"} ${String(
+                    a?.dtype || ""
+                  ).toLowerCase()}`
+              )
+              .join(", ")}
+            )
+          </span>
+        </div>
+      </div>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        argsArray.append({ name: "", dtype: DATA_TYPES.CHARACTER_VARYING })
-                      }
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add argument
-                    </Button>
-                  </div>
-
-                  {argsArray.fields.length === 0 ? (
-                    <div className="mt-3 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                      No arguments yet. Add one if your function needs inputs.
-                    </div>
-                  ) : (
-                    <div className="mt-3 space-y-2">
-                      {argsArray.fields.map((row, index) => (
-                        <div
-                          key={row.id}
-                          className={cn(
-                            "rounded-md border bg-background p-2",
-                            "flex items-start gap-2"
-                          )}
-                        >
-                          {/* Arg name */}
-                          <FormField
-                            control={form.control}
-                            name={`args.${index}.name`}
-                            render={({ field }) => (
-                              <FormItem className="flex-1">
-                                <FormLabel className="sr-only">
-                                  Argument name
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder={`arg_${index + 1}`}
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Arg type */}
-                          <FormField
-                            control={form.control}
-                            name={`args.${index}.dtype`}
-                            render={({ field }) => (
-                              <FormItem className="w-44">
-                                <FormLabel className="sr-only">
-                                  Argument type
-                                </FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a type" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent className="z-110">
-                                    {Object.values(DATA_TYPES).map((type) => (
-                                      <SelectItem key={type} value={type}>
-                                        {type.toUpperCase()}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Remove */}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="mt-0.5"
-                            onClick={() => argsArray.remove(index)}
-                            aria-label="Remove argument"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Signature preview */}
-                  <div className="mt-3 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
-                    Signature preview:{" "}
-                    <span className="font-mono text-foreground">
-                      {form.watch("name") || "function_name"}(
-                      {(form.watch("args") ?? [])
-                        .filter((a) => a?.name || a?.dtype)
-                        .map(
-                          (a) =>
-                            `${a?.name || "arg"} ${String(
-                              a?.dtype || ""
-                            ).toLowerCase()}`
-                        )
-                        .join(", ")}
-                      )
-                    </span>
-                  </div>
-
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Separator />
-
-            {/* Definition */}
-            <FormField
-              control={form.control}
-              name="definition"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Definition</FormLabel>
-                  <FormDescription>
-                    Write the function body in plpgsql. Omit <span className="font-mono">BEGIN</span> and{" "}
-                    <span className="font-mono">END;</span>.
-                  </FormDescription>
-                  <FormControl>
-                    <Textarea
-                      placeholder={`-- example\nRETURN 1;`}
-                      className="min-h-[180px] font-mono"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? (
-                <>
-                  <Loader2 className="animate-spin mr-2" />
-                  Creating...
-                </>
-              ) : (
-                "Create Function"
-              )}
-            </Button>
-          </form>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <div className="flex flex-col gap-2">
+        <h1>Definition (Omit "BEGIN" and "END")</h1>
+        <Textarea
+          placeholder={`-- example\nRETURN 1;`}
+          className="min-h-[180px] font-mono"
+          value={definition}
+          onChange={(e) => setDefinition(e.target.value)}
+        />
+      </div>
+    </SheetWrapper>
   );
 }
 

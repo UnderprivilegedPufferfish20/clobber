@@ -1,9 +1,9 @@
 import { getSchemas } from "@/lib/actions/database/cache-actions"
 import { getEnums } from "@/lib/actions/database/enums/cache-actions"
-import CardPage from "../_components/CardPage"
 import EnumCard from "../_components/cards/EnumCard"
 import { EnumType } from "@/lib/types"
 import AddEnumSheet from "./_components/sheets/AddEnumSheet"
+import CardPage from "@/components/CardPage"
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database">) => {
   const p = await params

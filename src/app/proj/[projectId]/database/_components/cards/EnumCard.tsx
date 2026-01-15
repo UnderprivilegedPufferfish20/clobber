@@ -7,7 +7,7 @@ import { BookTypeIcon, EllipsisVerticalIcon, PencilIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import DeleteDialog from "../DeleteDialog";
+import DeleteDialog from "../../../../../../components/DeleteDialog";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { renameEnum, renameEnumValue, addValueToEnum, deleteEnum } from "@/lib/actions/database/enums";
