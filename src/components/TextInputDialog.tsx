@@ -22,7 +22,7 @@ type Props = {
   onValueChange: Dispatch<SetStateAction<string>>,
   headerIcon: LucideIcon,
   headerTitle: string,
-  action: (...args: any[]) => Promise<any>,
+  action: (...args: any[]) => any,
   actionArgs: any[]
 
   toastId: string,

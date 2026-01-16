@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect, useState } from "react";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { ColumnType, JsonNodeData, TableType as SchemaEditorTable } from "@/lib/types";
+import { ColumnType, DATA_EXPORT_FORMATS, JsonNodeData, TableType as SchemaEditorTable } from "@/lib/types";
 import {
   Background,
   BackgroundVariant,
@@ -19,7 +19,7 @@ import {
   Handle,
   Position,
 } from "@xyflow/react";
-import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, PlusIcon, EditIcon, Trash2Icon, FingerprintIcon, EllipsisVerticalIcon, CopyIcon, DownloadIcon, FileJson, FileSpreadsheetIcon } from "lucide-react";
+import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, PlusIcon, EditIcon, Trash2Icon, FingerprintIcon, EllipsisVerticalIcon, CopyIcon, DownloadIcon, FileJson, FileSpreadsheetIcon, FileText, FileTextIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
@@ -37,6 +37,9 @@ import SchemaPicker from "./SchemaPicker";
 import AddTableSheet from "./sheets/AddTableSheet";
 import EditColumnSheet from "./sheets/EditColumnSheet";
 import EditTableSheet from "./sheets/EditTableSheet";
+import { getTableSchema } from "@/lib/actions/database/tables/cache-actions";
+import { deleteTable, duplicateTable, exportTableData } from "@/lib/actions/database/tables";
+import TextInputDialog from "@/components/TextInputDialog";
 
 
 
@@ -309,6 +312,54 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
   const projectId = pathname.split("/")[2]
 
   const [editTableSheetOpen, setEditTableSheetOpen] = useState(false)
+  const [duplicateTableOpen, setDuplicateTableOpen] = useState(false)
+
+  const [duplicatedTableName, setDuplicatedTableName] = useState("")
+
+  const { mutate: copyName } = useMutation({
+    mutationFn: async () => { navigator.clipboard.writeText(data.table.name) },
+    onMutate: () => { toast.loading("Copying name...", { id: 'copy-name' }) },
+    onSuccess: () => { toast.success("Name copied", { id: 'copy-name' }) },
+    onError: (e) => { toast.success(`Failed to copy name: ${e}`, { id: 'copy-name' }) }
+  })
+
+  const { mutate: copySchema } = useMutation({
+    mutationFn: async () => {
+      const schemaText = await getTableSchema(projectId, schema, tableName)
+
+      navigator.clipboard.writeText(schemaText)
+    },
+    onMutate: () => { toast.loading("Copying schema...", { id: 'copy-schem' }) },
+    onSuccess: () => { toast.success("Schema copied", { id: 'copy-schem' }) },
+    onError: (e) => { toast.success(`Failed to copy schema: ${e}`, { id: 'copy-schem' }) }
+  })
+
+
+  const { mutate: del } = useMutation({
+    mutationFn: async () => { await deleteTable(projectId, schema, tableName) },
+    onMutate: () => { toast.loading("Deleting table...", { id: 'del-table' }) },
+    onSuccess: () => { toast.success("Table deleted", { id: 'del-table' }) },
+    onError: (e) => { toast.success(`Failed to delete table: ${e}`, { id: 'del-table' }) }
+  })
+
+  const { mutate: exportTable } = useMutation({
+    mutationFn: async (type: DATA_EXPORT_FORMATS) => {
+      const exportData = await exportTableData(projectId, schema, tableName, type)
+
+      const blob = new Blob([exportData.data], { type: exportData.contentType });
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = exportData.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href)
+    },
+    onMutate: () => { toast.loading("Downloading table...", { id: 'download-table' }) },
+    onSuccess: () => { toast.success("Table downloaded", { id: 'download-table' }) },
+    onError: (e) => { toast.success(`Failed to downlaod table: ${e}`, { id: 'download-table' }) }
+  })
 
 
 
@@ -351,15 +402,16 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
                   <DropdownMenuTrigger className="cursor-pointer">
                     <EllipsisVerticalIcon className="w-4 h-4"/>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent align="start">
                     <DropdownMenuItem
-                      
+                      onClick={() => copyName()}
                       className="flex items-center gap-2"
                     >
                       <CopyIcon className="w-6 h-6"/>
                       Copy Name
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      onClick={() => copySchema()}
                       className="flex items-center gap-2"
                     >
                       <CopyIcon className="w-6 h-6"/>
@@ -377,6 +429,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
+                      onClick={() => setDuplicateTableOpen(true)}
                       className="flex items-center gap-2"
                     >
                       <CopyIcon className="w-6 h-6"/>
@@ -391,13 +444,26 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
                         Downlaod
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
-                        <DropdownMenuItem className="flex items-center gap-2">
+                        <DropdownMenuItem 
+                          className="flex items-center gap-2"
+                          onClick={() => exportTable(DATA_EXPORT_FORMATS.JSON)}
+                        >
                           <FileJson className="w-6 h-6" />
                           JSON
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="flex items-center gap-2">
+                        <DropdownMenuItem 
+                          className="flex items-center gap-2"
+                          onClick={() => exportTable(DATA_EXPORT_FORMATS.CSV)}
+                        >
                           <FileSpreadsheetIcon className="w-6 h-6" />
                           CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="flex items-center gap-2"
+                          onClick={() => exportTable(DATA_EXPORT_FORMATS.SQL)}
+                        >
+                          <FileTextIcon className="w-6 h-6" />
+                          SQL
                         </DropdownMenuItem>
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
@@ -405,6 +471,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
                     <ContextMenuSeparator />
 
                     <DropdownMenuItem
+                      onClick={() => del()}
                       className="flex items-center gap-2"
                     >
                       <Trash2Icon className="w-6 h-6"/>
@@ -438,6 +505,21 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
         projectId={projectId}
         schema={schema}
         table={data.table}
+      />
+
+      <TextInputDialog 
+        action={duplicateTable}
+        errorMessage="Failed to duplicate table"
+        headerIcon={CopyIcon}
+        headerTitle="Duplicate table"
+        loadingMessage="Duplicating..."
+        open={duplicateTableOpen}
+        onOpenChange={setDuplicateTableOpen}
+        toastId="dup-table"
+        value={duplicatedTableName}
+        successMessage="Table duplicated"
+        onValueChange={setDuplicatedTableName}
+        actionArgs={[projectId, schema, tableName, duplicatedTableName]}
       />
     </>
   );

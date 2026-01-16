@@ -74,9 +74,6 @@ function AddColumnSheet({
 
 
 
-
-  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
-
   return (
     <>
 
