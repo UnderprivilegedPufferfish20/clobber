@@ -331,7 +331,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
     },
     onMutate: () => { toast.loading("Copying schema...", { id: 'copy-schem' }) },
     onSuccess: () => { toast.success("Schema copied", { id: 'copy-schem' }) },
-    onError: (e) => { toast.success(`Failed to copy schema: ${e}`, { id: 'copy-schem' }) }
+    onError: (e) => { toast.error(`Failed to copy schema: ${e}`, { id: 'copy-schem' }) }
   })
 
 
@@ -339,7 +339,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
     mutationFn: async () => { await deleteTable(projectId, schema, tableName) },
     onMutate: () => { toast.loading("Deleting table...", { id: 'del-table' }) },
     onSuccess: () => { toast.success("Table deleted", { id: 'del-table' }) },
-    onError: (e) => { toast.success(`Failed to delete table: ${e}`, { id: 'del-table' }) }
+    onError: (e) => { toast.error(`Failed to delete table: ${e}`, { id: 'del-table' }) }
   })
 
   const { mutate: exportTable } = useMutation({
@@ -358,7 +358,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
     },
     onMutate: () => { toast.loading("Downloading table...", { id: 'download-table' }) },
     onSuccess: () => { toast.success("Table downloaded", { id: 'download-table' }) },
-    onError: (e) => { toast.success(`Failed to downlaod table: ${e}`, { id: 'download-table' }) }
+    onError: (e) => { toast.error(`Failed to downlaod table: ${e}`, { id: 'download-table' }) }
   })
 
 

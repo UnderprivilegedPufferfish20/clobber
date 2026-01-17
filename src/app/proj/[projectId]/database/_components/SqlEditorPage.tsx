@@ -16,11 +16,12 @@ import {
 } from "@/components/ui/table";
 import Editor from "@monaco-editor/react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { executeQuery } from "@/lib/actions/database";
 import { updateSqlQuery } from "@/lib/actions/database/sql";
 import { Prisma, sql } from "@/lib/db/generated";
+import { useTheme } from "next-themes";
 
 
 
@@ -34,6 +35,11 @@ export default function SqlEditorPage({
   queries: sql[],
   currentSql: sql | null
 }) {
+
+  
+
+
+
 
   const savedQuery = currentSql ? currentSql.query : ""
 
@@ -104,13 +110,25 @@ export default function SqlEditorPage({
     saveMutation.mutate();
   };
 
-  // -----------------------------
-  // UI
-  // -----------------------------
+  const { theme } = useTheme()
+
+  const editorRef = useRef<any>(null);
+
+  function handleEditorDidMount(editor: any) {
+    editorRef.current = editor;
+  }
+
   return (
     <>
       <ResizablePanelGroup direction="vertical" className="fullscreen">
-        <ResizablePanel defaultSize={75}>
+        <ResizablePanel 
+          defaultSize={75}
+          onResize={() => {
+          // Manually trigger layout when the panel resizes
+          if (editorRef.current) {
+            editorRef.current.layout();
+          }}}
+        >
           <div className="flex flex-col h-full">
             <div className="p-2 flex items-center gap-2">
               <Button
@@ -139,15 +157,17 @@ export default function SqlEditorPage({
 
             <div className="flex-1">
                 <Editor
+                  onMount={handleEditorDidMount}
                   height="100%"
                   language="sql"
+                  theme={theme === "dark" ? "vs-dark" : "light"}
                   value={query}
                   onChange={(value) => setQuery(value ?? "")}
                   options={{
+                    automaticLayout: true,
                     minimap: { enabled: true },
                     wordWrap: "on",
                     scrollBeyondLastLine: false,
-                    automaticLayout: true,
                   }}
                 />
             </div>

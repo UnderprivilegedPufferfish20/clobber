@@ -1,7 +1,7 @@
 'use server';
 
 import { createTableSchema } from "@/lib/types/schemas";
-import { rowsToCsv, rowsToJson, rowsToSql, t } from "@/lib/utils";
+import { createFkeyName, rowsToCsv, rowsToJson, rowsToSql, t } from "@/lib/utils";
 import { revalidateTag } from "next/cache";
 import z from "zod";
 import { getUser } from "../../auth";
@@ -157,7 +157,7 @@ export async function addTable(
     if (col.isUnique) colDef += ' UNIQUE';
 
     if (col.default !== undefined) {
-      colDef += ` DEFAULT ${col.default}`;
+      colDef += ` ${col.default ? col.isArray ? `DEFAULT ARRAY[${col.default}]` : `DEFAULT ${col.default}` : ""}`;
     }
 
     if (col.isPkey) {
@@ -171,8 +171,19 @@ export async function addTable(
     constraints.unshift(`PRIMARY KEY (${pkeyCols.join(', ')})`);
   }
 
+  if (data.fkeys && data.fkeys.length > 0) {
+    data.fkeys.map(fk => {
+      constraints.unshift(`
+        CONSTRAINT ${createFkeyName(data.name, fk)}
+          FOREIGN KEY (${fk.cols.map(fkc => `"${fkc.referencorColumn}"`).join(", ")}) REFERENCES "${fk.cols[0].referenceeSchema}"."${fk.cols[0].referenceeTable}"(${fk.cols.map(fkc => `"${fkc.referenceeColumn}"`).join(", ")})
+      `)
+    })
+  }
+
   const allDefs = [...columnDefs, ...constraints];
   const sql = `CREATE TABLE ${tableName} (\n  ${allDefs.join(',\n  ')}\n);`;
+
+  console.log("@@ MAKE TABLE QUERY: ",sql)
 
   const result = await pool.query(sql);
 

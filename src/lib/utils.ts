@@ -4,6 +4,7 @@ import { Object as DbObject } from "@/lib/db/generated";
 import {
   DATA_TYPES,
   FilterOperator,
+  FkeyType,
   QueryFilters,
 } from "./types";
 
@@ -582,4 +583,8 @@ export function gridPosition(i: number) {
   const rowH = 420;
   const cols = 3;
   return { x: (i % cols) * colW, y: Math.floor(i / cols) * rowH };
+}
+
+export function createFkeyName(table_name: string, fkey: FkeyType) {
+  return `${table_name}_${fkey.cols.map(c => `${c.referencorColumn}_to_${c.referenceeColumn}`).join("")}_fkey`
 }

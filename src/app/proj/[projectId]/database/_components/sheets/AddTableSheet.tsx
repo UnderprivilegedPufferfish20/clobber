@@ -94,7 +94,8 @@ function AddTableSheet({
     mutationFn: () =>
       addTable({
         name,
-        columns
+        columns,
+        fkeys
       }, projectId, schema),
     onSuccess: () => {
       toast.success("Table added successfully", { id: "add-table" });
@@ -304,7 +305,7 @@ function AddTableSheet({
                 <div className='flex items-center gap-2'>
                   <Button
                     variant={"outline"} 
-                    onClick={() => setFkeys(p => p.splice(idx, 1))}
+                    onClick={() => setFkeys(p => p.filter((_, i) => i !== idx))}
                   >
                     Delete
                   </Button>
