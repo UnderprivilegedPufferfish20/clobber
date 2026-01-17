@@ -237,7 +237,7 @@ function AddTriggerSheet({
               <SelectValue placeholder="Select orientation" />
             </SelectTrigger>
           <SelectContent className="z-200">
-            {Object.values(TRIGGER_ORIENTATION).map((o) => (
+            {schemas.map((o) => (
               <SelectItem key={o} value={o}>
                 {o}
               </SelectItem>

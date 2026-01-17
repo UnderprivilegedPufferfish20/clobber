@@ -28,15 +28,17 @@ import { moveObject } from '@/lib/actions/storage/files/object'
 
 function MoveObjectSheet({
   projectId,
-  object,
+  objects,
   moveSheetOpen,
   setMoveSheetOpen
 }: {
   projectId: string,
-  object: DatabaseObject,
+  objects: DatabaseObject[],
   moveSheetOpen: boolean;
   setMoveSheetOpen: Dispatch<SetStateAction<boolean>>;
 }) {
+  console.log(objects)
+
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
 
@@ -71,10 +73,12 @@ function MoveObjectSheet({
   }, [data])
 
   const { mutate, isPending } = useMutation({
-    mutationFn: () => {
-      console.log("@CHILDNAME: ", childName(object, `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`))
-
-      return moveObject(projectId, object.id, object.name, `${updatedPath}/${childName(object, `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`)}`)
+    mutationFn: async () => {
+      if (objects.length === 1) {
+        return await moveObject(projectId, objects[0].id, `${updatedPath}/${childName(objects[0], `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`)}`)
+      } else {
+        return await Promise.all(objects.map(async o => await moveObject(projectId, o.id, `${updatedPath}/${childName(o, `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`)}`)))
+      }
     },
     onSuccess: () => {
       toast.success("Object Moved Sucessfully", { id: "move-object" });
@@ -88,7 +92,7 @@ function MoveObjectSheet({
     }
   })
 
-  
+  console.log("@@MOVE SHEET OBJECTS: ", objects)
 
   return (
     <Sheet open={moveSheetOpen} onOpenChange={setMoveSheetOpen}>
@@ -99,7 +103,7 @@ function MoveObjectSheet({
             title="Move Object"
           />
           <SheetDescription>
-            change the location of "{childName(object, `${projectId}/${currentPath.replace(/^\/+|\/+$/g, "")}/`)}"
+            change the location of {objects.length} items
           </SheetDescription>
         </SheetHeader>
         <div 

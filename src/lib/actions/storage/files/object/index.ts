@@ -3,17 +3,24 @@
 import prisma from "@/lib/db";
 import { joinPosix, t } from "@/lib/utils";
 import { revalidateTag } from "next/cache";
+import { Object as DbObject } from "@/lib/db/generated";
 import getBucket from "..";
 import pathPosix from 'path/posix'
+import JSZip from "jszip";
 
 export async function deleteObject(
-  path: string,
   objectId: string
 ) {
+  const obj = await prisma.object.findUnique({where: {
+    id: objectId
+  }})
+
+  if (!obj) throw new Error("Object not found");
+
   const bucket = getBucket()
   if (!bucket) throw new Error("Cannot connect to bucket");
 
-  const file = bucket.file(path)
+  const file = bucket.file(obj.name)
   if (!file) throw new Error("File not found");
 
   await file.delete()
@@ -22,7 +29,7 @@ export async function deleteObject(
     where: { id: objectId }
   })
 
-  revalidateTag(t("folder-data", path.split("/").slice(0, -1).join("/")), 'max')
+  revalidateTag(t("folder-data", obj.name.split("/").slice(0, -1).join("/")), 'max')
 }
 
 export async function uploadFile(
@@ -199,16 +206,19 @@ export async function renameObject(
 export async function moveObject(
   projectId: string,
   objectId: string,
-  path: string,
   newPath: string
 ) {
-  console.log("@OLDPATH: ", path)
-  console.log("@NEWPATH: ", newPath)
+  const obj = await prisma.object.findUnique({where: {
+    id: objectId
+  }})
+
+  if (!obj) throw new Error("Object not found");
+
 
   const bucket = getBucket();
   if (!bucket) throw new Error("Cannot connect to bucket");
 
-  const file = bucket.file(path)
+  const file = bucket.file(obj.name)
   if (!file) throw new Error("File not found");
 
   await file.move(`${projectId}/${newPath}`)
@@ -221,6 +231,29 @@ export async function moveObject(
     }
   })
 
-  revalidateTag(t('folder-data', path.split("/").slice(0, -1).join("/")), "max")
+  revalidateTag(t('folder-data', obj.name.split("/").slice(0, -1).join("/")), "max")
   revalidateTag(t('folder-data', `${projectId}/${newPath}`.split("/").slice(0, -1).join("/")), "max")
+}
+
+export async function downloadSelected(
+  projectId: string,
+  objects: DbObject[]
+) { 
+  const bucket = getBucket();
+  if (!bucket) throw new Error("Cannot connect to bucket");
+
+  const zip = new JSZip();
+
+  const streams = objects.map(o => bucket.file(o.name).createReadStream())
+
+  
+  for (let i = 0; i < objects.length; i++) {
+    const filename = objects[i].name.split("/").at(-1)
+    zip.file(filename!, streams[i], { binary: true })
+  }
+
+  return zip.generateAsync({ 
+    type: 'blob',
+    streamFiles: true  // Lower memory usage for large folders [web:38]
+  });
 }

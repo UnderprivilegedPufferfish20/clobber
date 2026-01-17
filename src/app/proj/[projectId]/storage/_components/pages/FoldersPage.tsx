@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Dialog, DialogClose, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { mimeTypeToIcon } from '@/lib/constants';
 import { childName, formatGCSFileSize } from '@/lib/utils';
@@ -26,7 +25,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { deleteFolder } from '@/lib/actions/database/sql';
 import { downloadFolder } from '@/lib/actions/storage/files/folder';
 import { getFolderData } from '@/lib/actions/storage/files/folder/cache-actions';
-import { uploadFile, downloadObject, deleteObject, renameObject, getURL } from '@/lib/actions/storage/files/object';
+import { uploadFile, downloadObject, deleteObject, renameObject, getURL, downloadSelected } from '@/lib/actions/storage/files/object';
+
 
 type Props = {
   bucketName: string,
@@ -50,10 +50,41 @@ const FoldersPage = (props: Props) => {
   const [searchTerm, setSearchTerm] = useState("")
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const [open, setOpen] = useState(false)
+
+  const [moveSheetOpen, setMoveSheetOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
 
-  const [selectedObjects, setSelectedObjects] = useState<string[]>([])
+  const [selectedObjects, setSelectedObjects] = useState<DbObject[]>([])
 
+  const { mutate: downl } = useMutation({
+    mutationFn: async () => {
+      const result = await downloadSelected(projectId, selectedObjects)
+      const url = URL.createObjectURL(result);
+
+      const a = document.createElement("a");
+      a.href = url;
+
+
+      a.download = "clobber-files.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
+    },
+    onMutate: () => { toast.loading("Downloading...", { id: "download-selected" }) },
+    onSuccess: () => { toast.success("Files Downloaded", { id: "download-selected" }) },
+    onError: (e) => { toast.error(`Failed to download: ${e}`, { id: "download-selected" }) }
+  })
+
+  const { mutate: deleteSelected } = useMutation({
+    mutationFn: async () => {
+      await Promise.all(selectedObjects.map(async f => await deleteObject(f.id)))
+    },
+    onMutate: () => { toast.loading("Deleting...", { id: "delete-selected" }) },
+    onSuccess: () => { toast.success("Files deleted", { id: "delete-selected" }) },
+    onError: (e) => { toast.error(`Failed to delete: ${e}`, { id: "delete-selected" }) }
+  })
   
 
   const { mutate: upload, isPending: isUploadPending } = useMutation({
@@ -281,7 +312,7 @@ const FoldersPage = (props: Props) => {
                     <Button
                       variant={'ghost'}
                       className='flex items-center gap-2'
-                      onClick={() => setSelectedObjects([])}
+                      onClick={() => downl()}
                     >
                       <DownloadIcon className='w-3 h-3'/>
                       Download
@@ -289,7 +320,7 @@ const FoldersPage = (props: Props) => {
                     <Button
                       variant={'ghost'}
                       className='flex items-center gap-2'
-                      onClick={() => setSelectedObjects([])}
+                      onClick={() => setMoveSheetOpen(true)}
                     >
                       <ArrowUpRightFromSquareIcon className='w-3 h-3'/>
                       Move
@@ -297,7 +328,7 @@ const FoldersPage = (props: Props) => {
                     <Button
                       variant={'ghost'}
                       className='flex items-center gap-2'
-                      onClick={() => setSelectedObjects([])}
+                      onClick={() => deleteSelected()}
                     >
                       <Trash2Icon className='w-3 h-3'/>
                       Delete
@@ -307,10 +338,10 @@ const FoldersPage = (props: Props) => {
                 </div>
               ) : (
                 <Checkbox
-                  className='hidden group-hover:inline w-4 h-4' 
+                  className='hidden group-hover:inline w-5 h-5' 
                   onCheckedChange={checked => {
                     if (checked) {
-                      setSelectedObjects(files.map(f => f.id))
+                      setSelectedObjects(files)
                     } else {
                       setSelectedObjects([])
                     }
@@ -375,6 +406,13 @@ const FoldersPage = (props: Props) => {
         setNewFolderName={setNewFolderName}
         path={currentPath}
       />
+
+      <MoveObjectSheet 
+        moveSheetOpen={moveSheetOpen}
+        setMoveSheetOpen={setMoveSheetOpen}
+        objects={selectedObjects}
+        projectId={projectId}
+      />
     </>
   )
 }
@@ -387,8 +425,8 @@ function FileCard({
   setSelectedObjects
 }: {
   object: DbObject,
-  selectedObjects: string[],
-  setSelectedObjects: Dispatch<SetStateAction<string[]>>
+  selectedObjects: DbObject[],
+  setSelectedObjects: Dispatch<SetStateAction<DbObject[]>>
 }) {
 
   const fileMetadata = JSON.parse(object.metadata as string)[0]
@@ -503,7 +541,7 @@ function FileCard({
 
   const { mutate: deleteItem } = useMutation({
     mutationFn: async () => {
-      deleteObject(`${prefix}${childName(object, prefix)}`, object.id)
+      deleteObject(object.id)
     },
     onSuccess: () => {
       toast.success("Object Deleted", { id:"delete-object" });
@@ -541,15 +579,15 @@ function FileCard({
           <div className='group flex flex-col gap-6 rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20'>
             <div className="min-w-0 flex items-center justify-between">
               <div className="group flex items-center gap-2 max-w-3xs">
-                {selectedObjects.includes(object.id) ? (
+                {selectedObjects.includes(object) ? (
                   <Checkbox
-                    defaultChecked={selectedObjects.includes(object.id)} 
+                    defaultChecked={selectedObjects.includes(object)} 
                     className='bg-indigo-500! text-white! w-6 h-6'
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        setSelectedObjects(p => [...p, object.id])
+                        setSelectedObjects(p => [...p, object])
                       } else {
-                        setSelectedObjects(p => p.filter(oid => oid !== object.id))
+                        setSelectedObjects(p => p.filter(o => o.id !== object.id))
                       }
                     }}
                   />
@@ -557,13 +595,13 @@ function FileCard({
                   <>
                   <Icon className="group-hover:hidden h-6 w-6 text-muted-foreground" />
                   <Checkbox
-                    defaultChecked={selectedObjects.includes(object.id)} 
+                    defaultChecked={selectedObjects.includes(object)} 
                     className='hidden w-6 h-6 group-hover:inline'
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        setSelectedObjects(p => [...p, object.id])
+                        setSelectedObjects(p => [...p, object])
                       } else {
-                        setSelectedObjects(p => p.filter(oid => oid !== object.id))
+                        setSelectedObjects(p => p.filter(o => o.id !== object.id))
                       }
                     }}
                   />
@@ -637,7 +675,6 @@ function FileCard({
         successMessage='Item renamed'
         loadingMessage='Renaming...'
         errorMessage='Failed to rename item'
-        defaultState={object.name}
         actionArgs={[projectId, object.id, `${prefix}${childName(object, prefix)}`, newObjectName]}
       />
 
@@ -736,7 +773,7 @@ function FileCard({
       <MoveObjectSheet 
         moveSheetOpen={isMoveOpen}
         setMoveSheetOpen={setIsMoveOpen}
-        object={object}
+        objects={[object]}
         projectId={projectId}
       />
     </>
@@ -876,7 +913,6 @@ function FolderCard({
         successMessage='Folder renamed'
         loadingMessage='Renaming...'
         errorMessage='Failed to rename folder'
-        defaultState={object.name}
         actionArgs={[projectId, object.id, `${prefix}${childName(object, prefix)}`, newObjectName]}
       />
       

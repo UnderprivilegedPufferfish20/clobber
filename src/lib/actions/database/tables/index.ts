@@ -176,6 +176,7 @@ export async function addTable(
       constraints.unshift(`
         CONSTRAINT ${createFkeyName(data.name, fk)}
           FOREIGN KEY (${fk.cols.map(fkc => `"${fkc.referencorColumn}"`).join(", ")}) REFERENCES "${fk.cols[0].referenceeSchema}"."${fk.cols[0].referenceeTable}"(${fk.cols.map(fkc => `"${fkc.referenceeColumn}"`).join(", ")})
+          ON DELETE ${fk.deleteAction} ON UPDATE ${fk.updateAction}
       `)
     })
   }
