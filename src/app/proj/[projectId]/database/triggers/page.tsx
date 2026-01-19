@@ -1,9 +1,9 @@
 import { getSchemas } from "@/lib/actions/database/cache-actions"
 import { getTriggers } from "@/lib/actions/database/triggers/cache-actions"
-import TriggerCard from "../_components/cards/TriggerCard"
 import { TriggerType } from "@/lib/types"
 import AddTriggerSheet from "./_components/sheets/AddTriggerSheet"
 import CardPage from "@/components/CardPage"
+import TriggerCard from "./_components/cards/TriggerCard"
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database">) => {
   const p = await params

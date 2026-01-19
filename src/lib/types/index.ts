@@ -283,8 +283,7 @@ export type IndexType = {
 export type DatabaseFunctionType = {
   schema_name: string,
   function_name: string,
-  function_type: string,
-  data_type: string,
+  return_type: string,
   arguments: string,
   definition: string
 }

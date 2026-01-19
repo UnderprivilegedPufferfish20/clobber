@@ -7,6 +7,7 @@ import z from "zod";
 import { getUser } from "../../auth";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
+import { TriggerType } from "@/lib/types";
 
 export async function deleteTrigger(
   projectId: string,
@@ -71,4 +72,45 @@ export async function createTrigger(
   await pool.query(query)
 
   revalidateTag(t("triggers", projectId, data.schema), 'max')
+}
+
+export async function editTrigger(
+  oldTrigger: TriggerType,
+  newTrigger: TriggerType,
+  projectId: string
+) {
+    const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const queries: string[] = []
+
+  if (oldTrigger.name !== newTrigger.name) {
+    queries.push(`
+      ALTER TRIGGER ${oldTrigger.name} ON "${oldTrigger.schema_name}"."${oldTrigger.table_name}" RENAME TO ${newTrigger.name};
+      `)
+  }
+
+  try {
+    await pool.query("BEGIN");
+    for (const q of queries) {
+      console.log("@@QUERY:", q);
+      await pool.query(q);
+    }
+    await pool.query("COMMIT");
+  } catch (e) {
+    await pool.query("ROLLBACK");
+    throw e;
+  }
+
+  revalidateTag(t("triggers", projectId, oldTrigger.schema_name), 'max')
 }

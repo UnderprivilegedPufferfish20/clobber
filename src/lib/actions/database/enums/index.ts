@@ -7,6 +7,7 @@ import z from "zod";
 import { getUser } from "../../auth";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
+import { EnumType } from "@/lib/types";
 
 export async function deleteEnum(
   projectId: string,
@@ -65,12 +66,17 @@ export async function createEnum(
   revalidateTag(t("enums", projectId, schema), "max")
 }
 
-export async function renameEnum(
-  projectId: string,
-  schema: string,
-  name: string,
-  newName: string
+export async function editEnum(
+  old: EnumType,
+  edited: EnumType,
+  renamedVals: { oldName: string, newName: string }[],
+  projectId: string
 ) {
+  const oldVals = old.enum_values.split(", ")
+  const editedVals = edited.enum_values.split(", ")
+
+  const oldValsSet = new Set(oldVals)
+
   const user = await getUser();
   if (!user) throw new Error("No user");
 
@@ -84,74 +90,36 @@ export async function renameEnum(
     database: project.db_name,
   });
 
-  const query = `
-    ALTER TYPE ${schema}.${name} RENAME TO ${newName};
-  `
+  const queries: string[] = []
 
-  console.log("@@QUERY: ", query)
+  const newVals = editedVals.filter(v => !oldValsSet.has(v) && !new Set(renamedVals.map(rv => rv.newName)).has(v))
 
-  await pool.query(query)
+  for (const newVal of newVals) {
+    queries.push(`ALTER TYPE "${old.enum_schema}"."${old.enum_name}" ADD VALUE '${newVal}';`)
+  }
 
-  revalidateTag(t("enums", projectId, schema), "max")
-}
+  for (const renamedVal of renamedVals) {
+    queries.push(`ALTER TYPE "${old.enum_schema}"."${old.enum_name}" RENAME VALUE '${renamedVal.oldName}' TO '${renamedVal.newName}';`)
+  }
 
-export async function renameEnumValue(
-  projectId: string,
-  schema: string,
-  name: string,
-  valName: string,
-  newValName: string
-) {
-  const user = await getUser();
-  if (!user) throw new Error("No user");
+  if (old.enum_name !== edited.enum_name) {
+    queries.push(`ALTER TYPE "${old.enum_schema}"."${old.enum_name}" RENAME TO '${edited.enum_name}'`)
+  }
 
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
+  try {
+    await pool.query("BEGIN");
+    for (const q of queries) {
+      console.log("@@QUERY:", q);
+      await pool.query(q);
+    }
+    await pool.query("COMMIT");
+  } catch (e) {
+    await pool.query("ROLLBACK");
+    throw e;
+  }
 
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name,
-  });
-
-  const query = `
-    ALTER TYPE ${schema}.${name} RENAME VALUE '${valName}' TO '${newValName}';
-  `
-
-  console.log("@@QUERY: ", query)
-
-  await pool.query(query)
-
-  revalidateTag(t("enums", projectId, schema), "max")
-}
-
-export async function addValueToEnum(
-  projectId: string,
-  schema: string,
-  name: string,
-  newValName: string
-) {
-  const user = await getUser();
-  if (!user) throw new Error("No user");
-
-  const project = await getProjectById(projectId);
-  if (!project) throw new Error("No project found");
-
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name,
-  });
-
-  const query = `
-    ALTER TYPE ${schema}.${name} ADD VALUE '${newValName}';
-  `
-
-  console.log("@@QUERY: ", query)
-
-  await pool.query(query)
-
-  revalidateTag(t("enums", projectId, schema), "max")
+  revalidateTag(t("enums", projectId, old.enum_schema), 'max')
+  if (old.enum_schema !== edited.enum_schema) {
+    revalidateTag(t("enums", projectId, edited.enum_schema), 'max')
+  }
 }

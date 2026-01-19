@@ -12,6 +12,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const extractBody = (def: string) => {
+    const defUpper = def.toUpperCase();
+    const beginIdx = defUpper.indexOf("BEGIN");
+    if (beginIdx === -1) return def.trim();
+    const endIdx = defUpper.lastIndexOf("END");
+    if (endIdx === -1) return def.substring(beginIdx + 5).trim();
+    return def.substring(beginIdx + 5, endIdx).trim();
+  };
+
 /** ---------------------------
  *  Password / strings
  *  -------------------------- */

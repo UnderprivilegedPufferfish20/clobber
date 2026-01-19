@@ -61,7 +61,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Separator } from "@/components/ui/separator";
 import DataTypeSelect from "../DataTypeSelect";
 import { defaultSuggestions } from "@/lib/utils";
-import DefaultValueSelector from "../DefaultValueSelector";
+import DefaultValueSelector from "../selectors/DefaultValueSelector";
 import SheetActionsFooter from "@/components/SheetActionsFooter";
 import SheetWrapper from "@/components/SheetWrapper";
 

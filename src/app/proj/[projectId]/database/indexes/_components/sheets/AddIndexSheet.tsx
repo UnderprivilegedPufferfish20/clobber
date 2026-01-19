@@ -24,6 +24,8 @@ import { getTables } from "@/lib/actions/database/tables/cache-actions";
 import { getCols } from "@/lib/actions/database/columns/cache-actions";
 import { createIndex } from "@/lib/actions/database/indexes";
 import SheetWrapper from "@/components/SheetWrapper";
+import SheetTableSelector from "../../../_components/selectors/SheetTableSelector";
+import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect";
 
 
 function AddIndexSheet({
@@ -126,95 +128,34 @@ function AddIndexSheet({
       submitButtonText="Create Index"
       isPending={isPending}
       onDiscard={() => {
-        setTable("")
+        setSchema("")
         setCols([])
         setTable("")
         setType(INDEX_TYPES.BTREE)
       }}
       onSubmit={() => mutate()}
-      disabled={false}
+      isDirty={() => Boolean(schema || table) || cols.length > 0}
+      disabled={!schema || !table || cols.length === 0}
     >
 
       <div className="flex flex-col gap-2">
         <h1>Schema</h1>
-        <Select onValueChange={setSchema} value={schema}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a schema" />
-          </SelectTrigger>
-          <SelectContent className="z-200">
-            {schemas.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SheetSchemaSelect 
+          projectId={projectId}
+          onValueChange={setSchema}
+          value={schema}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
         <h1>Table</h1>
-        <Select
-          onValueChange={setTable}
+        <SheetTableSelector 
           value={table}
-          disabled={tablesQuery.isLoading || tables.length === 0}
-        >
-          <SelectTrigger>
-            <SelectValue
-              placeholder={
-                tablesQuery.isLoading
-                  ? "Loading tables..."
-                  : tables.length === 0
-                  ? "No tables found"
-                  : "Select a table"
-              }
-            />
-          </SelectTrigger>
-
-          <SelectContent className="z-200">
-            {tables.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {tablesQuery.isError && (
-          <p className="text-sm text-destructive">Failed to load tables.</p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h1>Table</h1>
-        <Select
           onValueChange={setTable}
-          value={table}
-          disabled={tablesQuery.isLoading || tables.length === 0}
-        >
-          <SelectTrigger>
-            <SelectValue
-              placeholder={
-                tablesQuery.isLoading
-                  ? "Loading tables..."
-                  : tables.length === 0
-                  ? "No tables found"
-                  : "Select a table"
-              }
-            />
-          </SelectTrigger>
-
-          <SelectContent className="z-200">
-            {tables.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {tablesQuery.isError && (
-          <p className="text-sm text-destructive">Failed to load tables.</p>
-        )}
+          projectId={projectId}
+          schema={schema}
+          disabled={!schema}
+        />
       </div>
 
 

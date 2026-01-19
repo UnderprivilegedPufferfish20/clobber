@@ -8,7 +8,7 @@ import { ComponentType, ReactNode, useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { DatabaseObjectAddSheetProps } from "@/lib/types";
-import SchemaPicker from "@/app/proj/[projectId]/database/_components/SchemaPicker";
+import SchemaPicker from "@/app/proj/[projectId]/database/_components/selectors/SchemaPicker";
 
 export default function CardPage<DataType>({
   projectId,
@@ -58,8 +58,8 @@ export default function CardPage<DataType>({
     );
   }, [searchTerm, data]);
 
-  const showEmptySchemaState = schemafilter ? !searchTerm && (data?.length ?? 0) === 0 : false;
-  const showNoMatchesState = !!searchTerm && filteredData.length === 0;
+  const isNoData = filteredData.length === 0;
+  const isSearchActive = !!searchTerm.trim();
 
   return (
     <>
@@ -104,24 +104,7 @@ export default function CardPage<DataType>({
         <Separator className="mb-6" />
 
         {/* CONTENT */}
-        {showEmptySchemaState ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
-            <InboxIcon size={96} className="text-muted-foreground" />
-            <div className="space-y-1">
-              <h2 className="text-2xl font-semibold">No {title} in “{schema}”</h2>
-              <p className="text-muted-foreground text-sm">
-                Create {title.slice(0,-1)}
-              </p>
-            </div>
-
-            <Button
-              onClick={() => setOpen(true)}
-              variant={"default"}
-            >
-              Create {title}
-            </Button>
-          </div>
-        ) : showNoMatchesState ? (
+        {isNoData && isSearchActive ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
             <Search size={72} className="text-muted-foreground" />
             <div className="space-y-1">
@@ -136,41 +119,36 @@ export default function CardPage<DataType>({
               Clear Search
             </Button>
           </div>
+        ) : isNoData ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
+            <InboxIcon size={96} className="text-muted-foreground" />
+            <div className="space-y-1">
+              <h2 className="text-2xl font-semibold">No {title} {schemafilter ? `in “${schema}”` : ""}</h2>
+              <p className="text-muted-foreground text-sm">
+                Create {title.slice(0,-1)}
+              </p>
+            </div>
+
+            <Button
+              onClick={() => setOpen(true)}
+              variant={"default"}
+            >
+              Create {title}
+            </Button>
+          </div>
         ) : (
           <div
             className={cn(
               "grid gap-4",
-              "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
             )}
           >
-            <div className="fullscreen">
-              {!schemafilter && filteredData.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center">
-                  <InboxIcon size={96} className="text-muted-foreground" />
-                  
-                    <h2 className="text-2xl font-semibold">No {title}</h2>
-                    
-             
-
-                  <Button
-                    onClick={() => setOpen(true)}
-                    variant={"default"}
-                  >
-                    Create {title}
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {filteredData.map((i: DataType) => {
-                    return (
-                    <DisplayCard
-                      key={Math.random()}
-                      {...i}
-                    />
-                  )})}
-                </>
-              )}
-            </div>
+            {filteredData.map((i: any) => (
+              <DisplayCard
+                key={Math.random()}
+                {...i}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -183,4 +161,4 @@ export default function CardPage<DataType>({
       />
     </>
   );
-}
+} 

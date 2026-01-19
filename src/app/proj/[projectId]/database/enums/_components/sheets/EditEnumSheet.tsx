@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { Dispatch, SetStateAction } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
@@ -15,85 +15,108 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { createEnum } from "@/lib/actions/database/enums";
-import { DatabaseObjectAddSheetProps } from "@/lib/types";
+import { createEnum, editEnum } from "@/lib/actions/database/enums";
+import { DatabaseObjectAddSheetProps, EnumType } from "@/lib/types";
 import SheetWrapper from "@/components/SheetWrapper";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { getSchemas } from "@/lib/actions/database/cache-actions";
 import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect";
 
-function AddEnumSheet({
+function EditEnumSheet({
   projectId,
-  schemas,
   open,
+  editingEnum,
   onOpenChange,
-}: DatabaseObjectAddSheetProps) {
+}: {
+  projectId: string,
+  open: boolean,
+  editingEnum: EnumType,
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+}) {
   const queryClient = useQueryClient();
 
-  const [name, setName] = useState("");
-  const [schema, setSchema] = useState("");
-  const [values, setValues] = useState<string[]>([]);
+  console.log("@ EDITING ENUM: ", editingEnum)
+
+  const initialValues = editingEnum.enum_values.split(", ");
+
+  const [name, setName] = useState(editingEnum.enum_name);
+  const [schema, setSchema] = useState(editingEnum.enum_schema);
+  const [values, setValues] = useState<string[]>(initialValues);
+  const [renamedVals, setRenamedVals] = useState<{ oldName: string, newName: string }[]>([])
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () =>
-      createEnum(
+      editEnum(
+        editingEnum,
         {
-          name,
-          values,
+          enum_name: name,
+          enum_schema: schema,
+          enum_values: values.join(", ")
         },
-        projectId,
-        schema
+        renamedVals,
+        projectId
       ),
     onSuccess: () => {
-      toast.success("Enum added successfully", { id: "add-enum" });
+      toast.success("Enum updated successfully", { id: "update-enum" });
       queryClient.invalidateQueries(["enums", projectId, schema] as any);
-      setName("");
-      setSchema("");
-      setValues([]);
-      onOpenChange?.(false);
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Failed to add enum", { id: "add-enum" });
+      toast.error(error?.message || "Failed to update enum", { id: "update-enum" });
     },
+    onMutate: () => { toast.loading("Updating...", { id:'update-enum' }) }
   });
 
   const handleAddValue = () => {
     setValues((prev) => [...prev, ""]);
   };
 
-  const handleRemoveValue = (index: number) => {
-    setValues((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const handleUpdateValue = (index: number, value: string) => {
     setValues((prev) =>
       prev.map((v, i) => (i === index ? value : v))
     );
-  };
 
-  const handleSubmit = () => {
-    if (!name || !schema || values.length === 0) {
-      toast.error("Name, schema, and at least one value are required");
+    if (index >= initialValues.length) {
+      // New value, no rename needed
       return;
     }
-    mutate();
+
+    const oldName = initialValues[index];
+
+    if (value === oldName) {
+      // Remove from renamedVals if exists
+      setRenamedVals((prev) => prev.filter((r) => r.oldName !== oldName));
+    } else {
+      // Add or update renamedVals
+      setRenamedVals((prev) => {
+        const existing = prev.find((r) => r.oldName === oldName);
+        if (existing) {
+          return prev.map((r) =>
+            r.oldName === oldName ? { oldName, newName: value } : r
+          );
+        } else {
+          return [...prev, { oldName, newName: value }];
+        }
+      });
+    }
   };
+
 
   return (
     <SheetWrapper
-      title="Create Enum"
-      description="Data type with list of possible values"
-      disabled={!name || !schema}
-      isDirty={() => Boolean(name || schema) || values.length > 0}
+      title="Edit Enum"
+      disabled={name === editingEnum.enum_name && schema === editingEnum.enum_schema &&  editingEnum.enum_values === values.join(", ")}
+      isDirty={() => name !== editingEnum.enum_name || schema !== editingEnum.enum_schema || editingEnum.enum_values !== values.join(", ")}
       onOpenChange={onOpenChange}
       open={open}
-      onSubmit={handleSubmit}
+      onSubmit={() => mutate()}
       onDiscard={() => {
-        setName("");
-        setValues([]);
-        setSchema("");
+        setName(editingEnum.enum_name);
+        setValues(editingEnum.enum_values.split(", "));
+        setSchema(editingEnum.enum_schema);
+        setRenamedVals([]);
       }}
-      submitButtonText="Create Enum"
+      submitButtonText="Apply Changes"
       isPending={isPending}
     >
       <div className="flex flex-col gap-2">
@@ -111,8 +134,8 @@ function AddEnumSheet({
 
         <SheetSchemaSelect 
           projectId={projectId}
-          onValueChange={setSchema}
           value={schema}
+          onValueChange={setSchema}
         />
       </div>
 
@@ -139,7 +162,7 @@ function AddEnumSheet({
 
         {values.length === 0 ? (
           <div className="mt-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-            No values yet.
+            No values yet. Add at least one value.
           </div>
         ) : (
           <div className="mt-2 space-y-2">
@@ -148,7 +171,7 @@ function AddEnumSheet({
                 key={index}
                 className={cn(
                   "rounded-md border bg-background p-2",
-                  "flex items-start gap-2"
+                  "flex items-center gap-2"
                 )}
               >
                 <div className="flex-1">
@@ -158,23 +181,6 @@ function AddEnumSheet({
                     onChange={(e) => handleUpdateValue(index, e.target.value)}
                   />
                 </div>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="mt-0.5"
-                  onClick={() => handleRemoveValue(index)}
-                  aria-label="Remove value"
-                  disabled={values.length === 1}
-                  title={
-                    values.length === 1
-                      ? "At least one value is required"
-                      : "Remove value"
-                  }
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             ))}
           </div>
@@ -184,4 +190,4 @@ function AddEnumSheet({
   );
 }
 
-export default AddEnumSheet;
+export default EditEnumSheet;

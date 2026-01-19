@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator'
 import { Prisma, sql, SqlFolder } from '@/lib/db/generated';
-import { ArrowUpRightFromSquareIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, DownloadIcon, EditIcon, EllipsisVerticalIcon, FilePlus, FileSpreadsheetIcon, FolderIcon, FolderOpenIcon, Loader2, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react';
+import { ArrowUpRightFromSquareIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, DatabaseZapIcon, DownloadIcon, EditIcon, EllipsisVerticalIcon, FilePlus, FileSpreadsheetIcon, FolderIcon, FolderOpenIcon, FolderPlusIcon, Loader2, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -147,10 +147,18 @@ function AddButton({ projectId, folders }: { projectId: string, folders: SqlFold
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="start">
-          <DropdownMenuItem onSelect={() => setOpenQuery(true)}>
+          <DropdownMenuItem
+            className='flex items-center gap-2' 
+            onSelect={() => setOpenQuery(true)}
+          >
+            <DatabaseZapIcon className='w-4 h-4'/>
             Add query
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setOpenFolder(true)}>
+          <DropdownMenuItem
+            className='flex items-center gap-2' 
+            onSelect={() => setOpenFolder(true)}
+          >
+            <FolderPlusIcon className='w-4 h-4'/>
             Add folder
           </DropdownMenuItem>
         </DropdownMenuContent>

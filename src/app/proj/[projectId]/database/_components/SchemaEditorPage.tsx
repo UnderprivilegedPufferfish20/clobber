@@ -33,7 +33,7 @@ import { deleteColumn } from "@/lib/actions/database/columns";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import DataViewer from "./DataViewer";
-import SchemaPicker from "./SchemaPicker";
+import SchemaPicker from "./selectors/SchemaPicker";
 import AddTableSheet from "./sheets/AddTableSheet";
 import EditColumnSheet from "./sheets/EditColumnSheet";
 import EditTableSheet from "./sheets/EditTableSheet";

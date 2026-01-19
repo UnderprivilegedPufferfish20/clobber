@@ -22,7 +22,7 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { addTable } from '@/lib/actions/database/tables'
 import DataTypeSelect from '../DataTypeSelect'
-import DefaultValueSelector from '../DefaultValueSelector'
+import DefaultValueSelector from '../selectors/DefaultValueSelector'
 import AddFkeySheet from './AddFkeySheet'
 import SheetWrapper from '@/components/SheetWrapper'
 

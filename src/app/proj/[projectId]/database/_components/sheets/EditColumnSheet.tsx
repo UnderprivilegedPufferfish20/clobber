@@ -27,7 +27,7 @@ import { Loader2, MenuIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { defaultSuggestions } from "@/lib/utils";
 import { editColumn } from "@/lib/actions/database/columns";
-import DefaultValueSelector from "../DefaultValueSelector";
+import DefaultValueSelector from "../selectors/DefaultValueSelector";
 import SheetWrapper from "@/components/SheetWrapper";
 
 export default function EditColumnSheet({

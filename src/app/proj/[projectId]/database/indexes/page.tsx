@@ -1,10 +1,9 @@
 import { getSchemas } from "@/lib/actions/database/cache-actions"
 import { getIndexes } from "@/lib/actions/database/indexes/cache-actions"
-import IndexCard from "../_components/cards/IndexCard"
-import { SchemaEditorNode } from "@/lib/types/schemaEditor"
 import { IndexType } from "@/lib/types"
 import AddIndexSheet from "./_components/sheets/AddIndexSheet"
 import CardPage from "@/components/CardPage"
+import IndexCard from "./_components/cards/IndexCard"
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database">) => {
   const p = await params

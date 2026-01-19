@@ -113,7 +113,7 @@ const SchemaPicker = ({ schemas, value, onChange }: SchemaPickerProps) => {
             className="border-2 w-48 justify-between"
             onClick={() => setOpen((v) => !v)}
             text={
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground truncate">
                 schema <span className="dark:text-white text-black ml-1">{value}</span>
               </p>
             }

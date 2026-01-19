@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator'
 import { addColumn } from '@/lib/actions/database/columns'
 import DataTypeSelect from '../DataTypeSelect'
 import { Switch } from '@/components/ui/switch'
-import DefaultValueSelector from '../DefaultValueSelector'
+import DefaultValueSelector from '../selectors/DefaultValueSelector'
 import { DATA_TYPES } from '@/lib/types'
 import SheetWrapper from '@/components/SheetWrapper'
 

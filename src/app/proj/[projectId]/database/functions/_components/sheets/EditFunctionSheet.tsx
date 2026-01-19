@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Dispatch, SetStateAction, useCallback, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Columns, Plus, Trash2 } from "lucide-react";
 
@@ -20,103 +20,81 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DATA_TYPES, DatabaseObjectAddSheetProps, FUNCTION_RETURN_TYPES } from "@/lib/types";
+import { DATA_TYPES, DatabaseFunctionType, DatabaseObjectAddSheetProps, FUNCTION_RETURN_TYPES } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { createFunction } from "@/lib/actions/database/functions";
+import { cn, extractBody } from "@/lib/utils";
+import { createFunction, editFunction } from "@/lib/actions/database/functions";
 import SheetWrapper from "@/components/SheetWrapper";
+import { getSchemas } from "@/lib/actions/database/cache-actions";
 import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect";
 
-function AddFunctionSheet({
+function EditFunctionSheet({
   projectId,
-  schemas,
   open,
+  editingFunction,
   onOpenChange
-}: DatabaseObjectAddSheetProps) {
+}: {
+  projectId: string,
+  open: boolean,
+  editingFunction: DatabaseFunctionType
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+}) {
+  console.log("@EDITING FUNCTION: ", editingFunction)
+
   const queryClient = useQueryClient();
 
-  const [name, setName] = useState("");
-  const [schema, setSchema] = useState("");
-  const [returnType, setReturnType] = useState<FUNCTION_RETURN_TYPES | string>("");
-  const [args, setArgs] = useState<{ name: string; dtype: DATA_TYPES }[]>([]);
-  const [definition, setDefinition] = useState("");
+  
+
+  const [name, setName] = useState(editingFunction.function_name);
+  const [schema, setSchema] = useState(editingFunction.schema_name);
+  const [returnType, setReturnType] = useState<FUNCTION_RETURN_TYPES | string>(editingFunction.return_type);
+  const [args, setArgs] = useState<{ name: string; dtype: DATA_TYPES }[]>(editingFunction.arguments.split(", ").map(a => ({name: a.split(" ")[0], dtype: a.split(" ")[1] as DATA_TYPES})));
+  const [definition, setDefinition] = useState(extractBody(editingFunction.definition));
+
+  const { data: schemas, isPending: isSchemasPending } = useQuery({
+    queryKey: ['schemas', projectId],
+    queryFn: () => getSchemas(projectId)
+  })
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      return createFunction(
-        {
-          args,
-          name,
-          definition,
-          returnType,
-          schema,
-        },
+      return editFunction(
+        editingFunction,
+        { arguments: args.map(a => `${a.name}, ${a.dtype}`).join(", "), return_type: returnType, definition: definition, function_name: name, schema_name: schema},
         projectId
       );
     },
     onSuccess: () => {
-      toast.success("Function added successfully", { id: "add-function" });
+      toast.success("Function updated successfully", { id: "update-function" });
       queryClient.invalidateQueries(["functions", projectId, schema] as any);
-      setName("");
-      setSchema("");
-      setReturnType("");
-      setArgs([]);
-      setDefinition("");
-      onOpenChange?.(false);
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Failed to add function", {
-        id: "add-function",
+      toast.error(error?.message || "Failed to update function", {
+        id: "update-function",
       });
     },
+    onMutate: () => { toast.loading("Updating...", { id: "update-function" }) }
   });
 
-  const handleAddArg = () => {
-    setArgs((prev) => [...prev, { name: "", dtype: DATA_TYPES.CHARACTER_VARYING }]);
-  };
-
-  const handleRemoveArg = (index: number) => {
-    setArgs((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleUpdateArgName = (index: number, value: string) => {
-    setArgs((prev) =>
-      prev.map((arg, i) => (i === index ? { ...arg, name: value } : arg))
-    );
-  };
-
-  const handleUpdateArgType = (index: number, value: DATA_TYPES) => {
-    setArgs((prev) =>
-      prev.map((arg, i) => (i === index ? { ...arg, dtype: value } : arg))
-    );
-  };
-
-  const handleSubmit = () => {
-    if (!name || !schema) {
-      toast.error("Name and schema are required");
-      return;
-    }
-    mutate();
-  };
+  const isDirty = () => {
+    return name !== editingFunction.function_name || schema !== editingFunction.schema_name || definition !== extractBody(editingFunction.definition)
+  }
 
   return (
     <SheetWrapper
-      disabled={!name || !schema || !returnType || !definition}
-      isDirty={() => Boolean(name || schema || returnType !== FUNCTION_RETURN_TYPES.BOOL || definition)}
+      disabled={!isDirty()}
+      isDirty={isDirty}
       onOpenChange={onOpenChange}
       onSubmit={() => mutate()}
       open={open}
-      submitButtonText="Create Function"
-      title="Create Function"
-      description="Reusable block of code"
+      submitButtonText="Apply Changes"
+      title="Edit Function"
       isPending={isPending}
       onDiscard={() => {
-        setArgs([])
-        setDefinition("")
-        setName("")
-        setReturnType(FUNCTION_RETURN_TYPES.BOOL)
-        setSchema("")
+        setDefinition(extractBody(editingFunction.definition))
+        setName(editingFunction.function_name)
+        setSchema(editingFunction.schema_name)
       }}
     >
       <div className="flex flex-col gap-2">
@@ -134,15 +112,15 @@ function AddFunctionSheet({
           projectId={projectId}
           onValueChange={setSchema}
           value={schema}
-          
         />
       </div>
 
       <div className="flex flex-col gap-2">
         <h1>Return Type</h1>
         <Select
+          disabled
           onValueChange={setReturnType}
-          value={returnType}
+          value={returnType.toUpperCase() as FUNCTION_RETURN_TYPES}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select a type" />
@@ -158,18 +136,8 @@ function AddFunctionSheet({
       </div>
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center fullwidth justify-between">
-          <h1>Arguments</h1>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleAddArg}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add argument
-          </Button>
-        </div>
+        <h1>Arguments</h1>
+ 
 
         {args.length === 0 ? (
           <div className="mt-3 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
@@ -177,30 +145,35 @@ function AddFunctionSheet({
           </div>
         ) : (
           <div className="mt-3 space-y-2">
-            {args.map((arg, index) => (
+            {args.length !== 1 && args.map((arg, index) => (
               <div
                 key={index}
                 className={cn(
                   "rounded-md border bg-background p-2",
-                  "flex items-start gap-2"
+                  "flex items-start gap-2",
                 )}
               >
                 {/* Arg name */}
                 <div className="flex-1">
                   <Input
+                    disabled
+                    className="cursor-not-allowed"
                     placeholder={`arg_${index + 1}`}
                     value={arg.name}
-                    onChange={(e) => handleUpdateArgName(index, e.target.value)}
+                  
                   />
                 </div>
 
                 {/* Arg type */}
                 <div className="w-44">
                   <Select
-                    onValueChange={(value) => handleUpdateArgType(index, value as DATA_TYPES)}
+                    
                     value={arg.dtype}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger
+                      disabled
+                      className="cursor-not-allowed"
+                    >
                       <SelectValue placeholder="Select a type" />
                     </SelectTrigger>
                     <SelectContent className="z-110">
@@ -212,18 +185,6 @@ function AddFunctionSheet({
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Remove */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="mt-0.5"
-                  onClick={() => handleRemoveArg(index)}
-                  aria-label="Remove argument"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             ))}
           </div>
@@ -261,4 +222,4 @@ function AddFunctionSheet({
   );
 }
 
-export default AddFunctionSheet;
+export default EditFunctionSheet;

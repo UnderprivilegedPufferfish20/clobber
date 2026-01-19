@@ -24,6 +24,11 @@ import { getFunctions } from "@/lib/actions/database/functions/cache-actions";
 import { getTables } from "@/lib/actions/database/tables/cache-actions";
 import { createTrigger } from "@/lib/actions/database/triggers";
 import SheetWrapper from "@/components/SheetWrapper";
+import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect";
+import SheetTableSelector from "../../../_components/selectors/SheetTableSelector";
+import { BetweenHorizonalStartIcon, BetweenVerticalStart, FunctionSquareIcon, HistoryIcon, TableColumnsSplitIcon } from "lucide-react";
+import FunctionSelectSheet from "./FunctionSelectSheet";
+import { Button } from "@/components/ui/button";
 
 
 function toggleEnumInArray<T extends string>(arr: T[] | undefined, v: T) {
@@ -69,12 +74,8 @@ function AddTriggerSheet({
     staleTime: 30_000,
   });
 
-  const availableFunctions = useMemo(() => {
-    return (functionsQuery.data ?? [])
-      .map((r: any) => r.function_name as string)
-      .filter(Boolean)
-      .sort();
-  }, [functionsQuery.data]);
+
+  const [isFuncOpen, setIsFuncOpen] = useState(false)
 
   const { mutate, isPending } = useMutation({
     mutationFn: () => createTrigger({
@@ -96,192 +97,196 @@ function AddTriggerSheet({
     },
   });
 
+  const isDirty = () => {
+    return Boolean(name || selectedSchema || selectedTable || selectedType !== "BEFORE" || selectedOrientation !== "ROW" || selectedFnSchema || selectedFnName || selectedEvents.length > 0)
+  }
+
   return (
-    <SheetWrapper
-      title="Create Trigger"
-      description="Choose a table, pick events, timing, and the function to run."
-      onSubmit={() => mutate()}
-      disabled={false}
-      onOpenChange={onOpenChange}
-      open={open}
-      submitButtonText="Create Trigger"
-      isPending={isPending}
-    >
-      <div className='flex flex-col gap-2'>
-        <h1>Name</h1>
-        <Input 
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder='e.g. user_email'
-          id='column-name'
-        />
-      </div>
+    <>
+    
+      <SheetWrapper
+        title="Create Trigger"
+        description="Choose a table, pick events, timing, and the function to run."
+        onSubmit={() => mutate()}
+        disabled={!isDirty() || !(selectedEvents.length > 0) || !(selectedFnName || selectedFnSchema) || !(selectedTable)}
+        onOpenChange={onOpenChange}
+        open={open}
+        onDiscard={() => {
+          setName("")
+          setSelectedEvents([])
+          setSelectedFnName("")
+          setSelectedFnSchema("")
+          setSelectedOrientation(TRIGGER_ORIENTATION.ROW)
+          setSelectedTable("")
+          setSelectedType(TRIGGER_TYPE.BEFORE)
+          setSelectedSchema("")
+        }}
+        submitButtonText="Create Trigger"
+        isPending={isPending}
+        isDirty={isDirty}
+      >
+        <div className='flex flex-col gap-2'>
+          <h1>Name</h1>
+          <Input 
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder='e.g. user_email'
+            id='column-name'
+          />
+        </div>
 
-      <div className="flex flex-col gap-2">
-        <h1>Schema</h1>
+        <Separator />
 
-        <Select onValueChange={v => setSelectedSchema(v)} value={selectedSchema}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select schema" />
-            </SelectTrigger>
-          <SelectContent className="z-200">
-            {(schemas ?? []).map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-      </div>
-
-      <Separator />
-
-      <div className="flex flex-col gap-2">
-        <h1>Table</h1>
-
-        <Select
-          onValueChange={v => setSelectedTable(v)}
-          value={selectedTable}
-        >
-          <SelectTrigger>
-            <SelectValue
-              placeholder={
-                tablesQuery.isLoading
-                  ? "Loading tables..."
-                  : tables.length === 0
-                  ? "No tables found"
-                  : "Select a table"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent className="z-200">
-            {tables.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {tablesQuery.isError && (
-          <p className="text-sm text-destructive">Failed to load tables.</p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h1>Actions</h1>
         <div className="flex flex-col gap-2">
-          {[TRIGGER_EVENTS.INSERT, TRIGGER_EVENTS.UPDATE, TRIGGER_EVENTS.DELETE].map(
-            (ev) => {
-              const checked = selectedEvents.includes(ev);
-              return (
-                <div key={ev} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`ev-${ev}`}
-                    checked={checked}
-                    onCheckedChange={() => setSelectedEvents(toggleEnumInArray(selectedEvents, ev))}
-                  />
-                  <Label htmlFor={`ev-${ev}`} className="font-semibold">
-                    {ev}
-                  </Label>
-                </div>
-              );
-            }
+          <h1>Schema</h1>
+
+          <SheetSchemaSelect 
+            projectId={projectId}
+            onValueChange={setSelectedSchema}
+            value={selectedSchema}
+          />
+        </div>
+
+        
+
+        <div className="flex flex-col gap-2">
+          <h1>Table</h1>
+
+          <SheetTableSelector 
+            projectId={projectId}
+            onValueChange={setSelectedTable}
+            value={selectedTable}
+            schema={selectedSchema}
+            disabled={!selectedSchema}
+          />
+
+          {tablesQuery.isError && (
+            <p className="text-sm text-destructive">Failed to load tables.</p>
           )}
         </div>
 
-      </div>
+        <div className="flex flex-col gap-2">
+          <h1>Actions</h1>
+          <div className="flex flex-col gap-2">
+            {[TRIGGER_EVENTS.INSERT, TRIGGER_EVENTS.UPDATE, TRIGGER_EVENTS.DELETE].map(
+              (ev) => {
+                const checked = selectedEvents.includes(ev);
+                return (
+                  <div key={ev} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`ev-${ev}`}
+                      checked={checked}
+                      onCheckedChange={() => setSelectedEvents(toggleEnumInArray(selectedEvents, ev))}
+                    />
+                    <Label htmlFor={`ev-${ev}`} className="font-semibold">
+                      {ev}
+                    </Label>
+                  </div>
+                );
+              }
+            )}
+          </div>
 
-      <div className="flex flex-col gap-2">
-        <h1>Timing</h1>
+        </div>
 
-        <Select onValueChange={v => setSelectedType(v as TRIGGER_TYPE)} value={selectedType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select timing" />
-            </SelectTrigger>
-          <SelectContent className="z-200">
-            {Object.values(TRIGGER_TYPE).map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <div className="flex flex-col gap-2">
+          <h1>Timing</h1>
 
-      <div className="flex flex-col gap-2">
-        <h1>Orientation</h1>
-          
-        <Select onValueChange={v => setSelectedOrientation(v as TRIGGER_ORIENTATION)} value={selectedOrientation}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select orientation" />
-            </SelectTrigger>
-          <SelectContent className="z-200">
-            {Object.values(TRIGGER_ORIENTATION).map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Separator />
-
-      <div className="flex flex-col gap-2">
-        <h1>Function Schema</h1>
-
-        <Select onValueChange={setSelectedFnSchema} value={selectedFnSchema}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select orientation" />
-            </SelectTrigger>
-          <SelectContent className="z-200">
-            {schemas.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="flex flex-col gap-2">
-          <h1>Function Name</h1>
-
-          <Select
-            onValueChange={setSelectedFnName}
-            value={selectedFnName}
-            disabled={functionsQuery.isLoading || availableFunctions.length === 0}
-          >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    functionsQuery.isLoading
-                      ? "Loading functions..."
-                      : availableFunctions.length === 0
-                      ? "No trigger functions found"
-                      : "Select a function"
-                  }
-                />
+          <Select onValueChange={v => setSelectedType(v as TRIGGER_TYPE)} value={selectedType}>
+              <SelectTrigger className="fullwidth">
+                <SelectValue placeholder="Select timing" />
               </SelectTrigger>
-
             <SelectContent className="z-200">
-              {availableFunctions.map((fn) => (
-                <SelectItem key={fn} value={fn}>
-                  {fn}
+              {Object.values(TRIGGER_TYPE).map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t === "BEFORE" && (
+                    <div className="flex items-center gap-2">
+                      <HistoryIcon className="w-4 h-4"/>
+                      {t.toWellFormed()}
+                    </div>
+                  )}
+                  {t === "AFTER" && (
+                    <div className="flex items-center gap-2">
+                      <HistoryIcon className="w-4 h-4 transform -scale-x-100"/>
+                      {t}
+                    </div>
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        </div>
 
-          {functionsQuery.isError && (
-            <p className="text-sm text-destructive">Failed to load functions.</p>
+        <div className="flex flex-col gap-2">
+          <h1>Orientation</h1>
+            
+          <Select onValueChange={v => setSelectedOrientation(v as TRIGGER_ORIENTATION)} value={selectedOrientation}>
+              <SelectTrigger className="fullwidth">
+                <SelectValue placeholder="Select orientation" />
+              </SelectTrigger>
+            <SelectContent className="z-200">
+              {Object.values(TRIGGER_ORIENTATION).map((o) => (
+                <SelectItem key={o} value={o}>
+                  {o === "ROW" && (
+                    <div className="flex items-center gap-2">
+                      <BetweenHorizonalStartIcon className="w-4 h-4"/>
+                      {o}
+                    </div>
+                  )}
+                  {o === "STATEMENT" && (
+                    <div className="flex items-center gap-2">
+                      <BetweenVerticalStart className="w-4 h-4 transform"/>
+                      {o}
+                    </div>
+                  )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Separator />
+
+        <div className="flex flex-col gap-2">
+          <h1>Function</h1>
+          
+          {!selectedFnName || !selectedFnSchema ? (
+            <div
+                className={`flex items-center justify-center fullwidth relative rounded-md border-dashed border border-border py-2 mt-2`}
+              >
+              <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setIsFuncOpen(true)}>
+                Select Function
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-muted-foreground fullwidth relative rounded-md border-dashed border border-border p-2">
+              <div className="flex items-center gap-2">
+                <FunctionSquareIcon className="w-6 h-6"/>
+                <div className="flex items-center">
+                  {selectedFnSchema}.<span className="text-white">{selectedFnName}</span>
+                </div>
+              </div>
+
+              <Button
+                variant={"secondary"}
+                onClick={() => setIsFuncOpen(true)}
+              >
+                Change
+              </Button>
+            </div>
           )}
-      </div>
+        </div>
+      </SheetWrapper>
 
-
-    </SheetWrapper>
+      <FunctionSelectSheet
+        setFunctionSchema={setSelectedFnSchema}
+        setFunction={setSelectedFnName}
+        projectId={projectId} 
+        open={isFuncOpen}
+        onOpenChange={setIsFuncOpen}
+        makeTriggerPageOpen={onOpenChange}
+      />
+    </>
 
       
 

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { ArrowRightIcon, BoxesIcon, Table2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SheetWrapper from "@/components/SheetWrapper";
+import SheetSchemaSelect from "../selectors/SheetSchemaSelect";
 
 export default function AddFkeySheet({
   projectId,
@@ -113,24 +114,11 @@ export default function AddFkeySheet({
       <div className="flex flex-col gap-2">
         <h1>Select schema</h1>
 
-        <Select value={selectedSchema} onValueChange={setSelectedSchema}>
-          <SelectTrigger className="fullwidth">
-            <SelectValue placeholder="select a schema..."/>
-          </SelectTrigger>
-
-          <SelectContent className="z-500">
-            {schemas && schemas.map(s => (
-              <SelectItem
-                className="flex items-center gap-2" 
-                key={s} 
-                value={s}
-              >
-                <BoxesIcon className="w-6 h-6"/>
-                <h2 className="font-semibold text-lg">{s}</h2>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SheetSchemaSelect 
+          onValueChange={setSelectedSchema}
+          value={selectedSchema}
+          projectId={projectId}
+        />
       </div>
 
       <div className={`${!selectedSchema && "hidden"} flex flex-col gap-2`}>

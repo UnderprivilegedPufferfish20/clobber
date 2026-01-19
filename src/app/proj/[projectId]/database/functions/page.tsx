@@ -1,9 +1,9 @@
 import { getSchemas } from "@/lib/actions/database/cache-actions"
 import { getFunctions } from "@/lib/actions/database/functions/cache-actions"
-import FunctionCard from "../_components/cards/FunctionCard"
 import { DatabaseFunctionType } from "@/lib/types"
 import AddFunctionSheet from "./_components/sheets/AddFunctionSheet"
 import CardPage from "@/components/CardPage"
+import FunctionCard from "./_components/cards/FunctionCard"
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database">) => {
   const p = await params
