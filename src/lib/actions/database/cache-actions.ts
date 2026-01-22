@@ -64,7 +64,7 @@ export async function getSchema(
   const result = await pool.query(`
 WITH
   params AS (
-    SELECT '${schema}'::text AS target_schema
+    SELECT 'public'::text AS target_schema
   ),
   tables AS (
     SELECT
@@ -133,7 +133,7 @@ WITH
     SELECT
       con.conname AS name,
       n.nspname AS schema,
-      cl.relname AS table,
+      cl.relname AS tab,
       local_cols.attname AS from_column,
       ref_n.nspname AS to_schema,
       ref_cl.relname AS to_table,
@@ -151,13 +151,14 @@ WITH
         WHEN 'c' THEN 'CASCADE'
         WHEN 'n' THEN 'SET NULL'
         WHEN 'd' THEN 'SET DEFAULT'
-      END AS on_delete
+      END AS on_delete,
+      k.ord
     FROM pg_catalog.pg_constraint con
     JOIN pg_catalog.pg_namespace n ON con.connamespace = n.oid
     JOIN pg_catalog.pg_class cl ON con.conrelid = cl.oid
     JOIN pg_catalog.pg_class ref_cl ON con.confrelid = ref_cl.oid
     JOIN pg_catalog.pg_namespace ref_n ON ref_cl.relnamespace = ref_n.oid
-    CROSS JOIN UNNEST(con.conkey, con.confkey) AS k(local_attnum, ref_attnum)
+    CROSS JOIN unnest(con.conkey, con.confkey) WITH ORDINALITY AS k(local_attnum, ref_attnum, ord)
     JOIN pg_catalog.pg_attribute local_cols
       ON local_cols.attrelid = con.conrelid
      AND local_cols.attnum = k.local_attnum
@@ -168,25 +169,39 @@ WITH
       con.contype = 'f'
       AND n.nspname = (SELECT target_schema FROM params)
   ),
-  columns_with_fk AS (
+  grouped_fkeys AS (
     SELECT
-      cb.*,
-      (
-        SELECT json_build_object(
-          'keySchema', fk.to_schema,
-          'keyTable', fk.to_table,
-          'keyColumn', fk.to_column,
-          'updateAction', fk.on_update,
-          'deleteAction', fk.on_delete
+      schema,
+      tab,
+      json_agg(
+        json_build_object(
+          'cols', cols,
+          'updateAction', on_update,
+          'deleteAction', on_delete
         )
-        FROM foreign_keys fk
-        WHERE
-          fk.schema = cb.schema
-          AND fk.table = cb.table_name
-          AND fk.from_column = cb.name
-        LIMIT 1
-      ) AS fkey
-    FROM columns_base cb
+      ) AS fkeys
+    FROM (
+      SELECT
+        schema,
+        tab,
+        name,
+        on_update,
+        on_delete,
+        json_agg(
+          json_build_object(
+            'referencorSchema', schema,
+            'referencorTable', tab,
+            'referencorColumn', from_column,
+            'referenceeSchema', to_schema,
+            'referenceeTable', to_table,
+            'referenceeColumn', to_column
+          ) ORDER BY ord
+        ) AS cols
+      FROM foreign_keys
+      GROUP BY
+        schema, tab, name, on_update, on_delete
+    ) sub
+    GROUP BY schema, tab
   )
 SELECT
   json_agg(
@@ -202,15 +217,25 @@ SELECT
             'default', cf.default_value,
             'isPkey', cf.is_primary_key,
             'isUnique', cf.is_unique,
-            'isNullable', NOT cf.is_nullable,
-            'fkey', cf.fkey
+            'isNullable', NOT cf.is_nullable
           )
           ORDER BY cf.attnum
         )
-        FROM columns_with_fk cf
+        FROM columns_base cf
         WHERE
           cf.schema = t.schema
           AND cf.table_name = t.name
+      ),
+      'fkeys',
+      COALESCE(
+        (
+          SELECT fkeys
+          FROM grouped_fkeys gf
+          WHERE
+            gf.schema = t.schema
+            AND gf.tab = t.name
+        ),
+        '[]'::json
       )
     )
   )

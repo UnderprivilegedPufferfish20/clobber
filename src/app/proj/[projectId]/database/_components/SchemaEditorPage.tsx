@@ -83,15 +83,64 @@ const SchemaEditorPage = ({
   }, [current_schema, schema]);
 
 
+  const initialEdges = useMemo((): Edge[] => {
+    if (!current_schema) return [];
+
+    const edges: Edge[] = [];
+
+    for (const table of current_schema) {
+      console.log("@CURRENT TABLE: ", table)
+      if (!table.fkeys || table.fkeys.length === 0) continue;
+
+      for (let fkIndex = 0; fkIndex < table.fkeys!.length; fkIndex++) {
+        const fk = table.fkeys![fkIndex];
+
+        console.log("@FK: ", fk)
+
+        if (!fk?.cols?.length) continue;
+
+        fk.cols.forEach((c, colIdx) => {
+          const edge = {
+            id: `edge:${c}`,
+            source: `${c.referencorSchema}.${c.referencorTable}`,
+            target: `${c.referenceeSchema}.${c.referenceeTable}`,
+            
+            sourceHandle: `col:${c.referencorSchema}.${c.referencorTable}.${c.referencorColumn}:source`,
+            targetHandle: `col:${c.referenceeSchema}.${c.referenceeTable}.${c.referenceeColumn}:target`,
+            type: "smoothstep",
+            markerEnd: { type: MarkerType.ArrowClosed },
+          }
+
+          
+
+          edges.push(edge);
+        });
+      }
+
+    }
+
+    return edges;
+  }, [current_schema, schema]);
 
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
-  // Keep nodes in sync if props.schema changes
+
   useEffect(() => {
     setNodes(initialNodes);
+
+    console.log("@@INIT NODES: ", initialNodes)
   }, [initialNodes, setNodes]);
 
+  useEffect(() => {
+    setEdges(initialEdges);
+
+    console.log("@@INIT EDGES: ", initialEdges)
+  }, [initialEdges, setEdges]);
+
+  // Inside SchemaEditorPage component, before the return statement
+  const nodeTypes = useMemo(() => ({ json: TableNode }), []);
 
   const { theme } = useTheme()
 
@@ -130,16 +179,15 @@ const SchemaEditorPage = ({
                 <div className="h-full w-full">
                   
                   <ReactFlow
-                    defaultViewport={{
-                      x: 0,
-                      y: 0,
-                      zoom: 1
-                    }}
+                    defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                     nodes={nodes}
+                    edges={edges}
+                    
                     nodeTypes={nodeTypes}
                     onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
                     style={{ width: "100%", height: "100%" }}
-                    colorMode={theme === 'dark' ? "dark" : "light"}
+                    colorMode={theme === "dark" ? "dark" : "light"}
                   >
                     <MiniMap position="top-right"  />
                     <Background variant={BackgroundVariant.Dots} gap={12} />
@@ -188,8 +236,7 @@ function TableColumn({
   tableName: string,
   column: ColumnType
 }) {
-  const inId = `in:${column.name}`;
-  const outId = `out:${column.name}`;
+  const handleId = `col:${schema}.${tableName}.${column.name}`;
 
   const { mutate: delCol } = useMutation({
     mutationFn: async (name: string) => {
@@ -209,7 +256,7 @@ function TableColumn({
         <ContextMenuTrigger className="group relative flex items-center justify-between p-2 hover:bg-black/10 hover:dark:bg-black/90">
           <Handle
             type="target"
-            id={inId}
+            id={`col:${schema}.${tableName}.${column.name}:target`}  // ✅ Changed
             position={Position.Left}
             className="flex! flex-1! min-h-10! w-4! opacity-0!"
             style={{ top: "50%" }}
@@ -257,7 +304,7 @@ function TableColumn({
 
           <Handle
             type="source"
-            id={outId}
+            id={`col:${schema}.${tableName}.${column.name}:source`}  // ✅ Changed - same ID is fine for source/target
             position={Position.Right}
             className="flex! flex-1! min-h-10! w-4! opacity-0!"
             style={{ top: "50%" }}

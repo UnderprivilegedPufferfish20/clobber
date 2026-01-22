@@ -1,7 +1,5 @@
 import { getSchema, getSchemas } from "@/lib/actions/database/cache-actions"
 import SchemaEditorPage from "./_components/SchemaEditorPage"
-import { Suspense } from "react"
-import Loader from "@/components/Loader"
 
 export default async function page({ params, searchParams }: PageProps<"/proj/[projectId]/database">) {
   const p = await params
@@ -16,8 +14,7 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
       <SchemaEditorPage 
         current_schema={currentSchema}
         projectId={p.projectId}
-        schemas={schemas}    
-  
+        schemas={schemas}   
       />
   )
 }

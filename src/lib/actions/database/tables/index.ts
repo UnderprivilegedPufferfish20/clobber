@@ -173,6 +173,8 @@ export async function addTable(
 
   if (data.fkeys && data.fkeys.length > 0) {
     data.fkeys.map(fk => {
+      console.log("@SA FKEY: ", fk)
+
       constraints.unshift(`
         CONSTRAINT ${createFkeyName(data.name, fk)}
           FOREIGN KEY (${fk.cols.map(fkc => `"${fkc.referencorColumn}"`).join(", ")}) REFERENCES "${fk.cols[0].referenceeSchema}"."${fk.cols[0].referenceeTable}"(${fk.cols.map(fkc => `"${fkc.referenceeColumn}"`).join(", ")})

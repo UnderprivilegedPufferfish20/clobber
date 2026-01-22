@@ -40,11 +40,6 @@ export default function AddFkeySheet({
   const [delAction, setDelAction] = useState<FKEY_REFERENCED_ROW_ACTION_DELETED>(FKEY_REFERENCED_ROW_ACTION_DELETED.NONE)
   const [updateAction, setUpdateAction] = useState<FKEY_REFERENCED_ROW_ACTION_UPDATED>(FKEY_REFERENCED_ROW_ACTION_UPDATED.NONE)
 
-  const { data: schemas } = useQuery({
-    queryKey: ["schemas", projectId],
-    queryFn: () => getSchemas(projectId)
-  })
-
   const { data: tables } = useQuery({
     queryKey: ["tables", projectId, selectedSchema],
     queryFn: () => getTables(selectedSchema, projectId),
@@ -92,6 +87,20 @@ export default function AddFkeySheet({
     onOpenChange(false)
   }
 
+  function getReferencorMeta(table: TableType, referencorColumn: string) {
+    const col = table.columns.find((c) => c.name === referencorColumn);
+    return col ? { dtype: col.dtype, isArray: col.isArray } : null;
+  }
+
+  function getReferenceeMeta(
+    columns: { name: string; dtype: DATA_TYPES; }[] | undefined,
+    referenceeColumn: string
+  ) {
+    const col = columns?.find((c) => c.name === referenceeColumn);
+    return col ? { dtype: col.dtype } : null;
+  }
+
+
   return (
     <SheetWrapper
       open={open}
@@ -103,7 +112,9 @@ export default function AddFkeySheet({
           cols: fkeyCols,
           updateAction,
           deleteAction: delAction
-        }])}
+        }]);
+        onOpenChange(false)
+      }
       }
       title={`Add foreign key to ${table.name}`}
       description="Enhances data integrity"
@@ -149,19 +160,6 @@ export default function AddFkeySheet({
         <Separator />
         <h1 className="mt-4">Columns</h1>
 
-        {!fkeyCols.
-          every(c => {
-            columns?.find(referenceeCol => referenceeCol.name === c.referenceeColumn)?.dtype 
-            === table.columns.find(referencorCol => referencorCol.name === c.referencorColumn)?.dtype
-            }
-          )
-        && (
-          <div className="bg-yellow-200/20 fullwidth rounded-lg flex p-2 gap-2 items-center">
-            <TriangleAlertIcon className="w-6 h-6" />
-            Columns must have matching data types
-          </div>
-        )}
-
 
         <div className="flex items-center text-muted-foreground fullwidth justify-between mt-4 pr-10">
           <h4>{schema}.<span className="text-white">{table.name === "" ? "[unnamed]" : table.name}</span></h4>
@@ -173,7 +171,26 @@ export default function AddFkeySheet({
 
             return (
               <div className="flex items-center gap-2 fullwidth justify-between">
-                <Select value={c.referencorColumn} onValueChange={v => updateColumn(idx, { referencorColumn: v })}>
+                <Select
+                  value={c.referencorColumn}
+                  onValueChange={(v) => {
+                    const nextReferencor = v;
+
+                    // if current referencee doesn't match the newly selected referencor dtype, clear it
+                    const refMeta = getReferencorMeta(table, nextReferencor);
+                    const curReferenceeMeta = getReferenceeMeta(columns, c.referenceeColumn);
+
+                    updateColumn(idx, {
+                      referencorColumn: nextReferencor,
+                      referenceeColumn:
+                        refMeta && curReferenceeMeta
+                          ? (refMeta.dtype === curReferenceeMeta.dtype
+                              ? c.referenceeColumn
+                              : "")
+                          : "",
+                    });
+                  }}
+                >
                   <SelectTrigger className="truncate w-38 min-w-38 max-w-38">
                     <SelectValue placeholder="select a column..."/>
                   </SelectTrigger>
@@ -194,7 +211,11 @@ export default function AddFkeySheet({
 
                 <ArrowRightIcon className="h-6 w-6"/>
 
-                <Select value={c.referenceeColumn} onValueChange={v => updateColumn(idx, { referenceeColumn: v })}>
+                <Select 
+                  value={c.referenceeColumn} 
+                  onValueChange={v => updateColumn(idx, { referenceeColumn: v })}
+                  disabled={!c.referencorColumn}
+                >
                   <SelectTrigger className="truncate w-38 min-w-38 max-w-38">
                     <SelectValue placeholder="select a column..."/>
                   </SelectTrigger>
@@ -202,16 +223,38 @@ export default function AddFkeySheet({
                   <SelectContent className="z-500">
                     <SelectGroup>
                       <SelectLabel className="font-bold!">Only matching data types</SelectLabel>
-                      {columns && columns.map(c => (
-                        <SelectItem
-                          className="flex items-center gap-2" 
-                          key={c.name} 
-                          value={c.name}
-                        >
-                          <h2>{c.name}</h2>
-                          <p className="text-muted-foreground">{c.dtype}</p>
-                        </SelectItem>
-                      ))}
+                      {(() => {
+                        const refMeta = getReferencorMeta(table, c.referencorColumn);
+
+                        // If no referencor selected yet, show nothing (or show a hint)
+                        if (!refMeta) {
+                          return (
+                            <div className="px-2 py-2 text-sm text-muted-foreground">
+                              Select a left column first
+                            </div>
+                          );
+                        }
+
+                        const matching = (columns ?? []).filter(
+                          (col) => col.dtype === refMeta.dtype
+                        );
+
+                        if (matching.length === 0) {
+                          return (
+                            <div className="px-2 py-2 text-sm text-muted-foreground">
+                              No matching columns in {selectedSchema}.{selectedTable}
+                            </div>
+                          );
+                        }
+
+                        return matching.map((col) => (
+                          <SelectItem className="flex items-center gap-2" key={col.name} value={col.name}>
+                            <h2>{col.name}</h2>
+                            <p className="text-muted-foreground">{col.dtype}</p>
+                          </SelectItem>
+                        ));
+                      })()}
+
                     </SelectGroup>
                   </SelectContent>
                 </Select>
