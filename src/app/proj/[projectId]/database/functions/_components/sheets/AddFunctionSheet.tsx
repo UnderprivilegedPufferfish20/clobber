@@ -92,13 +92,6 @@ function AddFunctionSheet({
     );
   };
 
-  const handleSubmit = () => {
-    if (!name || !schema) {
-      toast.error("Name and schema are required");
-      return;
-    }
-    mutate();
-  };
 
   return (
     <SheetWrapper

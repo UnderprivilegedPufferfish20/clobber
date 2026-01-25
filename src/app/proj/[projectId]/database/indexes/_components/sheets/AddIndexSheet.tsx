@@ -111,6 +111,11 @@ function AddIndexSheet({
       queryClient.invalidateQueries({
         queryKey: ["indexes", projectId, schema],
       });
+
+      setSchema("")
+      setCols([])
+      setTable("")
+      setType(INDEX_TYPES.BTREE)
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to create index", { id: "add-index" });

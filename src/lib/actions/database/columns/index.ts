@@ -154,8 +154,6 @@ export async function editColumn(
 
   const queries: string[] = []
 
-  console.log("@OLD DEFAULT", oldCol.default)
-  console.log("@NEW DEFAULT", newCol.default)
 
   if (oldCol.default === null) {
     oldCol.default = "";

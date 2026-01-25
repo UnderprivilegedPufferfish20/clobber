@@ -101,6 +101,10 @@ function AddTableSheet({
       toast.success("Table added successfully", { id: "add-table" });
       
       onOpenChange(false);
+
+      setName("")
+      setColumns(defaultCols)
+      setFkeys([])
     },
     onMutate(variables, context) {
       toast.loading("Creating table...", { id: "add-table" })
@@ -194,7 +198,7 @@ function AddTableSheet({
 
                 return (
                     <div
-                      key={`${col.name ?? "new"}:${idx}`}
+                      key={`column-${idx}`}
                       className={`${col.isPkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border border-border`}
                     >
 
@@ -203,8 +207,6 @@ function AddTableSheet({
                       <Input
                         value={col.name}
                         onChange={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault()
                           updateColumn(idx, { name: e.target.value })
                         }}
                         className="focus-visible:ring-0 focus-visible:ring-offset-0 max-w-32 min-w-32 w-32"

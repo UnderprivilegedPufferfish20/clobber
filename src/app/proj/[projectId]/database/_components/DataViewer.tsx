@@ -34,7 +34,6 @@ import { Button } from "@/components/ui/button";
 import { getTableData } from "@/lib/actions/database/tables/cache-actions";
 import Filter, { parseFiltersParam, stringifyFilters } from "./Filter";
 import AddColumnSheet from "./sheets/AddColumnSheet";
-import AddRowSheet from "./sheets/AddRowSheet";
 
 
 
@@ -581,14 +580,14 @@ function InsertButton({
 
   return (
     <>
-      <AddRowSheet 
+      {/* <AddRowSheet 
         onOpenChange={setOpenRow}
         open={openRow}
         projectId={projectId}
         hideTrigger 
         schema={schema}
         table={tableId}
-      />
+      /> */}
       <AddColumnSheet  
         schema={schema}
         onOpenChange={setOpenCol}

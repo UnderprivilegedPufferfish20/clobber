@@ -13,13 +13,16 @@ import { Button } from "@/components/ui/button";
 import SheetWrapper from "@/components/SheetWrapper";
 import SheetSchemaSelect from "../selectors/SheetSchemaSelect";
 
-export default function AddFkeySheet({
+export default function EditFkeySheet({
   projectId,
   setFkeys,
   table,
   schema,
   open,
-  onOpenChange
+  onOpenChange,
+
+  editingFkey,
+  index
 }: {
   projectId: string,
   setFkeys: Dispatch<SetStateAction<FkeyType[]>>,
@@ -27,18 +30,24 @@ export default function AddFkeySheet({
   schema: string,
 
   open: boolean,
-  onOpenChange: Dispatch<SetStateAction<boolean>>
+  onOpenChange: Dispatch<SetStateAction<boolean>>,
+  editingFkey?: FkeyType,
+  index?: number
 }) {
+  if (!editingFkey || typeof index !== "number") {
+    console.log("NO FKEY OR IDX")
+    return null
+  }
 
-  
+  if (editingFkey.cols.length === 0) throw new Error("No columns in fkey");
 
-  const [selectedSchema, setSelectedSchema] = useState("")
-  const [selectedTable, setSelectedTable] = useState("")
+  const [selectedSchema, setSelectedSchema] = useState(editingFkey.cols[0].referenceeSchema)
+  const [selectedTable, setSelectedTable] = useState(editingFkey.cols[0].referenceeTable)
 
-  const [fkeyCols, setFkeyCols] = useState<FkeyColumnType[]>([])
+  const [fkeyCols, setFkeyCols] = useState<FkeyColumnType[]>(editingFkey.cols)
 
-  const [delAction, setDelAction] = useState<FKEY_REFERENCED_ROW_ACTION_DELETED>(FKEY_REFERENCED_ROW_ACTION_DELETED.NONE)
-  const [updateAction, setUpdateAction] = useState<FKEY_REFERENCED_ROW_ACTION_UPDATED>(FKEY_REFERENCED_ROW_ACTION_UPDATED.NONE)
+  const [delAction, setDelAction] = useState<FKEY_REFERENCED_ROW_ACTION_DELETED>(editingFkey.deleteAction)
+  const [updateAction, setUpdateAction] = useState<FKEY_REFERENCED_ROW_ACTION_UPDATED>(editingFkey.updateAction)
 
   const { data: tables } = useQuery({
     queryKey: ["tables", projectId, selectedSchema],
@@ -77,16 +86,6 @@ export default function AddFkeySheet({
     referencorColumn: ""
   }
 
-  const handleClose = () => {
-    setFkeyCols([])
-    setDelAction(FKEY_REFERENCED_ROW_ACTION_DELETED.NONE)
-    setUpdateAction(FKEY_REFERENCED_ROW_ACTION_UPDATED.NONE)
-    setSelectedTable("")
-    setSelectedSchema("")
-
-    onOpenChange(false)
-  }
-
   function getReferencorMeta(table: TableType, referencorColumn: string) {
     const col = table.columns.find((c) => c.name === referencorColumn);
     return col ? { dtype: col.dtype, isArray: col.isArray } : null;
@@ -106,20 +105,19 @@ export default function AddFkeySheet({
       open={open}
       isDirty={() => false}
       onOpenChange={onOpenChange}
-      disabled={!fkeyCols.every(c => Boolean(c.referenceeColumn) && Boolean(c.referencorColumn)) || !selectedTable || fkeyCols.length === 0}
-      onDiscard={handleClose}
+      disabled={JSON.stringify({ columns, updateAction, delAction }) === JSON.stringify(editingFkey)}
       onSubmit={() => {
-        setFkeys(p => [...p, {
-          cols: fkeyCols,
-          updateAction,
-          deleteAction: delAction
-        }]);
+        setFkeys(prev => {
+          const next = [...prev];
+          next.splice(index!, 1, { cols: fkeyCols, updateAction, deleteAction: delAction }); // replace 1
+          return next;
+        });
+
         onOpenChange(false)
       }
       }
-      title={`Add foreign key to ${table.name}`}
-      description="Enhances data integrity"
-      submitButtonText="Add Foreign Key"
+      title={`Edit foreign key`}
+      submitButtonText="Apply Changes"
       bodyClassname="overflow-y-auto"
       sheetContentClassname="z-250 sm:max-w-md"
     >

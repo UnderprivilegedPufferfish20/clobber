@@ -91,6 +91,15 @@ function AddTriggerSheet({
     onSuccess: () => {
       toast.success("Trigger created", { id: "add-trigger" });
       queryClient.invalidateQueries({ queryKey: ["triggers", projectId, selectedSchema] });
+
+      setName("")
+      setSelectedEvents([])
+      setSelectedFnName("")
+      setSelectedFnSchema("")
+      setSelectedOrientation(TRIGGER_ORIENTATION.ROW)
+      setSelectedTable("")
+      setSelectedType(TRIGGER_TYPE.BEFORE)
+      setSelectedSchema("")
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to create trigger", { id: "add-trigger" });

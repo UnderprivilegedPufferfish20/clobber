@@ -26,7 +26,7 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import '@xyflow/react/dist/style.css';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { gridPosition } from "@/lib/utils";
+import { createFkeyName, gridPosition } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { useMutation } from "@tanstack/react-query";
 import { deleteColumn } from "@/lib/actions/database/columns";
@@ -101,7 +101,7 @@ const SchemaEditorPage = ({
 
         fk.cols.forEach((c, colIdx) => {
           const edge = {
-            id: `edge:${c}`,
+            id: `edge:${createFkeyName(table.name, fk)}`,
             source: `${c.referencorSchema}.${c.referencorTable}`,
             target: `${c.referenceeSchema}.${c.referenceeTable}`,
             

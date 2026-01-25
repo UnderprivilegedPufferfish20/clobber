@@ -68,6 +68,10 @@ function EditFunctionSheet({
     onSuccess: () => {
       toast.success("Function updated successfully", { id: "update-function" });
       queryClient.invalidateQueries(["functions", projectId, schema] as any);
+
+      setDefinition(extractBody(editingFunction.definition))
+      setName(editingFunction.function_name)
+      setSchema(editingFunction.schema_name)
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to update function", {

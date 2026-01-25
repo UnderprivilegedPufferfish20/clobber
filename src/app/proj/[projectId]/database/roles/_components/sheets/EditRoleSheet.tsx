@@ -7,43 +7,47 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Toggle } from '@/components/ui/toggle';
-import { createRole } from '@/lib/actions/database/roles';
-import { DatabaseObjectAddSheetProps } from '@/lib/types';
+import { createRole, editRole } from '@/lib/actions/database/roles';
+import { DatabaseObjectAddSheetProps, RoleType } from '@/lib/types';
 import { useMutation } from '@tanstack/react-query';
-import React, { useState } from 'react'
+import React, { Dispatch, SetStateAction, useState } from 'react'
 import { toast } from 'sonner';
 
-const AddRoleSheet = ({
+const EditRoleSheet = ({
   onOpenChange,
   open,
   projectId,
-  schemas
-}: DatabaseObjectAddSheetProps) => {
-  const [name, setName] = useState("")
+  role
+}: {
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+  open: boolean,
+  projectId: string,
+  role: RoleType
+}) => {
+  const [name, setName] = useState(role.name)
 
-  const [canLogin, setCanLogin] = useState(true)
-  const [canCreateRoles, setCanCreateRoles] = useState(false)
-  const [bypassRLS, setBypassRLS] = useState(false)
+  const [canLogin, setCanLogin] = useState(role.can_login)
+  const [canCreateRoles, setCanCreateRoles] = useState(role.can_create_roles)
+  const [bypassRLS, setBypassRLS] = useState(role.can_bypass_rls)
   const [isSuperuser, setIsSuperuser] = useState(false)
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      createRole(projectId, { name, can_bypass_rls: bypassRLS, can_create_roles: canCreateRoles, is_superuser: false, can_login: canLogin });
-      setName("")
-      setBypassRLS(false)
-      setCanCreateRoles(false)
-      setCanLogin(true)
+      editRole(projectId, role, { name, can_bypass_rls: bypassRLS, can_create_roles: canCreateRoles, is_superuser: false, can_login: canLogin });
+      setName(role.name)
+      setBypassRLS(role.can_bypass_rls)
+      setCanCreateRoles(role.can_create_roles)
+      setCanLogin(role.can_login)
     },
-    onMutate: () => { toast.loading("Creating...", { id: "create-role" }) },
-    onSuccess: () => { toast.success("Role created", { id: "create-role" }) },
-    onError: (e) => { toast.error(`Failed to create role: ${e}`, { id: "create-role" }) }
+    onMutate: () => { toast.loading("Applying Changes...", { id: "edit-role" }) },
+    onSuccess: () => { toast.success("Changes Applied", { id: "edit-role" }) },
+    onError: (e) => { toast.error(`Failed to edit role: ${e}`, { id: "edit-role" }) }
   })
 
   return (
     <SheetWrapper
-      title="Create role"
-      description='Enhances data protection'
-      disabled={!name || isSuperuser === true}
+      title="Edit role"
+      disabled={name === role.name && role.can_bypass_rls === bypassRLS && role.can_create_roles === canCreateRoles && role.can_login === canLogin}
       onSubmit={() => {
         mutate();
         onOpenChange(false)
@@ -53,12 +57,12 @@ const AddRoleSheet = ({
       open={open}
       submitButtonText='Create Role'
       onDiscard={() => {
-        setName("")
-        setBypassRLS(false)
-        setCanCreateRoles(false)
-        setCanLogin(true)
+        setName(role.name)
+        setBypassRLS(role.can_bypass_rls)
+        setCanCreateRoles(role.can_create_roles)
+        setCanLogin(role.can_login)
       }}
-      isDirty={() => Boolean(name || canLogin !== true || canCreateRoles === true || bypassRLS === true)}
+      isDirty={() => name !== role.name || role.can_bypass_rls !== bypassRLS || role.can_create_roles !== canCreateRoles || role.can_login !== canLogin}
     >
       <div className='flex flex-col gap-2'>
         <h1>Name</h1>
@@ -119,4 +123,4 @@ const AddRoleSheet = ({
   )
 }
 
-export default AddRoleSheet
+export default EditRoleSheet

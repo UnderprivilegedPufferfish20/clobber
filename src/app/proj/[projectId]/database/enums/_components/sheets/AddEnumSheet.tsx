@@ -77,6 +77,10 @@ function AddEnumSheet({
       return;
     }
     mutate();
+
+    setName("");
+    setValues([]);
+    setSchema("");
   };
 
   return (

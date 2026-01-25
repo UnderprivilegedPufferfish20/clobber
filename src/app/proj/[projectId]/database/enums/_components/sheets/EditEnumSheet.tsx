@@ -60,6 +60,11 @@ function EditEnumSheet({
     onSuccess: () => {
       toast.success("Enum updated successfully", { id: "update-enum" });
       queryClient.invalidateQueries(["enums", projectId, schema] as any);
+
+      setName(editingEnum.enum_name);
+      setValues(editingEnum.enum_values.split(", "));
+      setSchema(editingEnum.enum_schema);
+      setRenamedVals([]);
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to update enum", { id: "update-enum" });

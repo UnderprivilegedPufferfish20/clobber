@@ -10,18 +10,11 @@ import {
   EllipsisVerticalIcon,
   XIcon,
   MenuIcon,
+  ArrowRightIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,25 +23,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import CustomDialogHeader from "@/components/CustomDialogHeader";
-import {
-  DATA_TYPES_LIST,
-  FKEY_REFERENCED_ROW_ACTION_DELETED_LIST,
-  FKEY_REFERENCED_ROW_ACTION_UPDATED_LIST,
-} from "@/lib/constants";
-import type {
-  ColumnType,
-  DATA_TYPE_TYPE,
-  FKEY_REFERENCED_ROW_ACTION_DELETED,
-  FKEY_REFERENCED_ROW_ACTION_UPDATED,
+  DATA_TYPES,
   FkeyType,
-  TableType,
+  type ColumnType,
+  type TableType,
 } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -62,9 +40,12 @@ import { Separator } from "@/components/ui/separator";
 import DataTypeSelect from "../DataTypeSelect";
 import { defaultSuggestions } from "@/lib/utils";
 import DefaultValueSelector from "../selectors/DefaultValueSelector";
-import SheetActionsFooter from "@/components/SheetActionsFooter";
 import SheetWrapper from "@/components/SheetWrapper";
+import AddFkeySheet from "./AddFkeySheet";
+import EditFkeySheet from "./EditFkeySheet";
 
+
+type EditableColumn = ColumnType & { originalName: string | null };
 
 function EditTableSheet({
   projectId,
@@ -79,106 +60,86 @@ function EditTableSheet({
   open: boolean;
   onOpenChange: Dispatch<SetStateAction<boolean>>;
 }) {
-  const emptyColumn: ColumnType = {
+  const emptyColumn: EditableColumn = {
     name: "",
-    dtype: "integer",      // or DATA_TYPES.INT if that matches your enum
+    dtype: DATA_TYPES.INTEGER,
     isArray: false,
     default: undefined,
     isPkey: false,
     isUnique: false,
     isNullable: true,
+    originalName: null,
   };
 
+  const [columns, setColumns] = useState<EditableColumn[]>(
+    table.columns.map(c => ({ ...c, originalName: c.name }))
+  );
 
-  const [columns, setColumns] = useState<ColumnType[]>(table.columns)
-  const [deletedCols, setDeletedCols] = useState<string[]>([])
-  const [renamedCols, setRenamedCols] = useState<{ oldName: string, newName: string }[]>([])
+  const [name, setName] = useState(table.name);
 
-  const [name, setName] = useState(table.name)
+  const [fkeys, setFkeys] = useState<FkeyType[]>(table.fkeys ?? []);
+
+  const [isFkeySheetOpen, setIsFkeySheetOpen] = useState(false);
+
+  const [isEditFkeySheetOpen, setIsEditFkeySheetOpen] = useState<{ open: boolean; index: number | null }>({ open: false, index: null });
 
   const { mutate, isPending } = useMutation({
     mutationFn: () =>
       updateTable(
         projectId,
         schema,
-        table,  
+        table,
         {
           name,
-          columns
-        }, 
-        renamedCols,
-        deletedCols
-    ),
+          columns,
+          fkeys
+        }
+      ),
     onSuccess: () => {
       toast.success("Table updated successfully", { id: "edit-table" });
-      
       onOpenChange(false);
     },
-    onMutate(variables, context) {
-      toast.loading("Updating Table...", { id: "edit-table" })
+    onMutate() {
+      toast.loading("Updating Table...", { id: "edit-table" });
     },
     onError: (error) => {
       toast.error(error.message || "Failed to edit table", { id: "edit-table" });
     }
-  })
+  });
 
   function updateColumn(idx: number, patch: Partial<ColumnType>) {
     setColumns((prev) =>
       prev.map((c, i) => (i === idx ? { ...c, ...patch } : c))
     );
-
-    if (patch.name) {
-      setRenamedCols(p => [...p, { oldName: columns[idx].name,  }])
-    }
   }
 
   function deleteColumn(idx: number) {
-    setColumns((prev) => {
-      const col = prev[idx];
-      if (!col) return prev;
-
-      return prev.filter((_, i) => i !== idx);
-    });
-    setDeletedCols(p => [...p, columns[idx].name])
+    setColumns((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  const getCheckedOptions = (col: any) => {
-    return [col.isArray, col.isNullable, col.isUnique].filter(t => t === true).length
-  }
-
-  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
-
-  const isDirty = () => {
-    return columns === table.columns && name === table.name
-  }
-
-  const handleOpenChange = (o: boolean) => {
-    if (o) {
-      onOpenChange(true);
-      return;
-    }
-
-    if (!isDirty()) {
-      onOpenChange(false);
-      return;
-    }
-
-    setIsConfirmCloseOpen(true);
+  const getCheckedOptions = (col: EditableColumn) => {
+    return [col.isArray, col.isNullable, col.isUnique].filter(t => t === true).length;
   };
 
-  const getDefaultForType = (dtype: DATA_TYPE_TYPE) => {
+  const isDirty = useMemo(() => {
+    const cleanedColumns = columns.map(({ originalName, ...c }) => c);
+    return (
+      name !== table.name ||
+      JSON.stringify(cleanedColumns) !== JSON.stringify(table.columns) ||
+      JSON.stringify(fkeys) !== JSON.stringify(table.fkeys ?? [])
+    );
+  }, [name, columns, fkeys, table.name, table.columns, table.fkeys]);
+
+  const getDefaultForType = (dtype: DATA_TYPES) => {
     switch (dtype) {
       case "uuid":
         return "uuid_generate_v4()";
-      case "datetime":
+      case "timestamp":
         return "now()";
       default:
         return "";
     }
   };
-
-  
-
 
   return (
     <>
@@ -190,13 +151,13 @@ function EditTableSheet({
         open={open}
         onSubmit={() => mutate()}
         isPending={isPending}
-        isDirty={isDirty}
+        isDirty={() => isDirty}
         disabled={columns.length === 0 || !name}
         onDiscard={() => {
-          setName(table.name)
-          setColumns(table.columns)
+          setName(table.name);
+          setColumns(table.columns.map(c => ({ ...c, originalName: c.name })));
+          setFkeys(table.fkeys ?? []);
         }}
-
       >
         <div className='flex flex-col gap-2'>
           <h1>Name</h1>
@@ -227,7 +188,7 @@ function EditTableSheet({
 
                 return (
                     <div
-                      key={`${col.name ?? "new"}:${idx}`}
+                      key={`col:${idx}`}
                       className={`${col.isPkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border border-border`}
                     >
 
@@ -242,7 +203,7 @@ function EditTableSheet({
                       <DataTypeSelect
                         triggerClassname="max-w-35 min-w-35 w-35 truncate" 
                         value={col.dtype}
-                        onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPE_TYPE, default: getDefaultForType(v as DATA_TYPE_TYPE) })}
+                        onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPES, default: getDefaultForType(v as DATA_TYPES) })}
                       />
                       
                       <DefaultValueSelector 
@@ -319,7 +280,85 @@ function EditTableSheet({
           </div>
         </div>
 
+        <div className='flex flex-col gap-1'>
+          <h1 className='mb-5'>Foreign Keys</h1>
+
+          {fkeys.map((fkey, idx) => (
+            <div
+              key={idx}
+              className={`flex flex-col fullwidth p-2 relative rounded-md border border-border`}
+            >
+              <div className='flex gap-1 items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  <Table2Icon className='w-4 h-4' />
+                  <h2 className='text-md text-muted-foreground'>
+                    {fkey.cols[0]!.referenceeSchema}.
+                    <span className='text-white'>{fkey.cols[0]!.referenceeTable}</span>
+                  </h2>
+                </div>
+
+                <div className='flex items-center gap-2'>
+                  <Button
+                    variant={"outline"} 
+                    onClick={() => setFkeys(p => p.filter((_, i) => i !== idx))}
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    variant={"outline"}
+                    onClick={() => setIsEditFkeySheetOpen({ open: true, index: idx })}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </div>
+
+              <div className='ml-6 flex w-fit flex-col gap-1 text-sm'>
+                {fkey.cols.map(c => (
+                  <div className='flex items-center justify-between p-1'>
+                    <span className='text-muted-foreground'>{c.referencorColumn}</span>
+                    <ArrowRightIcon className='w-4 h-4 mx-1' />
+                    <span className='text-white'>{c.referenceeColumn}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div
+              className={`flex items-center justify-center fullwidth relative rounded-md border border-dashed border-border py-2 mt-2`}
+            >
+            <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setIsFkeySheetOpen(true)}>
+              Add Foreign Key
+            </Button>
+          </div>
+        </div>
+
       </SheetWrapper>
+
+      <AddFkeySheet 
+        projectId={projectId}
+        setFkeys={setFkeys}
+        table={{ name, columns }}
+        open={isFkeySheetOpen}
+        onOpenChange={setIsFkeySheetOpen}
+        schema={schema}
+      />
+
+      <EditFkeySheet 
+        editingFkey={
+          typeof isEditFkeySheetOpen.index === "number"
+            ? fkeys[isEditFkeySheetOpen.index]
+            : undefined
+        }
+        open={isEditFkeySheetOpen.open}
+        index={isEditFkeySheetOpen.index ?? undefined}
+        onOpenChange={() => setIsEditFkeySheetOpen({ open: false, index: null })}
+        projectId={projectId}
+        schema={schema}
+        table={table}
+        setFkeys={setFkeys}
+      />
     </>
   );
 }

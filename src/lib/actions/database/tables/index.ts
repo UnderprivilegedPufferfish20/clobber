@@ -7,7 +7,8 @@ import z from "zod";
 import { getUser } from "../../auth";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
-import { ColumnType, DATA_EXPORT_FORMATS, DATA_TYPES, TableType } from "@/lib/types";
+import { ColumnType, DATA_EXPORT_FORMATS, DATA_TYPES, FkeyType, TableType, UpdateTableInput } from "@/lib/types";
+import { addColumn, editColumn } from "../columns";
 
 export async function deleteTable(
   projectId: string,
@@ -230,10 +231,10 @@ export async function updateTable(
   projectId: string,
   schema: string,
   oldTable: TableType,
-  newTable: TableType,
-  renamedCols: { oldName: string; newName: string }[],
-  deletedCols: string[]
+  newTable: UpdateTableInput
 ) {
+
+
   const user = await getUser();
   if (!user) throw new Error("No user");
 
@@ -248,185 +249,143 @@ export async function updateTable(
   });
 
   const oldTableName = oldTable.name;
-  let currentTableName = oldTableName;
-  const queries: string[] = [];
+  const newTableName = newTable.name;
+  let alterStatement = `ALTER TABLE "${schema}"."${oldTableName}"`;
 
-  // Build map: oldColName (non-deleted) -> newCol
-  const colMap = new Map<string, { oldCol: ColumnType; newCol: ColumnType }>();
-  const renamedMap = new Map(renamedCols.map((r) => [r.oldName, r.newName] as const));
-
-  for (const oldCol of oldTable.columns) {
-    if (deletedCols.includes(oldCol.name)) continue;
-    const newName = renamedMap.get(oldCol.name) ?? oldCol.name;
-    const newCol = newTable.columns.find((c) => c.name === newName);
-    if (!newCol) throw new Error(`Missing new column for ${oldCol.name}`);
-    colMap.set(oldCol.name, { oldCol, newCol });
-  }
-
-  // New columns (not in old or renamed)
-  const oldNames = new Set(oldTable.columns.map((c) => c.name));
-  const renamedNewNames = new Set(renamedCols.map((r) => r.newName));
-  const newCols = newTable.columns.filter(
-    (c) => !oldNames.has(c.name) && !renamedNewNames.has(c.name)
-  );
-
-  // PK handling (account for renames)
-  const getPKCols = (cols: ColumnType[], isNew = false) =>
-    cols
-      .filter((c) => c.isPkey)
-      .map((c) => (isNew ? c.name : renamedMap.get(c.name) ?? c.name))
-      .sort();
-
-  const oldPK = getPKCols(oldTable.columns);
-  const newPK = getPKCols(newTable.columns, true);
-  const pkChanged = oldPK.join(",") !== newPK.join(",");
-
-  // Drop old PK if changed
-  if (pkChanged && oldPK.length > 0) {
-    queries.push(
-      `ALTER TABLE "${schema}"."${currentTableName}" DROP CONSTRAINT "${oldTableName}_pkey" CASCADE`
-    );
-  }
-
-  // Rename table
-  if (oldTableName !== newTable.name) {
-    queries.push(`ALTER TABLE "${schema}"."${currentTableName}" RENAME TO "${newTable.name}"`);
-    currentTableName = newTable.name;
-  }
-
-  // Deletes (combined)
-  if (deletedCols.length > 0) {
-    const dropActions = deletedCols.map((col) => `DROP COLUMN "${col}" CASCADE`).join(", ");
-    queries.push(`ALTER TABLE "${schema}"."${currentTableName}" ${dropActions}`);
-  }
-
-  // New columns (combined)
-  if (newCols.length > 0) {
-    const addActions = newCols
-      .map((nc) => {
-        const baseType = `${nc.dtype}${nc.isArray ? "[]" : ""}`;
-        const notNull = nc.isNullable ? "" : "NOT NULL";
-        const def =
-          nc.default
-            ? nc.default.endsWith("()")
-              ? nc.default
-              : `'${nc.default.replace(/'/g, "''")}'`
-            : null;
-
-        // Note: ordering here is valid in Postgres
-        return `ADD COLUMN "${nc.name}" ${baseType} ${notNull} ${def ? nc.isArray ? `DEFAULT ARRAY[${def}] ` : `DEFAULT ${def} ` : ""} ${
-          nc.isUnique ? "UNIQUE" : ""
-        }`.replace(/\s+/g, " ").trim();
-      })
-      .join(", ");
-
-    queries.push(`ALTER TABLE "${schema}"."${currentTableName}" ${addActions}`);
-  }
-
-  // Edited columns
-  for (const [oldName, { oldCol, newCol }] of colMap) {
-    let currentColName = oldName;
-
-    // 1) RENAME COLUMN must be its own statement (cannot be combined)
-    if (oldName !== newCol.name) {
-      queries.push(
-        `ALTER TABLE "${schema}"."${currentTableName}" RENAME COLUMN "${currentColName}" TO "${newCol.name}"`
-      );
-      currentColName = newCol.name;
-    }
-
-    // 2) Remaining subcommands can be combined in ONE ALTER TABLE
-    const sub: string[] = [];
-
-    // DEFAULT change
-    if (oldCol.default !== newCol.default) {
-      if (!newCol.default) {
-        sub.push(`ALTER COLUMN "${currentColName}" DROP DEFAULT`);
-      } else {
-        const def = newCol.default.endsWith("()")
-          ? newCol.default
-          : `'${newCol.default.replace(/'/g, "''")}'`;
-        
-        let statement = `ALTER COLUMN "${currentColName}" SET DEFAULT ${def}`
-
-        if (oldCol.isArray === false && newCol.isArray === true) {
-          statement = `ALTER COLUMN "${currentColName}" SET DEFAULT ARRAY[${def}]`
-        }
-        sub.push(statement);
-      }
-    }
-
-    // TYPE change (handle dtype and array together so you don’t emit two TYPE commands)
-    if (oldCol.dtype !== newCol.dtype || oldCol.isArray !== newCol.isArray) {
-      const targetType = `${newCol.dtype}${newCol.isArray ? "[]" : ""}`;
-
-      // NOTE: your USING logic here is simplistic; adjust as needed for real conversions.
-      // This version keeps your intent but avoids invalid syntax.
-      let using = "";
-      if (oldCol.isArray !== newCol.isArray) {
-        using = newCol.isArray
-          ? ` USING ARRAY["${currentColName}"]`
-          : ""; // e.g. ` USING "${currentColName}"[1]` if you want array->scalar
-      }
-
-      sub.push(`ALTER COLUMN "${currentColName}" TYPE ${targetType}${using}`);
-    }
-
-    
-
-    // NULLABILITY change
-    if (oldCol.isNullable !== newCol.isNullable) {
-      sub.push(
-        `ALTER COLUMN "${currentColName}" ${newCol.isNullable ? "DROP NOT NULL" : "SET NOT NULL"}`
-      );
-    }
-
-    // UNIQUE change
-    if (oldCol.isUnique !== newCol.isUnique) {
-      if (newCol.isUnique) {
-        sub.push(
-          `ADD CONSTRAINT "${currentTableName}_${currentColName}_key" UNIQUE ("${currentColName}")`
-        );
-      } else {
-        // be defensive: the existing constraint name might be old/new table/col based
-        // use IF EXISTS so execution doesn't fail on naming mismatch
-        sub.push(`DROP CONSTRAINT IF EXISTS "${oldTableName}_${oldName}_key"`);
-        sub.push(`DROP CONSTRAINT IF EXISTS "${currentTableName}_${currentColName}_key"`);
-      }
-    }
-
-    if (sub.length > 0) {
-      queries.push(`ALTER TABLE "${schema}"."${currentTableName}" ${sub.join(", ")}`);
-    }
-  }
-
-  // Add new PK if changed and exists
-  if (pkChanged && newPK.length > 0) {
-    queries.push(
-      `ALTER TABLE "${schema}"."${currentTableName}" ADD PRIMARY KEY (${newPK
-        .map((c) => `"${c}"`)
-        .join(", ")})`
-    );
-  }
+  // Drop all constraints first
+  const constraintQuery = (type: string) => `
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_class cl ON con.conrelid = cl.oid
+    JOIN pg_namespace ns ON cl.relnamespace = ns.oid
+    WHERE con.contype = '${type}' AND ns.nspname = $1 AND cl.relname = $2
+  `;
 
   try {
-    await pool.query("BEGIN");
-    for (const query of queries) {
-      const q = query.trim().replace(/;+\s*$/, "") + ";"; // normalize single trailing semicolon
-      console.log("@@QUERY:", q);
-      await pool.query(q);
+    await pool.query("BEGIN")
+    const fkNames = (await pool.query(constraintQuery('f'), [schema, oldTableName])).rows.map(r => r.conname);
+    for (const name of fkNames) {
+      await pool.query(`${alterStatement} DROP CONSTRAINT "${name}" CASCADE`);
     }
-    await pool.query("COMMIT");
+  
+    const uniqueNames = (await pool.query(constraintQuery('u'), [schema, oldTableName])).rows.map(r => r.conname);
+    for (const name of uniqueNames) {
+      await pool.query(`${alterStatement} DROP CONSTRAINT "${name}" CASCADE`);
+    }
+  
+  
+    const pkName = (await pool.query(constraintQuery('p'), [schema, oldTableName])).rows[0]?.conname;
+    if (pkName) {
+      await pool.query(`${alterStatement} DROP CONSTRAINT "${pkName}" CASCADE`);
+    }
+  
+  
+    const currentOriginalNames = newTable.columns.filter(c => c.originalName !== null).map(c => c.originalName!);
+    const deletedColumns = oldTable.columns.filter(c => !currentOriginalNames.includes(c.name)).map(c => c.name);
+    if (deletedColumns.length > 0) {
+      const dropParts = deletedColumns.map(col => `DROP COLUMN "${col}" CASCADE`).join(', ');
+      await pool.query(`${alterStatement} ${dropParts};`);
+    }
+  
+    for (const newCol of newTable.columns.filter(c => c.originalName !== null)) {
+      const oldCol = oldTable.columns.find(o => o.name === newCol.originalName)!;
+      const colName = newCol.name; // After rename
+      const colAlter = `ALTER COLUMN "${colName}"`;
+      const commands: string[] = [];
+  
+      const newType = `${newCol.dtype}${newCol.isArray ? '[]' : ''}`;
+      const oldType = `${oldCol.dtype}${oldCol.isArray ? '[]' : ''}`;
+      if (newType !== oldType) {
+        commands.push(`${colAlter} TYPE ${newType} USING "${colName}"::${newType}`);
+      }
+  
+      if (newCol.default !== oldCol.default) {
+        if (newCol.default === undefined) {
+          commands.push(`${colAlter} DROP DEFAULT`);
+        } else {
+          commands.push(`${colAlter} SET DEFAULT ${newCol.default}`);
+        }
+      }
+  
+      if (newCol.isNullable !== oldCol.isNullable) {
+        if (newCol.isNullable) {
+          commands.push(`${colAlter} DROP NOT NULL`);
+        } else {
+          commands.push(`${colAlter} SET NOT NULL`);
+        }
+      }
+  
+      if (commands.length > 0) {
+        await pool.query(`${alterStatement} ${commands.join(', ')};`);
+      }
+    }
+  
+    // Add new columns
+    for (const newCol of newTable.columns.filter(c => c.originalName === null)) {
+      const fullType = `${newCol.dtype}${newCol.isArray ? '[]' : ''}`;
+      const commands: string[] = [`ADD COLUMN "${newCol.name}" ${fullType}`];
+      if (newCol.default !== undefined) {
+        commands.push(`ALTER COLUMN "${newCol.name}" SET DEFAULT ${newCol.default}`);
+      }
+      if (!newCol.isNullable) {
+        commands.push(`ALTER COLUMN "${newCol.name}" SET NOT NULL`);
+      }
+      await pool.query(`${alterStatement} ${commands.join(', ')};`);
+    }
+  
+    // Rename table
+    let currentTableName = oldTableName;
+    if (newTableName !== oldTableName) {
+      await pool.query(`${alterStatement} RENAME TO "${newTableName}";`);
+      currentTableName = newTableName;
+      alterStatement = `ALTER TABLE "${schema}"."${currentTableName}"`;
+    }
+  
+    // Add constraints
+    // Add uniques
+    const uniqueCols = newTable.columns.filter(c => c.isUnique);
+    for (const col of uniqueCols) {
+      const constName = `${currentTableName}_${col.name}_key`;
+      await pool.query(`${alterStatement} ADD CONSTRAINT "${constName}" UNIQUE ("${col.name}");`);
+    }
+  
+    // Add PK
+    const pkCols = newTable.columns.filter(c => c.isPkey).map(c => c.name);
+    if (pkCols.length > 0) {
+      const constName = `${currentTableName}_pkey`;
+      await pool.query(`${alterStatement} ADD CONSTRAINT "${constName}" PRIMARY KEY (${pkCols.map(c => `"${c}"`).join(', ')});`);
+    }
+  
+    // Add FKs
+    for (const fkey of newTable.fkeys) {
+      const localCols = fkey.cols.map(c => c.referencorColumn);
+      const foreignCols = fkey.cols.map(c => c.referenceeColumn);
+      const foreignTable = `"${fkey.cols[0].referenceeSchema}"."${fkey.cols[0].referenceeTable}"`;
+      const constName = `${currentTableName}_${localCols.join('_')}_fkey`;
+      const updateStr = fkey.updateAction;
+      const deleteStr = fkey.deleteAction;
+      await pool.query(
+        `${alterStatement} ADD CONSTRAINT "${constName}" FOREIGN KEY (${localCols.map(c => `"${c}"`).join(', ')}) ` +
+        `REFERENCES ${foreignTable} (${foreignCols.map(c => `"${c}"`).join(', ')}) ` +
+        `ON UPDATE ${updateStr} ON DELETE ${deleteStr};`
+      );
+    }
   } catch (e) {
-    await pool.query("ROLLBACK");
-    throw e;
+    await pool.query("ROLLBACK")
   }
 
-  revalidateTag(t("table-schema", projectId, schema, oldTable.name), "max");
+  // Revalidate tags
+  revalidateTag(t("table-schema", projectId, schema, oldTableName), "max");
   revalidateTag(t("schema", projectId, schema), "max");
-  revalidateTag(t("columns", projectId, schema, oldTable.name), "max");
+  revalidateTag(t("columns", projectId, schema, oldTableName), "max");
   revalidateTag(t("tables", projectId, schema), "max");
-  revalidateTag(t("table-data", projectId, schema, oldTable.name), "max");
+  revalidateTag(t("table-data", projectId, schema, oldTableName), "max");
+
+  if (newTableName !== oldTableName) {
+    revalidateTag(t("table-schema", projectId, schema, newTableName), "max");
+    revalidateTag(t("columns", projectId, schema, newTableName), "max");
+    revalidateTag(t("table-data", projectId, schema, newTableName), "max");
+  }
 }
 
 export async function addRow(
