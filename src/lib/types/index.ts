@@ -255,22 +255,6 @@ export type TableType = z.infer<typeof createTableSchema>
 export type FkeyType = z.infer<typeof createForeignKeySchema>
 export type FkeyColumnType = z.infer<typeof createForeignKeyColumnSchema>
 
-export type EditableColumn = {
-  name: string;
-  dtype: DATA_TYPES;
-  isArray: boolean;
-  default?: string;
-  isPkey: boolean;
-  isUnique: boolean;
-  isNullable: boolean;
-  originalName: string | null;
-};
-
-export type UpdateTableInput = {
-  name: string;
-  columns: EditableColumn[];
-  fkeys: FkeyType[];
-};
 
 export type JsonNodeData = {
   title: string;

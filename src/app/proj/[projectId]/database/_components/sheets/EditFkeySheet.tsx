@@ -35,7 +35,6 @@ export default function EditFkeySheet({
   index?: number
 }) {
   if (!editingFkey || typeof index !== "number") {
-    console.log("NO FKEY OR IDX")
     return null
   }
 

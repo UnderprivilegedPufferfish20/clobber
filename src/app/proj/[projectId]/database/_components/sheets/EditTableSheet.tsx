@@ -45,8 +45,6 @@ import AddFkeySheet from "./AddFkeySheet";
 import EditFkeySheet from "./EditFkeySheet";
 
 
-type EditableColumn = ColumnType & { originalName: string | null };
-
 function EditTableSheet({
   projectId,
   schema,
@@ -60,20 +58,24 @@ function EditTableSheet({
   open: boolean;
   onOpenChange: Dispatch<SetStateAction<boolean>>;
 }) {
-  const emptyColumn: EditableColumn = {
+  const emptyColumn = {
     name: "",
     dtype: DATA_TYPES.INTEGER,
     isArray: false,
-    default: undefined,
+    default: "",
     isPkey: false,
     isUnique: false,
     isNullable: true,
-    originalName: null,
   };
+  const originalColumnStringsSet = new Set(table.columns.map(c => JSON.stringify(c)))
 
-  const [columns, setColumns] = useState<EditableColumn[]>(
-    table.columns.map(c => ({ ...c, originalName: c.name }))
-  );
+  
+
+  const [updatedColumns, setUpdatedColumns] = useState<{ old: string, new: string }[]>([])
+  const [deletedCols, setDeletedCols] = useState<string[]>([])
+  const [newCols, setNewCols] = useState<string[]>([])
+
+  const [columns, setColumns] = useState<ColumnType[]>(table.columns);
 
   const [name, setName] = useState(table.name);
 
@@ -93,42 +95,86 @@ function EditTableSheet({
           name,
           columns,
           fkeys
-        }
+        },
+        updatedColumns,
+        deletedCols,
+        newCols
       ),
     onSuccess: () => {
       toast.success("Table updated successfully", { id: "edit-table" });
       onOpenChange(false);
+      setUpdatedColumns([]);
+      setDeletedCols([]);
+      setNewCols([]);
     },
     onMutate() {
       toast.loading("Updating Table...", { id: "edit-table" });
     },
     onError: (error) => {
       toast.error(error.message || "Failed to edit table", { id: "edit-table" });
+      setUpdatedColumns([]);
+      setDeletedCols([]);
+      setNewCols([]);
     }
   });
 
+  const updatedColsNews = useMemo(() => {
+    return new Set(updatedColumns.map(uc => uc.new))
+  }, [updatedColumns])
+
+  const newColsSet = useMemo(() => {
+    return new Set(newCols)
+  }, [newCols])
+
   function updateColumn(idx: number, patch: Partial<ColumnType>) {
+    if (originalColumnStringsSet.has(JSON.stringify(columns[idx]))) {
+      setUpdatedColumns(p => [...p, { old: JSON.stringify(columns[idx]), new: JSON.stringify({ ...columns[idx], ...patch }) }])
+    } else if (updatedColsNews.has(JSON.stringify(columns[idx]))) {
+      const indexOfUpdated = updatedColumns.indexOf(updatedColumns.find(uc => uc.new === JSON.stringify(columns[idx]))!)
+      const currentNew = JSON.parse(updatedColumns[indexOfUpdated].new)
+
+      const newUpdatedColum = { ...currentNew, ...patch }
+
+      console.log("@NEW UPDATED COL: ", newUpdatedColum)
+
+      updatedColumns[indexOfUpdated].new = JSON.stringify(newUpdatedColum)
+      setUpdatedColumns([...updatedColumns])
+    }
+
+    if (newColsSet.has(JSON.stringify(columns[idx]))) {
+      console.log("@@ NEW COLS: ", newCols.map(nc => JSON.parse(nc)))
+      const indexOfUpdated = newCols.indexOf(newCols.find(nc => JSON.stringify(columns[idx]) === nc)!)
+      console.log("@@UPDATE @ IDX: ", newCols[indexOfUpdated])
+      newCols[indexOfUpdated] = JSON.stringify({ ...JSON.parse(newCols[indexOfUpdated]), ...patch })
+      setNewCols([...newCols])
+    }
+
     setColumns((prev) =>
       prev.map((c, i) => (i === idx ? { ...c, ...patch } : c))
     );
   }
 
   function deleteColumn(idx: number) {
+    if (originalColumnStringsSet.has(JSON.stringify(columns[idx])) || updatedColsNews.has(JSON.stringify(columns[idx]))) {
+      setDeletedCols(p => Array.from(new Set([...p, columns[idx].name])))
+    } else if (newColsSet.has(JSON.stringify(columns[idx]))) {
+      setNewCols(p => p.filter(nc => nc !== JSON.stringify(columns[idx])))
+    }
+
     setColumns((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  const getCheckedOptions = (col: EditableColumn) => {
+  const getCheckedOptions = (col: ColumnType) => {
     return [col.isArray, col.isNullable, col.isUnique].filter(t => t === true).length;
   };
 
   const isDirty = useMemo(() => {
-    const cleanedColumns = columns.map(({ originalName, ...c }) => c);
     return (
       name !== table.name ||
-      JSON.stringify(cleanedColumns) !== JSON.stringify(table.columns) ||
+      JSON.stringify(columns) !== JSON.stringify(table.columns) ||
       JSON.stringify(fkeys) !== JSON.stringify(table.fkeys ?? [])
     );
-  }, [name, columns, fkeys, table.name, table.columns, table.fkeys]);
+  }, [name, columns, fkeys, table]);
 
   const getDefaultForType = (dtype: DATA_TYPES) => {
     switch (dtype) {
@@ -141,12 +187,26 @@ function EditTableSheet({
     }
   };
 
+  useEffect(() => {
+    if (open) {
+      setColumns(table.columns);
+      setName(table.name);
+      setFkeys(table.fkeys ?? []);
+      // Reset tracking state
+      setUpdatedColumns([]);
+      setDeletedCols([]);
+      setNewCols([]);
+    }
+  }, [open, table]);
+
+
   return (
     <>
       <SheetWrapper
         title={`Edit ${table.name}`}
         description={`Change properties of ${table.name}`}
         submitButtonText="Apply Changes"
+        sheetContentClassname="w-4xl! min-w-4xl! max-w-4xl"
         onOpenChange={onOpenChange}
         open={open}
         onSubmit={() => mutate()}
@@ -173,9 +233,9 @@ function EditTableSheet({
 
           <div className="flex flex-col gap-1">
             <div className="fullwidth flex items-center pl-2 text-muted-foreground text-sm">
-              <h1 className="pr-25">Name</h1>
-              <h1 className="pr-32">Type</h1>
-              <h1 className="pr-16">Default Value</h1>
+              <h1 className="pr-42">Name</h1>
+              <h1 className="pr-42">Type</h1>
+              <h1 className="pr-36">Default Value</h1>
               <h1>Primary Key</h1>
             </div>
 
@@ -185,6 +245,8 @@ function EditTableSheet({
                 const updateDefault = (value: string) => {
                   updateColumn(idx, { default: value });
                 };
+
+                console.log("@COL: ", col)
 
                 return (
                     <div
@@ -197,17 +259,18 @@ function EditTableSheet({
                       <Input
                         value={col.name}
                         onChange={(e) => updateColumn(idx, { name: e.target.value })}
-                        className="focus-visible:ring-0 focus-visible:ring-offset-0 max-w-32 min-w-32 w-32"
+                        className="focus-visible:ring-0 focus-visible:ring-offset-0 max-w-48 min-w-48 w-48"
                       />
 
                       <DataTypeSelect
-                        triggerClassname="max-w-35 min-w-35 w-35 truncate" 
+                        triggerClassname="max-w-48 min-w-48 w-48 truncate" 
                         value={col.dtype}
                         onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPES, default: getDefaultForType(v as DATA_TYPES) })}
                       />
                       
                       <DefaultValueSelector 
-                        defaultValue={col.default ?? ""}
+                        defaultValue={col.default}
+                        isArray={col.isArray}
                         dtype={col.dtype}
                         setDefaultValue={updateDefault}
                         className='truncate focus-visible:ring-0 focus-visible:ring-offset-0'
@@ -273,7 +336,16 @@ function EditTableSheet({
             <div
               className={`flex items-center justify-center fullwidth relative rounded-md border border-border py-2 mt-2`}
             >
-              <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setColumns((p) => [...p, emptyColumn])}>
+              <Button 
+                variant="secondary" 
+                className="max-w-3xs" 
+                type="button" 
+                onClick={() => {
+                  const newCol: ColumnType = { ...emptyColumn }; // fresh object
+                  setNewCols(p => [...p, JSON.stringify(newCol)]);
+                  setColumns(p => [...p, newCol]);
+                }}
+              >
                 Add Column
               </Button>
             </div>
@@ -315,7 +387,7 @@ function EditTableSheet({
 
               <div className='ml-6 flex w-fit flex-col gap-1 text-sm'>
                 {fkey.cols.map(c => (
-                  <div className='flex items-center justify-between p-1'>
+                  <div key={Math.random()} className='flex items-center justify-between p-1'>
                     <span className='text-muted-foreground'>{c.referencorColumn}</span>
                     <ArrowRightIcon className='w-4 h-4 mx-1' />
                     <span className='text-white'>{c.referenceeColumn}</span>

@@ -28,7 +28,6 @@ export default function DataTypeSelect({
   onValueChange: (value: string) => void;
   triggerClassname: string,
 }) {
-  console.log("@@DTYPE SELECTOR: ", value)
 
   const [open, setOpen] = useState(false)
 

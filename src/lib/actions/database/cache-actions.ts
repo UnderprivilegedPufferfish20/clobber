@@ -64,7 +64,7 @@ export async function getSchema(
   const result = await pool.query(`
 WITH
   params AS (
-    SELECT 'public'::text AS target_schema
+    SELECT '${schema}'::text AS target_schema
   ),
   tables AS (
     SELECT
@@ -96,9 +96,7 @@ WITH
 
       a.attnotnull AS is_nullable, -- Note: inverted later (kept exactly as your query)
 
-      CASE
-        WHEN d.adbin IS NOT NULL THEN pg_catalog.pg_get_expr(d.adbin, d.adrelid)
-      END AS default_value,
+      COALESCE(CASE WHEN d.adbin IS NOT NULL THEN pg_catalog.pg_get_expr(d.adbin, d.adrelid) END, '') AS default_value,
 
       EXISTS (
         SELECT 1

@@ -96,7 +96,7 @@ export const createColumnSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
   dtype: z.enum(Object.values(DATA_TYPES)),
   isArray: z.boolean(),
-  default: z.string().optional(),
+  default: z.string(),
   isPkey: z.boolean(),
   isUnique: z.boolean(),
   isNullable: z.boolean()

@@ -106,7 +106,7 @@ export async function addColumn(
 
     const q = `
       ALTER TABLE "${schema}"."${table}"
-      ADD COLUMN IF NOT EXISTS "${data.name}" ${finalType} ${defaultStatement} ${constraintString}
+      ADD COLUMN "${data.name}" ${finalType} ${defaultStatement} ${constraintString}
     `.trim();
 
 
@@ -139,6 +139,8 @@ export async function editColumn(
   oldCol: ColumnType,
   newCol: ColumnType
 ) {
+  
+
   const user = await getUser();
   if (!user) throw new Error("No user");
 
@@ -154,30 +156,6 @@ export async function editColumn(
 
   const queries: string[] = []
 
-
-  if (oldCol.default === null) {
-    oldCol.default = "";
-    newCol.default = ""
-  }
-
-
-  if (oldCol.default !== newCol.default) {
-    if (!newCol.default) {
-      queries.push(`ALTER COLUMN "${oldCol.name}" DROP DEFAULT`);
-    } else {
-      const def = newCol.default.endsWith("()")
-        ? newCol.default
-        : `'${newCol.default.replace(/'/g, "''")}'`;
-      
-      let statement = `ALTER COLUMN "${oldCol.name}" SET DEFAULT ${def}`
-
-      if (oldCol.isArray === false && newCol.isArray === true) {
-        statement = `ALTER COLUMN "${oldCol.name}" SET DEFAULT ARRAY[${def}]`
-      }
-      queries.push(statement);
-    }
-  }
-
   if (oldCol.dtype !== newCol.dtype || oldCol.isArray !== newCol.isArray) {
     const targetType = `${newCol.dtype}${newCol.isArray ? "[]" : ""}`;
 
@@ -190,6 +168,26 @@ export async function editColumn(
 
     queries.push(`ALTER COLUMN "${oldCol.name}" TYPE ${targetType}${using}`);
   }
+
+
+  if (oldCol.default !== newCol.default) {
+    if (!newCol.default) {
+      queries.push(`ALTER COLUMN "${oldCol.name}" DROP DEFAULT`);
+    } else {
+      const def = newCol.default.endsWith("()") || newCol.default === 'true' || newCol.default === 'false'
+        ? newCol.default
+        : `'${newCol.default.replace(/'/g, "''")}'`;
+      
+      let statement = `ALTER COLUMN "${oldCol.name}" SET DEFAULT ${def}`
+
+      if (newCol.isArray === true) {
+        statement = `ALTER COLUMN "${oldCol.name}" SET DEFAULT ARRAY[${def}]`
+      }
+      queries.push(statement);
+    }
+  }
+
+  
 
     
 
@@ -207,7 +205,7 @@ export async function editColumn(
         `ADD CONSTRAINT "${table}_${newCol.name}_key" UNIQUE ("${oldCol.name}")`
       );
     } else {
-      queries.push(`DROP CONSTRAINT IF EXISTS "${table}_${oldCol.name}_key"`);
+      queries.push(`DROP CONSTRAINT "${table}_${oldCol.name}_key"`);
     }
   }
 
@@ -264,10 +262,16 @@ export async function editColumn(
 
 
 
+  if (queries.length === 0) return;
+
   try {
     await pool.query("BEGIN");
+    const callId = crypto.randomUUID();
+    console.log(`[editColumn ${callId}] old default:`, oldCol.default, "new default:", newCol.default);
+    console.log(`[editColumn ${callId}] queries:`, queries);
     for (const query of queries) {
       const q = `ALTER TABLE "${schema}"."${table}" ${query};`
+      
       console.log("@@QUERY:", q);
       await pool.query(q);
     }

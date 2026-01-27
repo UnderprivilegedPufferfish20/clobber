@@ -80,7 +80,14 @@ const SheetWrapper = ({
                 Cancel
               </Button>
             </SheetClose>
-            <Button onClick={onSubmit} variant={"default"} disabled={disabled}>
+            <Button 
+              onClick={() => {
+                onSubmit();
+                onOpenChange(false)
+              }} 
+              variant={"default"} 
+              disabled={disabled}
+            >
               {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
               {submitButtonText}
             </Button>

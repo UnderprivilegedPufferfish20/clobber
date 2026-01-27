@@ -7,8 +7,8 @@ import z from "zod";
 import { getUser } from "../../auth";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
-import { ColumnType, DATA_EXPORT_FORMATS, DATA_TYPES, FkeyType, TableType, UpdateTableInput } from "@/lib/types";
-import { addColumn, editColumn } from "../columns";
+import { ColumnType, DATA_EXPORT_FORMATS, DATA_TYPES, FkeyType, TableType } from "@/lib/types";
+import { addColumn, deleteColumn, editColumn } from "../columns";
 
 export async function deleteTable(
   projectId: string,
@@ -216,6 +216,25 @@ export async function renameTable(
     database: project.db_name,
   });
 
+  const q = await pool.query(
+      `SELECT 
+         conname AS constraint_name, 
+         contype AS constraint_type_code
+       FROM pg_constraint con
+       JOIN pg_class c ON c.oid = con.conrelid
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(con.conkey)
+       WHERE n.nspname = $1
+         AND c.relname = $2`,
+      [schema, table]
+    );
+
+    for (const row of q.rows) {
+      if (row.constraint_type_code === 'p') continue;
+
+      await pool.query(`ALTER TABLE ${schema}.${table} RENAME CONSTRAINT "${row.constraint_name}" TO ${row.constraint_name.replaceAll(table, newName)}`);
+    }
+
   await pool.query(`
     ALTER TABLE ${schema}.${table} RENAME TO ${newName};
   `)
@@ -231,7 +250,10 @@ export async function updateTable(
   projectId: string,
   schema: string,
   oldTable: TableType,
-  newTable: UpdateTableInput
+  newTable: TableType,
+  editedCols: { old: string, new: string }[],
+  deletedCols: string[],
+  newCols: string[]
 ) {
 
 
@@ -241,151 +263,66 @@ export async function updateTable(
   const project = await getProjectById(projectId);
   if (!project) throw new Error("No project found");
 
-  const pool = await getTenantPool({
-    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name,
-  });
+  function colChanged(a: ColumnType, b: ColumnType) {
+    return (
+      a.name !== b.name ||
+      a.dtype !== b.dtype ||
+      a.isArray !== b.isArray ||
+      (a.default ?? "") !== (b.default ?? "") ||
+      a.isNullable !== b.isNullable ||
+      a.isUnique !== b.isUnique ||
+      a.isPkey !== b.isPkey
+      // include fkey etc if applicable
+    );
+  }
 
-  const oldTableName = oldTable.name;
-  const newTableName = newTable.name;
-  let alterStatement = `ALTER TABLE "${schema}"."${oldTableName}"`;
 
-  // Drop all constraints first
-  const constraintQuery = (type: string) => `
-    SELECT con.conname
-    FROM pg_constraint con
-    JOIN pg_class cl ON con.conrelid = cl.oid
-    JOIN pg_namespace ns ON cl.relnamespace = ns.oid
-    WHERE con.contype = '${type}' AND ns.nspname = $1 AND cl.relname = $2
-  `;
+  const map = new Map<string, { old: ColumnType; new: ColumnType }>();
+
+  for (const ec of editedCols) {
+    const oldC = JSON.parse(ec.old) as ColumnType;
+    const newC = JSON.parse(ec.new) as ColumnType;
+    map.set(oldC.name, { old: oldC, new: newC }); // overwrites duplicates
+  }
+
+  const deduped = [...map.values()].filter(({ old, new: news }) => colChanged(old, news));
+
+
 
   try {
-    await pool.query("BEGIN")
-    const fkNames = (await pool.query(constraintQuery('f'), [schema, oldTableName])).rows.map(r => r.conname);
-    for (const name of fkNames) {
-      await pool.query(`${alterStatement} DROP CONSTRAINT "${name}" CASCADE`);
+    for (const { old, new: neu } of deduped) {
+      await editColumn(projectId, schema, oldTable.name, old, neu);
     }
+
   
-    const uniqueNames = (await pool.query(constraintQuery('u'), [schema, oldTableName])).rows.map(r => r.conname);
-    for (const name of uniqueNames) {
-      await pool.query(`${alterStatement} DROP CONSTRAINT "${name}" CASCADE`);
-    }
+    await Promise.all(
+      deletedCols.map(async n => {
+        await deleteColumn(
+          projectId,
+          schema,
+          oldTable.name,
+          n
+        )
+      })
+    )
   
+    await Promise.all(
+      newCols.map(async nc => {
+        await addColumn(
+          JSON.parse(nc),
+          schema,
+          projectId,
+          oldTable.name
+        )
+      })
+    )
   
-    const pkName = (await pool.query(constraintQuery('p'), [schema, oldTableName])).rows[0]?.conname;
-    if (pkName) {
-      await pool.query(`${alterStatement} DROP CONSTRAINT "${pkName}" CASCADE`);
-    }
-  
-  
-    const currentOriginalNames = newTable.columns.filter(c => c.originalName !== null).map(c => c.originalName!);
-    const deletedColumns = oldTable.columns.filter(c => !currentOriginalNames.includes(c.name)).map(c => c.name);
-    if (deletedColumns.length > 0) {
-      const dropParts = deletedColumns.map(col => `DROP COLUMN "${col}" CASCADE`).join(', ');
-      await pool.query(`${alterStatement} ${dropParts};`);
-    }
-  
-    for (const newCol of newTable.columns.filter(c => c.originalName !== null)) {
-      const oldCol = oldTable.columns.find(o => o.name === newCol.originalName)!;
-      const colName = newCol.name; // After rename
-      const colAlter = `ALTER COLUMN "${colName}"`;
-      const commands: string[] = [];
-  
-      const newType = `${newCol.dtype}${newCol.isArray ? '[]' : ''}`;
-      const oldType = `${oldCol.dtype}${oldCol.isArray ? '[]' : ''}`;
-      if (newType !== oldType) {
-        commands.push(`${colAlter} TYPE ${newType} USING "${colName}"::${newType}`);
-      }
-  
-      if (newCol.default !== oldCol.default) {
-        if (newCol.default === undefined) {
-          commands.push(`${colAlter} DROP DEFAULT`);
-        } else {
-          commands.push(`${colAlter} SET DEFAULT ${newCol.default}`);
-        }
-      }
-  
-      if (newCol.isNullable !== oldCol.isNullable) {
-        if (newCol.isNullable) {
-          commands.push(`${colAlter} DROP NOT NULL`);
-        } else {
-          commands.push(`${colAlter} SET NOT NULL`);
-        }
-      }
-  
-      if (commands.length > 0) {
-        await pool.query(`${alterStatement} ${commands.join(', ')};`);
-      }
-    }
-  
-    // Add new columns
-    for (const newCol of newTable.columns.filter(c => c.originalName === null)) {
-      const fullType = `${newCol.dtype}${newCol.isArray ? '[]' : ''}`;
-      const commands: string[] = [`ADD COLUMN "${newCol.name}" ${fullType}`];
-      if (newCol.default !== undefined) {
-        commands.push(`ALTER COLUMN "${newCol.name}" SET DEFAULT ${newCol.default}`);
-      }
-      if (!newCol.isNullable) {
-        commands.push(`ALTER COLUMN "${newCol.name}" SET NOT NULL`);
-      }
-      await pool.query(`${alterStatement} ${commands.join(', ')};`);
-    }
-  
-    // Rename table
-    let currentTableName = oldTableName;
-    if (newTableName !== oldTableName) {
-      await pool.query(`${alterStatement} RENAME TO "${newTableName}";`);
-      currentTableName = newTableName;
-      alterStatement = `ALTER TABLE "${schema}"."${currentTableName}"`;
-    }
-  
-    // Add constraints
-    // Add uniques
-    const uniqueCols = newTable.columns.filter(c => c.isUnique);
-    for (const col of uniqueCols) {
-      const constName = `${currentTableName}_${col.name}_key`;
-      await pool.query(`${alterStatement} ADD CONSTRAINT "${constName}" UNIQUE ("${col.name}");`);
-    }
-  
-    // Add PK
-    const pkCols = newTable.columns.filter(c => c.isPkey).map(c => c.name);
-    if (pkCols.length > 0) {
-      const constName = `${currentTableName}_pkey`;
-      await pool.query(`${alterStatement} ADD CONSTRAINT "${constName}" PRIMARY KEY (${pkCols.map(c => `"${c}"`).join(', ')});`);
-    }
-  
-    // Add FKs
-    for (const fkey of newTable.fkeys) {
-      const localCols = fkey.cols.map(c => c.referencorColumn);
-      const foreignCols = fkey.cols.map(c => c.referenceeColumn);
-      const foreignTable = `"${fkey.cols[0].referenceeSchema}"."${fkey.cols[0].referenceeTable}"`;
-      const constName = `${currentTableName}_${localCols.join('_')}_fkey`;
-      const updateStr = fkey.updateAction;
-      const deleteStr = fkey.deleteAction;
-      await pool.query(
-        `${alterStatement} ADD CONSTRAINT "${constName}" FOREIGN KEY (${localCols.map(c => `"${c}"`).join(', ')}) ` +
-        `REFERENCES ${foreignTable} (${foreignCols.map(c => `"${c}"`).join(', ')}) ` +
-        `ON UPDATE ${updateStr} ON DELETE ${deleteStr};`
-      );
-    }
+    if (oldTable.name !== newTable.name) await renameTable(projectId, schema, oldTable.name, newTable.name);
+
   } catch (e) {
-    await pool.query("ROLLBACK")
+    throw e
   }
 
-  // Revalidate tags
-  revalidateTag(t("table-schema", projectId, schema, oldTableName), "max");
-  revalidateTag(t("schema", projectId, schema), "max");
-  revalidateTag(t("columns", projectId, schema, oldTableName), "max");
-  revalidateTag(t("tables", projectId, schema), "max");
-  revalidateTag(t("table-data", projectId, schema, oldTableName), "max");
-
-  if (newTableName !== oldTableName) {
-    revalidateTag(t("table-schema", projectId, schema, newTableName), "max");
-    revalidateTag(t("columns", projectId, schema, newTableName), "max");
-    revalidateTag(t("table-data", projectId, schema, newTableName), "max");
-  }
 }
 
 export async function addRow(

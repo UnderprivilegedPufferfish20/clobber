@@ -42,7 +42,7 @@ function AddTableSheet({
     name: "",
     dtype: DATA_TYPES.INTEGER,      // or DATA_TYPES.INT if that matches your enum
     isArray: false,
-    default: undefined,
+    default: "",
     isPkey: false,
     isUnique: false,
     isNullable: true,
@@ -160,6 +160,7 @@ function AddTableSheet({
           setColumns(defaultCols)
           setFkeys([])
         }}
+        sheetContentClassname='w-4xl! min-w-4xl! max-w-4xl!'
         onOpenChange={onOpenChange}
         onSubmit={() => mutate()}
         open={open}
@@ -183,9 +184,9 @@ function AddTableSheet({
 
           <div className="flex flex-col gap-1">
             <div className="fullwidth flex items-center pl-2 text-muted-foreground text-sm">
-              <h1 className="pr-25">Name</h1>
-              <h1 className="pr-32">Type</h1>
-              <h1 className="pr-16">Default Value</h1>
+              <h1 className="pr-42">Name</h1>
+              <h1 className="pr-42">Type</h1>
+              <h1 className="pr-36">Default Value</h1>
               <h1>Primary Key</h1>
             </div>
 
@@ -209,11 +210,11 @@ function AddTableSheet({
                         onChange={(e) => {
                           updateColumn(idx, { name: e.target.value })
                         }}
-                        className="focus-visible:ring-0 focus-visible:ring-offset-0 max-w-32 min-w-32 w-32"
+                        className="focus-visible:ring-0 focus-visible:ring-offset-0 max-w-48 min-w-48 w-48"
                       />
 
                       <DataTypeSelect
-                        triggerClassname="max-w-35 min-w-35 w-35 truncate" 
+                        triggerClassname="max-w-48 min-w-48 w-48 truncate" 
                         value={col.dtype}
                         onValueChange={(v) => updateColumn(idx, { dtype: v as typeof DATA_TYPES[keyof typeof DATA_TYPES ], default: getDefaultForType(v as typeof DATA_TYPES[keyof typeof DATA_TYPES ]) })}
                       />
@@ -221,6 +222,7 @@ function AddTableSheet({
                       <DefaultValueSelector 
                         defaultValue={col.default ?? ""}
                         dtype={col.dtype}
+                        isArray={col.isArray}
                         setDefaultValue={updateDefault}
                         className='truncate focus-visible:ring-0 focus-visible:ring-offset-0'
                       />

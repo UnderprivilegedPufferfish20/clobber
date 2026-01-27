@@ -83,7 +83,7 @@ export async function deleteRole(
     await pool.query(q1)
 
     const q2 = `
-      DROP ROLE IF EXISTS ${name};
+      DROP ROLE ${name};
     `
 
     console.log(q2)
