@@ -38,6 +38,7 @@ const TextInputDialog = (props: Props) => {
     onSuccess: () => {
       toast.success(props.successMessage, { id: props.toastId });
       props.onOpenChange(false)
+      props.onValueChange("")
     },
     onMutate(variables, context) {
       toast.loading(props.loadingMessage, { id: props.toastId })

@@ -1,7 +1,7 @@
 import { LucideIcon } from "lucide-react";
 import { User } from "../db/generated";
 import z from "zod";
-import { createColumnSchema, createForeignKeyColumnSchema, createForeignKeySchema, createTableSchema } from "./schemas";
+import { createColumnSchema, createEdgeFunctionSchema, createForeignKeyColumnSchema, createForeignKeySchema, createTableSchema } from "./schemas";
 import { Dispatch, SetStateAction } from "react";
 
 export interface AuthContextType {
