@@ -1,6 +1,6 @@
 "use cache";
 
-import { EdgeFunctionType } from "@/lib/types";
+import { EdgeFunctionSecretType, EdgeFunctionType } from "@/lib/types";
 import getFunctionClient, { gcloud_project_id } from ".";
 
 export async function getEdgeFunctions(
@@ -41,4 +41,10 @@ const client = await getFunctionClient();
     console.error("Error listing Cloud Run functions:", error);
     throw error;
   }
+}
+
+export async function getEdgeFunctionSecrets(
+  projectId: string
+): Promise<EdgeFunctionSecretType[]> {
+  return []
 }

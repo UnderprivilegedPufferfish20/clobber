@@ -20,6 +20,13 @@ export type EdgeFunctionType = {
   slug: string
 }
 
+export type EdgeFunctionSecretType = {
+  key: string,
+  value: string,
+  createdAt: string,
+  updatedAt: string
+}
+
 export interface UserCookie {
   id: string,
   tokens: {
