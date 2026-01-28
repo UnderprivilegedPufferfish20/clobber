@@ -14,7 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import Editor from "@monaco-editor/react";
+import CodeMirror from "@uiw/react-codemirror";
+import { sql as sqlLang } from "@codemirror/lang-sql";
+import { EditorView } from "@codemirror/view";
+import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
@@ -22,9 +25,6 @@ import { executeQuery } from "@/lib/actions/database";
 import { updateSqlQuery } from "@/lib/actions/database/sql";
 import { Prisma, sql } from "@/lib/db/generated";
 import { useTheme } from "next-themes";
-
-
-
 
 export default function SqlEditorPage({
   folders,
@@ -35,11 +35,6 @@ export default function SqlEditorPage({
   queries: sql[],
   currentSql: sql | null
 }) {
-
-  
-
-
-
 
   const savedQuery = currentSql ? currentSql.query : ""
 
@@ -53,9 +48,7 @@ export default function SqlEditorPage({
 
   const [query, setQuery] = useState(savedQuery);
 
-
   const isDirty = useMemo(() => query !== savedQuery, [query, savedQuery]);
-
 
   const runKey = useMemo(
     () => ["sql-run", projectId, sqlId, query.trim()],
@@ -112,10 +105,10 @@ export default function SqlEditorPage({
 
   const { theme } = useTheme()
 
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<EditorView | null>(null);
 
-  function handleEditorDidMount(editor: any) {
-    editorRef.current = editor;
+  function handleEditorDidMount(view: EditorView) {
+    editorRef.current = view;
   }
 
   return (
@@ -126,7 +119,7 @@ export default function SqlEditorPage({
           onResize={() => {
           // Manually trigger layout when the panel resizes
           if (editorRef.current) {
-            editorRef.current.layout();
+            editorRef.current.requestMeasure();
           }}}
         >
           <div className="flex flex-col h-full">
@@ -156,19 +149,16 @@ export default function SqlEditorPage({
             </div>
 
             <div className="flex-1">
-                <Editor
-                  onMount={handleEditorDidMount}
-                  height="100%"
-                  language="sql"
-                  theme={theme === "dark" ? "vs-dark" : "light"}
+                <CodeMirror
                   value={query}
-                  onChange={(value) => setQuery(value ?? "")}
-                  options={{
-                    automaticLayout: true,
-                    minimap: { enabled: true },
-                    wordWrap: "on",
-                    scrollBeyondLastLine: false,
-                  }}
+                  onChange={(value) => setQuery(value)}
+                  height="100%"
+                  extensions={[
+                    sqlLang(),
+                    EditorView.lineWrapping,
+                  ]}
+                  theme={theme === "dark" ? githubDark : githubLight}
+                  onCreateEditor={handleEditorDidMount}
                 />
             </div>
           </div>

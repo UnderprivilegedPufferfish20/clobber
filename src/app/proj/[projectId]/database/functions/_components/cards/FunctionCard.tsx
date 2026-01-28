@@ -1,21 +1,15 @@
 "use client";
 
-import type * as monacoType from "monaco-editor";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import DeleteDialog from "@/components/DeleteDialog";
 import { Input } from "@/components/ui/input";
-import { FunctionSquare, EllipsisVerticalIcon, PencilIcon, ChevronsUpDown, EditIcon, Trash2Icon } from "lucide-react";
+import { FunctionSquare, EllipsisVerticalIcon, EditIcon, Trash2Icon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
-import { Editor } from "@monaco-editor/react";
-import { toast } from "sonner";
-import { Popover } from "@/components/ui/popover";
-import { PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { editFunction, deleteFunction } from "@/lib/actions/database/functions";
-import { DATA_TYPES, DatabaseFunctionType } from "@/lib/types";
+import { deleteFunction } from "@/lib/actions/database/functions";
+import { DatabaseFunctionType } from "@/lib/types";
 import EditFunctionSheet from "../sheets/EditFunctionSheet";
 
 const FunctionCard = ({

@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { EdgeFunctionType } from "@/lib/types";
-import { Editor } from "@monaco-editor/react";
-import { ArrowLeftIcon, Edit2Icon, EditIcon, EllipsisVerticalIcon, FileIcon, FilePlus2Icon, PlusIcon, Trash2Icon } from "lucide-react";
+import CodeMirrorReact from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
+import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
+import { ArrowLeftIcon, ArrowRightIcon, Edit2Icon, EditIcon, EllipsisVerticalIcon, FileIcon, FilePlus2Icon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
@@ -42,11 +44,7 @@ export default function CreateEdgeFunctionPage({
 
     const { theme } = useTheme()
 
-     const editorRef = useRef<any>(null);
-
-    function handleEditorDidMount(editor: any) {
-        editorRef.current = editor;
-    }
+    const cmTheme = theme === "dark" ? githubDark : githubLight;
 
     const AddFileAction= () => {
         setEdgeFunc(prev => ({
@@ -57,26 +55,31 @@ export default function CreateEdgeFunctionPage({
         setIsCreateDialogOpen(false)
     }
 
+    const prevFilesLengthRef = useRef(1);
+
     useEffect(() => {
         if (selectedFile) return;
         setSelectedFile({ name: "index.ts", code: "" })
     })
 
     useEffect(() => {
-        setSelectedFile(edgeFunc.files.at(-1)!)
+        if (edgeFunc.files.length > prevFilesLengthRef.current) {
+            setSelectedFile(edgeFunc.files.at(-1)!);
+        }
+        prevFilesLengthRef.current = edgeFunc.files.length;
     }, [edgeFunc.files])
 
 
     return (
         <>
             <div className="fullscreen flex-1 flex">
-                <aside className="dark:bg-white/5 bg-black/80 flex flex-col border-r-2 w-1/4 min-w-1/4 max-w-1/4">
-                    <div className="flex items-center gap-2 text-sm p-4 text-white">
+                <aside className="dark:bg-white/5 bg-white flex flex-col border-r-2 w-1/6 min-w-1/6 max-w-1/6">
+                    <div className="flex items-center gap-2 text-sm p-4">
                         <ArrowLeftIcon 
                             onClick={() => router.back()}
-                            className="cursor-pointer h-4 w-4 stroke-white"
+                            className="cursor-pointer h-4 w-4"
                         />
-                        <h3 className="text-white text-xl">Create Edge Function</h3>
+                        <h3 className="text-xl">Create Edge Function</h3>
                     </div>
                     <Separator />
                     <div className="flex items-center justify-between p-4">
@@ -107,37 +110,56 @@ export default function CreateEdgeFunctionPage({
                         )
                     })}
                 </aside>
+                <div className="flex flex-col flex-1">
+                    <header className="flex items-center justify-between p-4 h-15 min-h-15 max-h-15 dark:bg-white/5 bg-white">
+                        <div className="flex items-center gap-2">
+                            <h1>Name:</h1>
+                            <Input 
+                                value={edgeFunc.slug}
+                                onChange={e => setEdgeFunc(p => ({...p, slug: e.target.value }))}
+                                className="w-36 min-w-36 max-w-36"
+                            />
+                        </div>
 
-                <div className="flex-1 overflow-hidden min-h-0 min-w-0">
-                    <Editor
-                        onMount={handleEditorDidMount}
-                        height="100%"
-                        key={selectedFile.name} // Force re-mount when file changes
-                        path={selectedFile.name} 
-                        language="typescript"
-                        theme={theme === "dark" ? "vs-dark" : "light"}
-                        value={selectedFile.code}
-                        onChange={(value) => {
-                            const newCode = value ?? "";
-                            setSelectedFile(prev => ({ ...prev, code: newCode }));
-                            
-                            // Note: You likely also want to update the file inside edgeFunc state here 
-                            // so the changes persist when switching files.
-                            setEdgeFunc(prev => ({
-                                ...prev,
-                                files: prev.files.map(f => 
-                                    f.name === selectedFile.name ? { ...f, code: newCode } : f
-                                )
-                            }));
-                        }}
-                        options={{
-                            automaticLayout: false,
-                            minimap: { enabled: true },
-                            wordWrap: "on",
-                            scrollBeyondLastLine: true,
-                        }}
-                    />
+                        <Button 
+                            variant={"default"}
+                            className="flex items-center group gap-2 p-4 bg-indigo-500 hover:bg-indigo-600 transition-colors duration-300"
+                        >
+                            <h1 className="text-white">Deploy Function</h1>
+                            <ArrowRightIcon className="h-6 w-6 group-hover:translate-x-1 transition-transform duration-300 stroke-white"/>
+                        </Button>
+                    </header>
+                    <div className="flex-1 overflow-hidden min-h-0 min-w-0">
+                        <CodeMirrorReact
+                            key={selectedFile.name} // Force re-mount when file changes
+                            height="100%"
+                            value={selectedFile.code}
+                            theme={cmTheme}
+                            extensions={[javascript({ typescript: true })]}
+                            onChange={(value: string) => {
+                                const newCode = value ?? "";
+                                setSelectedFile(prev => ({ ...prev, code: newCode }));
+                                
+                                // Note: You likely also want to update the file inside edgeFunc state here 
+                                // so the changes persist when switching files.
+                                setEdgeFunc(prev => ({
+                                    ...prev,
+                                    files: prev.files.map(f => 
+                                        f.name === selectedFile.name ? { ...f, code: newCode } : f
+                                    )
+                                }));
+                            }}
+                            basicSetup={{
+                                lineNumbers: true,
+                                highlightActiveLine: true,
+                                bracketMatching: true,
+                                syntaxHighlighting: true,
+                            }}
+
+                        />
+                    </div>
                 </div>
+
 
             </div>
 
@@ -250,7 +272,7 @@ function SidebarFile({
                 onClick={() => {
                     setSelectedFile({ name: func.name, code: func.code })
                 }}
-                className={`cursor-pointer hover:bg-white/10 gap-2 flex items-center p-2 justify-between ${func.name === selectedFile.name && "dark:bg-white/30 border-l-4 border-white"}`}
+                className={`hover:bg-black/3 cursor-pointer dark:hover:bg-white/3 gap-2 flex items-center p-2 justify-between ${func.name === selectedFile.name && "dark:bg-white/10 bg-black/10 border-l-4 border-indigo-400"}`}
             >
                 <div className="flex items-center gap-4">
                     <FileIcon className="w-6 h-6"/>

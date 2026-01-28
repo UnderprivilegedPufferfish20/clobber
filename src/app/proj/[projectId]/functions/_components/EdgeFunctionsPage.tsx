@@ -106,7 +106,9 @@ export default function EdgeFunctionsPage({
             </div>
 
             <Button
-              onClick={() => setOpen(true)}
+              onClick={() => {
+                  router.push(`${pathname}/new`)
+              }}
               variant={"default"}
             >
               Create function
