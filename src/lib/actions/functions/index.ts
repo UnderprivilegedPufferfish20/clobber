@@ -17,13 +17,11 @@ const g = globalThis as unknown as {
 
 export default async function getFunctionClient() {
   if (!g.__functionClient) {
-    const credentials = await auth.getCredentials(); // Extract the actual credentials
-    g.__functionClient = new FunctionServiceClient({
-      projectId: gcloud_project_id,
-      credentials, // Pass the credentials object here
-    });
+    g.__functionClient = new FunctionServiceClient({ projectId: gcloud_project_id });
+
   }
+
   return g.__functionClient;
+
+
 }
-
-

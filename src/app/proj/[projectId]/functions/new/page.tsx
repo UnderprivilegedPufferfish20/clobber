@@ -13,16 +13,21 @@ import { javascript } from "@codemirror/lang-javascript";
 import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { ArrowLeftIcon, ArrowRightIcon, Edit2Icon, EditIcon, EllipsisVerticalIcon, FileIcon, FilePlus2Icon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { uploadEdgeFunction } from "@/lib/actions/functions/actions";
+import { toast } from "sonner";
 
 export default function CreateEdgeFunctionPage({
-
-}: {
-
-}) {
     
+}: {
+    
+}) {
+    const pathname = usePathname()
     const router = useRouter()
+
+    const projectId = pathname.split("/")[2]
 
     const [edgeFunc, setEdgeFunc] = useState<EdgeFunctionType>({
         createdAt: "",
@@ -69,14 +74,33 @@ export default function CreateEdgeFunctionPage({
         prevFilesLengthRef.current = edgeFunc.files.length;
     }, [edgeFunc.files])
 
+    const { mutate: deploy } = useMutation({
+        mutationFn: () => uploadEdgeFunction(edgeFunc, projectId),
+        onSuccess: () => {
+            toast.success("Function Deployed", { id: "create-edge-func" })
+            setIsDeploying(false)
+        },
+        onError: (e) => {
+            toast.error(`Failed to deploy: ${e}`, { id: "create-edge-func" });
+            setIsDeploying(false)
+        },
+        onMutate: () => {
+            toast.loading("Deploying... (This could take up to 5 minutes)", { id: "create-edge-func" })
+            setIsDeploying(true)
+        },
+    })
+
+    const [isDeploying, setIsDeploying] = useState(false)
+
 
     return (
         <>
             <div className="fullscreen flex-1 flex">
                 <aside className="dark:bg-white/5 bg-white flex flex-col border-r-2 w-1/6 min-w-1/6 max-w-1/6">
                     <div className="flex items-center gap-2 text-sm p-4">
-                        <ArrowLeftIcon 
-                            onClick={() => router.back()}
+                        <ArrowLeftIcon
+
+                            onClick={() => !isDeploying && router.back()}
                             className="cursor-pointer h-4 w-4"
                         />
                         <h3 className="text-xl">Create Edge Function</h3>
@@ -87,7 +111,7 @@ export default function CreateEdgeFunctionPage({
                         <Button
                             variant={"outline"}
                             className="flex items-center gap-2"
-                         
+                            disabled={isDeploying}
                             onClick={() => setIsCreateDialogOpen(true)}
                         >
 
@@ -97,7 +121,8 @@ export default function CreateEdgeFunctionPage({
                     </div>
                     {edgeFunc.files.map((e, index) => {
                         return (
-                            <SidebarFile 
+                            <SidebarFile
+                                isDeploying={isDeploying} 
                                 func={e}
                                 index={index}
                                 selectedFile={selectedFile}
@@ -114,14 +139,19 @@ export default function CreateEdgeFunctionPage({
                     <header className="flex items-center justify-between p-4 h-15 min-h-15 max-h-15 dark:bg-white/5 bg-white">
                         <div className="flex items-center gap-2">
                             <h1>Name:</h1>
-                            <Input 
+                            <Input
+                                disabled={isDeploying} 
                                 value={edgeFunc.slug}
                                 onChange={e => setEdgeFunc(p => ({...p, slug: e.target.value }))}
+                                placeholder="hello-world"
                                 className="w-36 min-w-36 max-w-36"
                             />
                         </div>
 
-                        <Button 
+                        <Button
+
+                            onClick={() => deploy()}
+                            disabled={!edgeFunc.slug || isDeploying} 
                             variant={"default"}
                             className="flex items-center group gap-2 p-4 bg-indigo-500 hover:bg-indigo-600 transition-colors duration-300"
                         >
@@ -131,6 +161,7 @@ export default function CreateEdgeFunctionPage({
                     </header>
                     <div className="flex-1 overflow-hidden min-h-0 min-w-0">
                         <CodeMirrorReact
+                            readOnly={isDeploying}
                             key={selectedFile.name} // Force re-mount when file changes
                             height="100%"
                             value={selectedFile.code}
@@ -227,7 +258,8 @@ function SidebarFile({
     edgeFunc,
     setEdgeFunc,
     currentFileNames,
-    index
+    index,
+    isDeploying
 }: {
     selectedFile: { name: string, code: string },
     currentFileNames: Set<string>,
@@ -235,7 +267,8 @@ function SidebarFile({
     setSelectedFile: Dispatch<SetStateAction<{ name: string, code: string }>>
     setEdgeFunc: Dispatch<SetStateAction<EdgeFunctionType>>,
     edgeFunc: EdgeFunctionType,
-    index: number
+    index: number,
+    isDeploying: boolean
 }) {
 
     const [renameOpen, setRenameOpen] = useState(false)
@@ -281,37 +314,38 @@ function SidebarFile({
 
                 <DropdownMenu>
                     <DropdownMenuTrigger>
-                        <EllipsisVerticalIcon className="w-4 h-4"/>
+                        <EllipsisVerticalIcon className={`w-4 h-4 ${func.name === 'index.ts' && "hidden"}`}/>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuItem 
                             className="flex items-center gap-2"
                             onClick={(e) => {
-                                e.stopPropagation()
-                                setRenameOpen(true)
+                                if (!isDeploying) {
+                                    e.stopPropagation()
+                                    setRenameOpen(true)
+                                }
                             }}
                         >
                             <EditIcon className="w-6 h-6"/>
                             Rename
                         </DropdownMenuItem>
-                        {func.name !== "index.ts" && (
-                            <>
-                                <DropdownMenuSeparator />
 
-                                <DropdownMenuItem 
-                                    className="flex items-center gap-2"
-                                    onClick={() => {
-                                        setEdgeFunc(prev => ({
-                                            ...prev,
-                                            files: prev.files.filter((_, idx) => idx !== index)
-                                        }));
-                                    }}
-                                >
-                                    <Trash2Icon className="w-6 h-6"/>
-                                    Delete
-                                </DropdownMenuItem>
-                            </>
-                        )}
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem 
+                            className="flex items-center gap-2"
+                            onClick={() => {
+                                if (isDeploying) return;
+                                setEdgeFunc(prev => ({
+                                    ...prev,
+                                    files: prev.files.filter((_, idx) => idx !== index)
+                                }));
+                            }}
+                        >
+                            <Trash2Icon className="w-6 h-6"/>
+                            Delete
+                        </DropdownMenuItem>
+     
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

@@ -2,20 +2,26 @@
 
 import { EdgeFunctionSecretType, EdgeFunctionType } from "@/lib/types";
 import getFunctionClient, { gcloud_project_id } from ".";
+import { cacheTag } from "next/cache";
+import { t } from "@/lib/utils";
 
 export async function getEdgeFunctions(
     projectId: string,
 ): Promise<EdgeFunctionType[]> {
+  cacheTag(t("edge-functions", projectId))
     
-const client = await getFunctionClient();
-  const parent = `projects/${gcloud_project_id}/locations/-`;
+  const client = await getFunctionClient();
+  const parent = `projects/${gcloud_project_id}/locations/us-central1`;
 
   try {
     // Fetches 2nd Gen Cloud Run functions
     const [functions] = await client.listFunctions({ parent });
-    const edgeFunctions: EdgeFunctionType[] = functions.map((fn) => {
+    const edgeFunctions: EdgeFunctionType[] = functions.filter(fn => {
+      console.log(fn.name)
+      return fn.name?.includes(`${projectId}-`)
+    }).map((fn) => {
       // The 'name' is the full path: projects/{p}/locations/{l}/functions/{name}
-      const slug = fn.name?.split("/").pop() || "unknown";
+      const slug = fn.name?.split("/").pop()?.replace(`${projectId}-`, "") || "unknown";
         
 
       const func: EdgeFunctionType = {
