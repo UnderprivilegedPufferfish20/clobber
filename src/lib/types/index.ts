@@ -21,7 +21,7 @@ export type EdgeFunctionType = {
 }
 
 export type EdgeFunctionSecretType = {
-  key: string,
+  name: string,
   value: string,
   createdAt: string,
   updatedAt: string

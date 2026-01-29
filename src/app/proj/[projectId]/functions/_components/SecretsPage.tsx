@@ -8,13 +8,17 @@ import { cn } from '@/lib/utils';
 import { InboxIcon, Search } from 'lucide-react';
 import React, { useMemo, useState } from 'react'
 import SecretCard from './cards/SecretCard';
+import CreateSecretSheet from './sheets/CreateSecretSheet';
 
 const page = ({
-    data
+    data,
+    projectId
 }: {
-    data: EdgeFunctionSecretType[]
+    data: EdgeFunctionSecretType[],
+    projectId: string
 }) => {
 
+    console.log("@@DATA: ", data)
     const [searchTerm, setSearchTerm] = useState("");
     const [open, setOpen] = useState(false);
   
@@ -25,7 +29,7 @@ const page = ({
       if (!q) return data;
   
       return data.filter((i: any) =>
-        i.function_name.toLowerCase().includes(q)
+        i.name.toLowerCase().includes(q)
       );
     }, [searchTerm, data]);
   
@@ -46,7 +50,7 @@ const page = ({
 
           <Button
             onClick={() => {
-                
+                setOpen(true)
             }}
             variant={"default"}
           >
@@ -117,14 +121,21 @@ const page = ({
           >
             {filteredData.map((i: any) => (
               <SecretCard
-                key={Math.random()}
                 {...i}
+                key={Math.random()}
+                
               />
             ))}
           </div>
         )}
       </div>
-      </>
+
+      <CreateSecretSheet 
+        onOpenChange={setOpen}
+        open={open}
+        projectId={projectId}
+      />
+    </>
   )
 }
 
