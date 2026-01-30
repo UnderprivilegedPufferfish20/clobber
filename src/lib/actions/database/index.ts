@@ -9,14 +9,17 @@ import {
   SqlOperationsServiceClient
  } from '@google-cloud/sql';
 import { getTenantPool } from "./tennantPool";
+import { Pool } from 'pg';
 
 const projectId = process.env.GCP_PROJECT_ID!;
 const instanceId = process.env.CLOUD_SQL_INSTANCE_ID!;
 const con = process.env.CLOUD_SQL_CONNECTION_NAME!;
+const adminPassword = process.env.CLOUD_SQL_ADMIN_PASSWORD!;
 
 if (!projectId) throw new Error('Missing env GCP_PROJECT_ID');
 if (!instanceId) throw new Error('Missing env CLOUD_SQL_INSTANCE_ID');
 if (!con) throw new Error("No con str in env");
+if (!adminPassword) throw new Error('Missing env CLOUD_SQL_ADMIN_PASSWORD');
 
 
 // Initialize clients with credentials if provided
@@ -136,6 +139,84 @@ export async function createTenantDatabase(opts: {
   } catch (error) {
     console.error('❌ Failed to create user:', error);
     console.log('⚠️  Note: Database was created but user creation failed. You may need to clean up.');
+    throw error;
+  }
+
+  // Connect as admin to grant privileges, create schemas, and tables
+  try {
+    const adminPool = new Pool({
+      user: dbUser,
+      password: opts.password,
+      database: dbName,
+      host: process.env.CLOUD_SQL_PUBLIC_IP!,
+      port: 5432,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
+
+    // Grant privileges to the new user
+    await adminPool.query(`GRANT ALL PRIVILEGES ON DATABASE "${dbName}" TO "${dbUser}";`);
+
+    // Create UUID extension
+    await adminPool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+
+    // Create schemas
+    await adminPool.query('CREATE SCHEMA auth;');
+    await adminPool.query('CREATE SCHEMA vault;');
+    await adminPool.query('CREATE SCHEMA storage;');
+    await adminPool.query('CREATE SCHEMA realtime;');
+
+    // Create tables in storage schema
+    await adminPool.query(`
+      CREATE TABLE storage.buckets (
+        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name text UNIQUE NOT NULL,
+        "projectId" text NOT NULL,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+      );
+    `);
+
+    await adminPool.query(`
+      CREATE TABLE storage.objects (
+        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name text NOT NULL,
+        "bucketId" uuid NOT NULL,
+        metadata jsonb,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "lastAccessedAt" timestamp with time zone NOT NULL,
+        CONSTRAINT objects_bucket_fkey FOREIGN KEY ("bucketId") REFERENCES storage.buckets(id)
+      );
+    `);
+
+    // Create table in vault schema
+    await adminPool.query(`
+      CREATE TABLE vault.secrets (
+        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name text UNIQUE NOT NULL,
+        value text NOT NULL,
+        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+      );
+    `);
+
+    // Transfer ownership to the new user for full control
+    await adminPool.query(`ALTER SCHEMA auth OWNER TO "${dbUser}";`);
+    await adminPool.query(`ALTER SCHEMA vault OWNER TO "${dbUser}";`);
+    await adminPool.query(`ALTER SCHEMA storage OWNER TO "${dbUser}";`);
+    await adminPool.query(`ALTER SCHEMA realtime OWNER TO "${dbUser}";`);
+
+    await adminPool.query(`ALTER TABLE vault.secrets OWNER TO "${dbUser}";`);
+    await adminPool.query(`ALTER TABLE storage.buckets OWNER TO "${dbUser}";`);
+    await adminPool.query(`ALTER TABLE storage.objects OWNER TO "${dbUser}";`);
+
+    await adminPool.end();
+    console.log(`✅ Schemas and tables created, ownership transferred to "${dbUser}"`);
+  } catch (error) {
+    console.error('❌ Failed to set up schemas and tables:', error);
+    console.log('⚠️  Note: Database and user were created but schema setup failed. You may need to clean up.');
     throw error;
   }
 

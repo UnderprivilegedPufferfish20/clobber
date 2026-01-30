@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "./generated"
 }
 
 datasource db {
@@ -32,9 +31,6 @@ model Project {
 
   sqlfolders SqlFolder[]
   sqlqueries sql[]
-
-  // 1–1 (optional on Project side)
-  selections preselected?
 }
 
 model SqlFolder {
@@ -57,45 +53,4 @@ model sql {
 
   folder  SqlFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-}
-
-model preselected {
-  id        String  @id @default(uuid())
-  projectId String  @unique
-
-  page   String
-  schema String?
-  table  String?
-  query  String?
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-}
-
-model Bucket {
-  id String @id @default(uuid())
-  name String @unique
-  projectId String
-
-  objects Object[]
-
-
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Object {
-  id String @id @default(uuid())
-  name String
-  bucketId String 
-
-  metadata Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lastAccessedAt DateTime
-
-  bucket Bucket @relation(fields: [bucketId], references: [id])
-
-
 }

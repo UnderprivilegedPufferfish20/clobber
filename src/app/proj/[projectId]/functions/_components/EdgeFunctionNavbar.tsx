@@ -53,7 +53,7 @@ export function EdgeFunctionsNavbar() {
 
                     segments.at(-1) === "functions"
                       ? router.push(`/${segments.join("/")}/${r.toLowerCase()}`)
-                      : router.push(`/${segments.pop()}/${r.toLowerCase()}`);
+                      : router.push(`${pathname.replaceAll("variables", "")}`);
                     
                   }}
                   className={`

@@ -4,6 +4,9 @@ import { revalidateTag } from "next/cache";
 import getBucket from "."
 import { t } from "@/lib/utils";
 import prisma from "@/lib/db";
+import { getProjectById } from "../../database/cache-actions";
+import { getTenantPool } from "../../database/tennantPool";
+import { FileStorageBucket } from "@/lib/types";
 
 
 
@@ -16,12 +19,19 @@ export async function createBucket(
   const bucket = getBucket()
   if (!bucket) throw new Error("Cannot connect to bucket");
 
-  const result =  prisma.bucket.create({
-    data: {
-      name,
-      projectId
-    }
+  const project = await getProjectById(projectId)
+  if (!project) throw new Error("Project not found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
   })
+
+  const result = await pool.query(`
+    INSERT INTO "storage"."buckets" (name, "projectId", "createdAt", "updatedAt") VALUES ($1, $2, $3, $3)
+  `, [name, projectId, new Date().toLocaleDateString()])
 
   revalidateTag(t("buckets", projectId), "max")
 
@@ -33,5 +43,5 @@ export async function createBucket(
     metadata: { contentType: 'text/plain' }
   });
 
-  return result
+  return result.rows[0] as FileStorageBucket
 }

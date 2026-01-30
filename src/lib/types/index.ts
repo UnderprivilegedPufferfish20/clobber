@@ -41,6 +41,24 @@ export interface Feature {
   icon: LucideIcon;
 }
 
+export type FileStorageBucket = {
+  id: string,
+  name: string,
+  projectId: string,
+  createdAt: string,
+  updatedAt: string
+  objects: FileObject[]
+}
+
+export type FileObject = {
+  id: string,
+  name: string,
+  bucketId: string,
+  createdAt: string,
+  lastAccessedAt: string
+  metadata: any
+}
+
 export interface Plan {
   name: string;
   originalPrice?: number;

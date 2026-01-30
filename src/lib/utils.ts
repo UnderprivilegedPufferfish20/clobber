@@ -26,8 +26,8 @@ export const extractBody = (def: string) => {
  *  -------------------------- */
 export function generateProjectPassword() {
   const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const length = 16;
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(";
+  const length = 12;
 
   let suffix = "";
   const charactersLength = characters.length;
@@ -36,7 +36,7 @@ export function generateProjectPassword() {
     suffix += characters.charAt(Math.floor(Math.random() * charactersLength));
   }
 
-  return "cdb_" + suffix;
+  return "cdb_" + suffix + '1234';
 }
 
 export function sanitizeDirectoryName(name: string): string {

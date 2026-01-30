@@ -1,6 +1,5 @@
-import Loader from '@/components/Loader';
 import { Separator } from '@/components/ui/separator'
-import React, { Suspense } from 'react'
+import React from 'react'
 import { StorageNavbar } from './_components/NavBar';
 import FilesPage from './_components/pages/FilesPage';
 import { getBucketNames } from '@/lib/actions/storage/files/cache-actions';
@@ -25,6 +24,8 @@ const BucketsPage = async ({ params, searchParams }: PageProps<"/proj/[projectId
     case 'files': {
       if (sp['path']) {
         const folderData = await getFolderData(p.projectId, sp["path"] as string)
+
+        console.log("@@FOLDER DATA: ", folderData)
 
         pageContent = (
           <>

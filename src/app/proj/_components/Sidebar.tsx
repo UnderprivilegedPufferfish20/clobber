@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { DatabaseSidebarRoutes, SidebarRoutes } from '@/lib/constants'
+import { SidebarRoutes } from '@/lib/constants'
 
 
 const Sidebar = () => {
@@ -33,7 +33,7 @@ const Sidebar = () => {
   // Helper functions adapted for this dynamic setup
   const isRouteActive = (routeHref: string, currentPathname: string, basePath: string) => {
     const targetPath = routeHref === "" ? basePath : `${basePath}${routeHref}`;
-    return currentPathname == targetPath;
+    return currentPathname.includes(routeHref) && routeHref.split("/").length > 1;
   }
 
   const constructPath = (basePath: string, routeHref: string) => {

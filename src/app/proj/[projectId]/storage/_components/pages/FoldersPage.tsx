@@ -16,7 +16,6 @@ import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { ChangeEvent, Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Object as DbObject } from '@/lib/db/generated';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateFolderDialog from '../dialogs/CreateFolderDialog';
@@ -26,6 +25,7 @@ import { deleteFolder } from '@/lib/actions/database/sql';
 import { downloadFolder } from '@/lib/actions/storage/files/folder';
 import { getFolderData } from '@/lib/actions/storage/files/folder/cache-actions';
 import { uploadFile, downloadObject, deleteObject, renameObject, getURL, downloadSelected } from '@/lib/actions/storage/files/object';
+import { FileObject } from '@/lib/types';
 
 
 type Props = {
@@ -54,7 +54,7 @@ const FoldersPage = (props: Props) => {
   const [moveSheetOpen, setMoveSheetOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
 
-  const [selectedObjects, setSelectedObjects] = useState<DbObject[]>([])
+  const [selectedObjects, setSelectedObjects] = useState<FileObject[]>([])
 
   const { mutate: downl } = useMutation({
     mutationFn: async () => {
@@ -79,7 +79,7 @@ const FoldersPage = (props: Props) => {
 
   const { mutate: deleteSelected } = useMutation({
     mutationFn: async () => {
-      await Promise.all(selectedObjects.map(async f => await deleteObject(f.id)))
+      await Promise.all(selectedObjects.map(async f => await deleteObject(f.id, projectId)))
     },
     onMutate: () => { toast.loading("Deleting...", { id: "delete-selected" }) },
     onSuccess: () => { toast.success("Files deleted", { id: "delete-selected" }) },
@@ -381,7 +381,15 @@ const FoldersPage = (props: Props) => {
               <div className='flex items-center gap-2 flex-wrap'>
                 {filteredFiles.map((file) => {
 
-                  
+                  console.log("@RENDERED FILE: ", typeof file.createdAt)
+
+                  if (typeof file.createdAt === 'object') {
+
+                    file.createdAt = file.createdAt.toLocaleDateString()
+                    file.lastAccessedAt = file.lastAccessedAt.toLocaleDateString()
+                    file.updatedAt = file.updatedAt.toLocaleDateString()
+                  }
+
                 
                   return (
                     <FileCard
@@ -424,12 +432,13 @@ function FileCard({
   selectedObjects,
   setSelectedObjects
 }: {
-  object: DbObject,
-  selectedObjects: DbObject[],
-  setSelectedObjects: Dispatch<SetStateAction<DbObject[]>>
+  object: FileObject,
+  selectedObjects: FileObject[],
+  setSelectedObjects: Dispatch<SetStateAction<FileObject[]>>
 }) {
+  console.log("@METADATA: ", object.metadata[0])
 
-  const fileMetadata = JSON.parse(object.metadata as string)[0]
+  const fileMetadata = object.metadata[0]
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -541,7 +550,7 @@ function FileCard({
 
   const { mutate: deleteItem } = useMutation({
     mutationFn: async () => {
-      deleteObject(object.id)
+      deleteObject(object.id, projectId)
     },
     onSuccess: () => {
       toast.success("Object Deleted", { id:"delete-object" });
@@ -615,7 +624,7 @@ function FileCard({
             </div>
 
             <footer className='truncate fullwidth flex justify-between items-center text-muted-foreground text-sm'>
-              {object.createdAt.toLocaleDateString()}
+              {object.createdAt}
               <h3 className='truncate max-w-56'>{fileMetadata['contentType']}</h3>
             </footer>
           </div>
@@ -783,7 +792,7 @@ function FileCard({
 function FolderCard({
   object
 }: {
-  object: DbObject
+  object: FileObject
 }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
