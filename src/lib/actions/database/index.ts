@@ -202,6 +202,73 @@ export async function createTenantDatabase(opts: {
       );
     `);
 
+    await adminPool.query(`
+      CREATE TABLE "auth"."users" (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      project_id TEXT NOT NULL,
+      email TEXT,
+      encrypted_password TEXT,
+      last_sign_in_at TIMESTAMP WITH TIME ZONE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+      phone TEXT UNIQUE
+    );
+
+CREATE TABLE "auth"."sso_providers" (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid, -- Assuming this refers to a project table not shown
+  callback_url TEXT,
+  client_id TEXT,
+  client_secret TEXT,
+  enabled BOOLEAN DEFAULT true,
+  allow_no_email BOOLEAN DEFAULT true
+);
+
+CREATE TABLE "auth"."sessions" (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES "auth"."users"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE "auth"."access_token" (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid REFERENCES "auth"."sessions"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  user_id uuid REFERENCES "auth"."users"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  payload TEXT,
+  revoked BOOLEAN DEFAULT false,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  -- Stored generated column for expiration logic
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE "auth"."refresh_token" (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  access_token_id uuid REFERENCES "auth"."access_token"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  user_id uuid REFERENCES "auth"."users"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  payload TEXT,
+  revoked BOOLEAN DEFAULT false,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  -- Stored generated column for expiration logic
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE VIEW "auth"."active_access_tokens" AS
+SELECT *,
+       (expires_at < now()) AS expired
+FROM "auth"."access_token";
+
+CREATE VIEW "auth"."active_refresh_tokens" AS
+SELECT *,
+       (expires_at < now()) AS expired
+FROM "auth"."refresh_token";
+
+
+
+      `)
+
     // Transfer ownership to the new user for full control
     await adminPool.query(`ALTER SCHEMA auth OWNER TO "${dbUser}";`);
     await adminPool.query(`ALTER SCHEMA vault OWNER TO "${dbUser}";`);

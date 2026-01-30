@@ -12,11 +12,15 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
 const routes = [
-  "Files",
-  "Vectors"
+  "Users",
+  "Sign In",
+  "Policies",
+  "Sessions",
+  "MFA",
+  "URL Config",
 ]
 
-export default function StorageNavbar() {
+export default function AuthNavbar() {
   const isMobile = useIsMobile()
 
   const router = useRouter()
@@ -24,7 +28,7 @@ export default function StorageNavbar() {
 
   const setPageRoute = (val: string) => {
     // "Schema Editor" always routes to "/"
-    if (val === "files") {
+    if (val === "users") {
       router.push(`${pathname.split("/").slice(0,4).join("/")}`)
       return
     }
@@ -35,7 +39,7 @@ export default function StorageNavbar() {
   const isActive = (val: string) => {
     const route = val.toLowerCase().replace(" ", "_")
     // "Schema Editor" is active when pathname is exactly "/"
-    if (route === "files") {
+    if (route === "users") {
       return pathname === pathname.split("/").slice(0,4).join("/")
     }
     return pathname.endsWith(`/${route}`)
