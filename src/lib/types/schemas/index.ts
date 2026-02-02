@@ -22,6 +22,13 @@ export const createFolderSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" })
 })
 
+export const createFileBucketSchema = z.object({
+  name: z.string().min(1),
+  is_public: z.boolean(),
+  file_size_limit: z.int64(),
+  allowed_types: z.array(z.string())
+})
+
 export const inviteUsersSchema = z.object({
     email: z.email({ message: "Please enter valid email" }) 
 })
@@ -37,7 +44,7 @@ export const createRoleSchema = z.object({
 export const createFunctionSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
   schema: z.string(),
-  returnType: z.union([
+  return_type: z.union([
     z.enum(Object.values(FUNCTION_RETURN_TYPES)),
     z.string()
   ]),
@@ -62,8 +69,8 @@ export const createTriggerSchema = z.object({
   event: z.array(z.enum(TRIGGER_EVENTS)),
   type: z.enum(TRIGGER_TYPE),
   orientation: z.enum(TRIGGER_ORIENTATION),
-  functionSchema: z.string(),
-  functionName: z.string()
+  function_schema: z.string(),
+  function_name: z.string()
 })
 
 export const createEnumSchema = z.object({
@@ -78,28 +85,28 @@ export const createEnumSchema = z.object({
 
 
 export const createForeignKeyColumnSchema = z.object({
-  referencorSchema: z.string(),
-  referencorTable: z.string(),
-  referencorColumn: z.string(),
-  referenceeSchema: z.string(),
-  referenceeTable: z.string(),
-  referenceeColumn: z.string()
+  referencor_schema: z.string(),
+  referencor_table: z.string(),
+  referencor_column: z.string(),
+  referencee_schema: z.string(),
+  referencee_table: z.string(),
+  referencee_column: z.string()
 })
 
 export const createForeignKeySchema = z.object({
   cols: createForeignKeyColumnSchema.array(),
-  updateAction: z.enum(Object.values(FKEY_REFERENCED_ROW_ACTION_UPDATED)),
-  deleteAction: z.enum(Object.values(FKEY_REFERENCED_ROW_ACTION_DELETED))
+  update_action: z.enum(Object.values(FKEY_REFERENCED_ROW_ACTION_UPDATED)),
+  delete_action: z.enum(Object.values(FKEY_REFERENCED_ROW_ACTION_DELETED))
 })
 
 export const createColumnSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
   dtype: z.enum(Object.values(DATA_TYPES)),
-  isArray: z.boolean(),
+  is_array: z.boolean(),
   default: z.string(),
-  isPkey: z.boolean(),
-  isUnique: z.boolean(),
-  isNullable: z.boolean()
+  is_pkey: z.boolean(),
+  is_unique: z.boolean(),
+  is_nullable: z.boolean()
 })
 
 export const createTableSchema = z.object({

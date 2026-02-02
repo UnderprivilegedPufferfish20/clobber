@@ -624,7 +624,7 @@ function FileCard({
             </div>
 
             <footer className='truncate fullwidth flex justify-between items-center text-muted-foreground text-sm'>
-              {object.createdAt}
+              {object.created_at}
               <h3 className='truncate max-w-56'>{fileMetadata['contentType']}</h3>
             </footer>
           </div>

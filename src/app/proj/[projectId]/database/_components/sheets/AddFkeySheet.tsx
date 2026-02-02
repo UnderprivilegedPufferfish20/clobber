@@ -3,7 +3,6 @@
 import { DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_UPDATED, FkeyColumnType, FkeyType, TableType } from "@/lib/types";
 import { Dispatch, SetStateAction, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getSchemas } from "@/lib/actions/database/cache-actions";
 import { getTables } from "@/lib/actions/database/tables/cache-actions";
 import { getCols } from "@/lib/actions/database/columns/cache-actions";
 import { Separator } from "@/components/ui/separator";

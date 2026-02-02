@@ -6,22 +6,24 @@ import { QueryFilters } from "@/lib/types";
 import { cacheTag } from "next/cache";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
+import { getCols } from "../columns/cache-actions";
 
-export async function getTableData(
+export async function getTableData<T>(
   projectId: string,
   schema: string,
   table: string,
-  page: number = 1,
-  pageSize: number = 50,
+  limit: number = 50,
+  offset: number = 0,
   filters: QueryFilters = {},
-  sort?: { column: string; direction: "ASC" | "DESC" }
+  caceTag: string,
+  sort?: { column: string; direction: "ASC" | "DESC" },
 ) {
-  console.log("@@GETTABLEDATA ARGS: ", projectId, schema, table, page, pageSize, filters, sort)
-
-  cacheTag(t("table-data", projectId, schema, table))
+  cacheTag(t(caceTag, projectId, schema, table))
 
   const project = await getProjectById(projectId);
   if (!project) throw new Error("No project found");
+
+
 
   const pool = await getTenantPool({
     connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
@@ -31,20 +33,13 @@ export async function getTableData(
   });
 
   // First, get column types
-  const columnsResult = await pool.query(
-    `
-    SELECT column_name, data_type, is_nullable
-    FROM information_schema.columns
-    WHERE table_schema = $1 AND table_name = $2
-    ORDER BY ordinal_position;
-  `,
-    [schema, table]
-  );
+  const columns = await getCols(schema, projectId, table)
 
-  // Build column type map
+
+
   const columnTypes = new Map<string, DATA_TYPES>();
-  for (const col of columnsResult.rows) {
-    columnTypes.set(col.column_name, col.data_type);
+  for (const col of columns) {
+    columnTypes.set(col.name, col.dtype);
   }
 
   // Build WHERE clause with type safety
@@ -54,40 +49,23 @@ export async function getTableData(
   if (Object.keys(errors).length > 0) {
     throw new Error(`Invalid filters: ${JSON.stringify(errors)}`);
   }
-
-  const countQuery = `
-    SELECT COUNT(*) as total 
-    FROM "${schema}"."${table}" ${whereClause};
-  `;
-
-  const countResult = await pool.query(countQuery, whereParams);
-  const total = parseInt(countResult.rows[0].total);
-
-  const offset = (page - 1) * pageSize;
   const paramCount = whereParams.length + 1;
 
-  const dataQuery = `
+
+  const result = await pool.query(`
     SELECT * 
     FROM "${schema}"."${table}"
     ${whereClause}
     ${sort ? `ORDER BY "${sort.column}" ${sort.direction}` : ''}
     LIMIT $${paramCount} OFFSET $${paramCount + 1};
-  `;
+  `, [...whereParams, limit, offset])
 
-  const dataResult = await pool.query(dataQuery, [...whereParams, pageSize, offset]);
+  const rowCountResult = await pool.query(`SELECT COUNT(*) FROM "${schema}"."${table}";`)
 
   return {
-    rows: dataResult.rows,
-    columns: columnsResult.rows.map(col => ({
-      ...col,
-      data_type_enum: col.data_type
-    })),
-    pagination: {
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-    },
+    rows: result.rows as T[],
+    columns,
+    rowCount: rowCountResult.rows[0].count,
   };
 }
 

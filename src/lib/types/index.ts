@@ -11,20 +11,29 @@ export interface AuthContextType {
   loading: boolean;
 }
 
+export type AuthUserType = {
+  id: string,
+  email: string,
+  last_sign_in_at: Date,
+  created_at: Date,
+  updated_at: Date,
+  phone: string
+}
+
 export type EdgeFunctionType = {
   files: { name: string, code: string }[],
   url: string,
-  createdAt: any,
-  updatedAt: any,
-  deploymentCount: number,
+  created_at: any,
+  updated_at: any,
+  deployment_count: number,
   slug: string
 }
 
 export type EdgeFunctionSecretType = {
   name: string,
   value: string,
-  createdAt: string,
-  updatedAt: string
+  created_at: string,
+  updated_at: string
 }
 
 export interface UserCookie {
@@ -44,9 +53,9 @@ export interface Feature {
 export type FileStorageBucket = {
   id: string,
   name: string,
-  projectId: string,
-  createdAt: string,
-  updatedAt: string
+  project_id: string,
+  created_at: string,
+  updated_at: string
   objects: FileObject[]
 }
 
@@ -54,8 +63,9 @@ export type FileObject = {
   id: string,
   name: string,
   bucketId: string,
-  createdAt: string,
-  lastAccessedAt: string
+  created_at: string,
+  last_accessed_at: string,
+  updated_at: string,
   metadata: any
 }
 
@@ -152,9 +162,7 @@ export interface DatabaseObjectAddSheetProps {
   onOpenChange: Dispatch<SetStateAction<boolean>>;
 }
 
-export type TableViewProps = {
-  projectId: string;
-};
+
 
 export type EditingCell = {
   rowKey: string;
@@ -257,8 +265,6 @@ export enum TRIGGER_ORIENTATION {
   ROW = "ROW",
   STATEMENT = "STATEMENT"
 }
-
-export type QueryFilters = Record<string, [FilterOperator, string]>
 
 export enum DATA_EXPORT_FORMATS {
   CSV = "CSV",

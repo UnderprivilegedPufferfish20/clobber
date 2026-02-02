@@ -1,11 +1,11 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Object as DbObject } from "@/lib/db/generated";
 import {
   DATA_TYPES,
+  FileObject,
+  FilterConfig,
   FilterOperator,
-  FkeyType,
-  QueryFilters,
+  FkeyType
 } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
@@ -386,9 +386,7 @@ export function callPostgresFunction(name: string, argstring: string): string {
   return `SELECT ${name}(${sqlArgs.join(", ")});`;
 }
 
-/** ---------------------------
- *  Filter casting / validation
- *  -------------------------- */
+
 export function castFilterValue(
   value: string,
   dataType: DATA_TYPES,
@@ -447,12 +445,9 @@ export function castFilterValue(
 
 export const glassCard = "block";
 
-/** ---------------------------
- *  WHERE clause builder
- *  Works with your DATA_TYPES enum directly
- *  -------------------------- */
+
 export function buildWhereClause(
-  filters: QueryFilters,
+  filters: FilterConfig[], // Changed parameter type
   columnTypes: Map<string, DATA_TYPES>
 ): {
   whereClause: string;
@@ -464,9 +459,10 @@ export function buildWhereClause(
   const errors: Record<string, string> = {};
   let paramCount = 1;
 
-  for (const [column, [op, raw]] of Object.entries(filters)) {
+  for (const filter of filters) {
+    const { column, operator: op, value: raw } = filter;
     const value = (raw ?? "").trim();
-    const dataType = columnTypes.get(column) ?? DATA_TYPES.TEXT; // better default than "string"
+    const dataType = columnTypes.get(column) ?? DATA_TYPES.TEXT;
 
     if (!value && op !== FilterOperator.IS) continue;
 
@@ -475,7 +471,6 @@ export function buildWhereClause(
 
     switch (op) {
       case FilterOperator.LIKE: {
-        // LIKE is only sensible for text-ish things (and JSON via ::text).
         if (!TEXT_LIKE.has(dataType) && dataType !== DATA_TYPES.JSONB) {
           errors[column] = `LIKE operator not supported for ${dataType}`;
           continue;
@@ -557,6 +552,7 @@ export function buildWhereClause(
   return { whereClause, whereParams, errors };
 }
 
+
 /** ---------------------------
  *  Misc
  *  -------------------------- */
@@ -584,7 +580,7 @@ export function joinPosix(...parts: string[]) {
     .replace(/^\/+|\/+$/g, "");
 }
 
-export const childName = (o: DbObject, prefix: string) =>
+export const childName = (o: FileObject, prefix: string) =>
   o.name.slice(prefix.length).split("/").filter(Boolean)[0] ?? o.name;
 
 export function gridPosition(i: number) {
@@ -596,4 +592,76 @@ export function gridPosition(i: number) {
 
 export function createFkeyName(table_name: string, fkey: FkeyType) {
   return `${table_name}_${fkey.cols.map(c => `${c.referencorColumn}_to_${c.referenceeColumn}`).join("")}_fkey`
+}
+
+/** ---------------------------------------------
+ *  URL encoding helpers
+ *  -------------------------------------------- */
+export const OP_TO_TOKEN: Record<FilterOperator, string> = {
+  [FilterOperator.EQUALS]: "=",
+  [FilterOperator.NOT_EQUAL]: "<>",
+  [FilterOperator.GREATER_THAN]: ">",
+  [FilterOperator.LESS_THAN]: "<",
+  [FilterOperator.GREATER_THAN_OR_EQUAL_TO]: ">=",
+  [FilterOperator.LESS_THAN_OR_EQUAL_TO]: "<=",
+  [FilterOperator.LIKE]: "~~",
+  [FilterOperator.IN]: "IN",
+  [FilterOperator.IS]: "IS",
+};
+
+export const OP_TO_LABEL: Record<FilterOperator, string> = {
+  [FilterOperator.EQUALS]: "equal to",
+  [FilterOperator.NOT_EQUAL]: "not equal to",
+  [FilterOperator.GREATER_THAN]: "greater than",
+  [FilterOperator.LESS_THAN]: "less than",
+  [FilterOperator.GREATER_THAN_OR_EQUAL_TO]: "greater than or equal to",
+  [FilterOperator.LESS_THAN_OR_EQUAL_TO]: "less than or equal to",
+  [FilterOperator.LIKE]: "like",
+  [FilterOperator.IN]: "in",
+  [FilterOperator.IS]: "is",
+}
+
+const TOKEN_TO_OP: Record<string, FilterOperator> = Object.fromEntries(
+  Object.entries(OP_TO_TOKEN).map(([k, v]) => [v, k as FilterOperator])
+);
+
+export function stringifyFilters(filters: FilterConfig[]): string {
+  return filters
+    .map(f => `${f.column}:${f.operator}:${encodeURIComponent(f.value ?? "")}`)
+    .join(",");
+}
+
+export function parseFiltersParam(filterParam: string | null): FilterConfig[] {
+  if (!filterParam) return [];
+  const parts = filterParam
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const out: FilterConfig[] = [];
+
+  for (const part of parts) {
+    const column = part.split(":")[0];
+    const operator = part.split(":")[1];
+    const rawValue = part.split(":")[2];
+
+    if (!column) continue;
+
+    const op = TOKEN_TO_OP[operator];
+    if (!op) continue;
+
+    const value = decodeURIComponent(rawValue ?? "");
+    out.push({ column, operator: OP_TO_TOKEN[operator as FilterOperator] as FilterOperator, value });
+  }
+
+  return out;
+}
+
+
+
+
+export function toCellString(v: any) {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
 }

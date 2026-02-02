@@ -22,7 +22,7 @@ export async function getBucketNames(
     database: project.db_name
   })
 
-  const result = await pool.query(`SELECT * FROM "storage"."buckets" WHERE "projectId" = $1`, [project.id])
+  const result = await pool.query(`SELECT * FROM "storage"."buckets" WHERE project_id = $1`, [project.id])
 
   return result.rows as FileStorageBucket[]
 }

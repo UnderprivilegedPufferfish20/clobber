@@ -32,7 +32,6 @@ import { useMutation } from "@tanstack/react-query";
 import { deleteColumn } from "@/lib/actions/database/columns";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import DataViewer from "./DataViewer";
 import SchemaPicker from "./selectors/SchemaPicker";
 import AddTableSheet from "./sheets/AddTableSheet";
 import EditColumnSheet from "./sheets/EditColumnSheet";
@@ -40,6 +39,7 @@ import EditTableSheet from "./sheets/EditTableSheet";
 import { getTableSchema } from "@/lib/actions/database/tables/cache-actions";
 import { deleteTable, duplicateTable, exportTableData } from "@/lib/actions/database/tables";
 import TextInputDialog from "@/components/TextInputDialog";
+import DataViewer from "@/components/DataViewer";
 
 
 
@@ -413,7 +413,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
   return (
     <>
       <TooltipProvider>
-        <div className="w-[480px] rounded-xl border bg-background shadow-sm drag-handle"> {/* Increased width for better table fit */}
+        <div className="w-120 rounded-xl border bg-background shadow-sm drag-handle"> {/* Increased width for better table fit */}
           <div className="rounded-t-xl border-b px-3 py-2 flex items-center justify-between gap-2 font-semibold text-base dark:bg-white/10 bg-black/10">
             <div className="flex fullwidth justify-between items-center">
               <div className="flex items-center gap-2">

@@ -22,7 +22,7 @@ export async function getFolderData(projectId: string, path: string) {
   const bucketResult = await pool.query(`
     SELECT *
     FROM storage.buckets
-    WHERE "projectId" = $1 AND name = $2
+    WHERE project_id = $1 AND name = $2
   `, [projectId, bucketName]);
 
   console.log("@BUCKET RESULT", bucketResult.rows)

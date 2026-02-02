@@ -1,8 +1,8 @@
 'use server'
 
 import prisma from "@/lib/db";
-import { User } from "@/lib/db/generated";
 import { UserCookie } from "@/lib/types";
+import { User } from "@prisma/client";
 import { cookies } from "next/headers"
 
 export async function getUser(): Promise<User | null> {

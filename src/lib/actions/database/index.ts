@@ -172,9 +172,12 @@ export async function createTenantDatabase(opts: {
       CREATE TABLE storage.buckets (
         id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         name text UNIQUE NOT NULL,
-        "projectId" text NOT NULL,
-        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+        project_id text NOT NULL,
+        created_at timestamp with time zone DEFAULT now() NOT NULL,
+        updated_at timestamp with time zone DEFAULT now() NOT NULL,
+        size_lim_bytes BIGINT,
+        allowed_types VARCHAR[],
+        is_public BOOLEAN DEFAULT false
       );
     `);
 
@@ -182,12 +185,12 @@ export async function createTenantDatabase(opts: {
       CREATE TABLE storage.objects (
         id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         name text NOT NULL,
-        "bucketId" uuid NOT NULL,
+        bucket_id uuid NOT NULL,
         metadata jsonb,
-        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
-        "lastAccessedAt" timestamp with time zone NOT NULL,
-        CONSTRAINT objects_bucket_fkey FOREIGN KEY ("bucketId") REFERENCES storage.buckets(id)
+        created_at timestamp with time zone DEFAULT now() NOT NULL,
+        updated_at timestamp with time zone DEFAULT now() NOT NULL,
+        last_accessed_at timestamp with time zone NOT NULL,
+        CONSTRAINT objects_bucket_fkey FOREIGN KEY ("bucket_id") REFERENCES storage.buckets(id)
       );
     `);
 
@@ -197,8 +200,8 @@ export async function createTenantDatabase(opts: {
         id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         name text UNIQUE NOT NULL,
         value text NOT NULL,
-        "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-        "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+        created_at timestamp with time zone DEFAULT now() NOT NULL,
+        updated_at timestamp with time zone DEFAULT now() NOT NULL
       );
     `);
 

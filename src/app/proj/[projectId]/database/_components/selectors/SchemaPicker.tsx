@@ -104,6 +104,10 @@ const SchemaPicker = ({ schemas, value, onChange }: SchemaPickerProps) => {
     [mutate]
   )
 
+  React.useEffect(() => {
+     onChange(value)
+  }, [])
+
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>

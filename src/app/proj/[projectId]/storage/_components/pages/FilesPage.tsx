@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch";
 import { createBucket } from "@/lib/actions/storage/files/actions";
 import { getBucketNames } from "@/lib/actions/storage/files/cache-actions";
 import { cn } from "@/lib/utils";
@@ -14,7 +16,7 @@ import { BoxIcon, FunctionSquare, FunctionSquareIcon, InboxIcon, Loader2, Packag
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import path from "path";
-import { useMemo, useState } from "react"
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner";
 
 type Props = {
@@ -43,23 +45,7 @@ const FilesPage = (props: Props) => {
   const showEmptySchemaState = !searchTerm && (props.bucketDetails?.length ?? 0) === 0;
   const showNoMatchesState = !!searchTerm && filteredBuckets.length === 0;
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: () => createBucket(props.projectId, newBucketName),
-    onSuccess: () => {
-      toast.success("Bucket Created", { id:"create-bucket" });
-      setOpen(false);
-      setNewBucketName("")
-    },
-    onError: (error) => {
-      console.log("Error details:", error);
-      if (error.message === 'NEXT_REDIRECT') {
-        toast.success("bucket Added", { id:"create-bucket" });
-        setOpen(false);
-        return;
-      }
-      toast.error("Failed to Create bucket", { id:"create-bucket" })
-    }
-  })
+  
 
   return (
     <>
@@ -143,7 +129,7 @@ const FilesPage = (props: Props) => {
             {filteredBuckets.map(f => (
               <BucketCard
                 projectId={projectId}
-                createdAt={f.createdAt}
+                createdAt={f.created_at}
                 id={f.id}
                 name={f.name}
                 key={f.id}
@@ -153,56 +139,14 @@ const FilesPage = (props: Props) => {
       )}
       </div>
 
-
-
-      <Dialog
-        open={open}
+      <CreateBucketDialog 
+        projectId={projectId}
+        existingBuckets={props.bucketDetails.map(b => b.name)}
         onOpenChange={setOpen}
-      >
-        <form
-          onSubmit={e => {
-            e.preventDefault()
-            mutate()
-          }}
-        >
-          <DialogContent>
-            <CustomDialogHeader 
-              icon={PackageOpenIcon}
-              title="New File Bucket"
-            />
+        open={open}
+      />
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="name" >Name</Label>
-              <Input
-                value={newBucketName}
-                onKeyDown={e => {
-                if (e.key === "Enter") {
-                    e.preventDefault()
-                    mutate()
-                  }
-                }}
-                onChange={e => setNewBucketName(e.target.value)} 
-                id="name"
-                placeholder="Universally Unique name"
-              />
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button
-                  variant={'outline'}
-                >
-                  Cancel
-                </Button>
-              </DialogClose>
-
-              <Button type='submit' disabled={isPending || props.bucketDetails.map(b => b.name).includes(newBucketName) || newBucketName.length < 5}>
-                {!isPending && "Proceed"}
-                {isPending && <Loader2 className='animate-spin' />}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </form>
-      </Dialog>
+      
     </>
   )
 }
@@ -234,5 +178,275 @@ function BucketCard({
           </div>
         </div>
     </Link>
+  )
+}
+
+function CreateBucketDialog({
+  open,
+  onOpenChange,
+  existingBuckets,
+  projectId
+}: {
+  open: boolean,
+  onOpenChange: Dispatch<SetStateAction<boolean>>,
+  existingBuckets: string[],
+  projectId: string
+}) {
+
+    type SizeLimitUnit = "bytes" | "KB" | "MB" | "GB";
+
+  const sizeLimitUnitOptions: SizeLimitUnit[] = [
+    "bytes",
+    "KB", 
+    "MB",
+    "GB"
+  ];
+
+  // Helper function to convert size to bytes
+  const convertToBytes = (size: number, unit: SizeLimitUnit): bigint => {
+    switch (unit) {
+      case "bytes": return BigInt(size);
+      case "KB": return BigInt(size) * BigInt(1024);
+      case "MB": return BigInt(size) * BigInt(1024 * 1024);
+      case "GB": return BigInt(size) * BigInt(1024 * 1024 * 1024);
+      default: return BigInt(0);
+    }
+  };
+
+  const [name, setName] = useState("");
+  const [allowedTypes, setAllowedTypes] = useState("")
+  const [allowedTypesError, setAllowedTypesError] = useState(false)
+
+  useEffect(() => {
+    if (allowedTypes.length === 0) {
+      setAllowedTypesError(false)
+      return
+    };
+
+    const parts = allowedTypes.split(", ")
+
+    if (parts.length === 0) {
+      setAllowedTypesError(false)
+      return
+    }
+
+    if (!parts.every(p => p.includes("/"))) {
+      setAllowedTypesError(true)
+    } else {
+      setAllowedTypesError(false)
+    }
+  }, [allowedTypes])
+
+  const existingBucketsSet = useMemo(() => {
+    return new Set(existingBuckets)
+  }, [existingBuckets])
+
+  const [isPublic, setIsPublic] = useState(false)
+  const [isRestrictedSize, setIsRestrictedSize] = useState(false)
+  const [isRestrictedTypes, setIsRestrictedTypes] = useState(false)
+
+  const [sizeLimit, setSizeLimit] = useState(0)
+  const [sizeLimitUnit, setSizeLimitUnit] = useState<SizeLimitUnit>("MB")
+
+  // Convert sizeLimit to bytes whenever sizeLimit or sizeLimitUnit changes
+  const sizeLimitInBytes = useMemo(() => {
+    if (!isRestrictedSize || sizeLimit === 0) return BigInt(0);
+    return convertToBytes(sizeLimit, sizeLimitUnit);
+  }, [sizeLimit, sizeLimitUnit, isRestrictedSize]);
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => createBucket({
+      name,
+      allowed_types: isRestrictedTypes ? allowedTypes.split(", ").filter(Boolean) : [],
+      file_size_limit: isRestrictedSize ? sizeLimitInBytes : BigInt(0), // Now properly converted to bytes
+      is_public: isPublic
+    }, projectId),
+    onSuccess: () => {
+      toast.success("Bucket Created", { id:"create-bucket" });
+      onOpenChange(false);
+      setName("")
+    },
+    onError: (error) => {
+      console.log("Error details:", error);
+      if (error.message === 'NEXT_REDIRECT') {
+        toast.success("bucket Added", { id:"create-bucket" });
+        onOpenChange(false);
+        return;
+      }
+      toast.error("Failed to Create bucket", { id:"create-bucket" })
+    }
+  })
+
+
+  
+
+
+  return (
+    <Dialog
+        open={open}
+        onOpenChange={onOpenChange}
+      >
+        <form
+          onSubmit={e => {
+            e.preventDefault()
+            mutate()
+          }}
+        >
+          <DialogContent>
+            <CustomDialogHeader 
+              icon={PackageOpenIcon}
+              title="New File Bucket"
+            />
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="name" className="fullwidth flex items-center justify-between">
+                <h1>Name</h1>
+                <p className="text-muted-foreground">Name is permanent
+                </p>
+              </Label>
+              <Input
+                value={name}
+                onKeyDown={e => {
+                if (e.key === "Enter") {
+                    e.preventDefault()
+                    mutate()
+                  }
+                }}
+                onChange={e => setName(e.target.value)} 
+                id="name"
+                placeholder="Universally Unique name"
+              />
+
+              <Separator />
+
+              <div className="flex items-center fullwidth gap-2 text-sm">
+                <Switch 
+                  checked={isPublic}
+                  onCheckedChange={checked => {
+                    if (checked) {
+                      setIsPublic(true)
+                    } else {
+                      setIsPublic(false)
+                    }
+                  }}
+                />
+                <div className="flex flex-col">
+                  <h2>Public</h2>
+                  <p className="text-muted-foreground">Allow anyone to use it without authentication</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center fullwidth gap-2 text-sm">
+                <Switch 
+                  checked={isRestrictedSize}
+                  onCheckedChange={checked => {
+                    if (checked) {
+                      setIsRestrictedSize(true)
+                    } else {
+                      setIsRestrictedSize(false)
+                    }
+                  }}
+                />
+                <div className="flex flex-col">
+                  <h2>Restrict File Size</h2>
+                  <p className="text-muted-foreground">Limit size of all inputs</p>
+                </div>
+              </div>
+
+              {isRestrictedSize && (
+                <div className="flex flex-col gap-2 mt-2">
+                  <Label htmlFor="sz-limit" >Size Limit</Label>
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      id="sz-limit"
+                      type="number" // Added for better number input
+                      value={sizeLimit || ""} // Fixed: Handle 0 properly
+                      placeholder="0"
+                      onChange={e => {
+                        const val = e.target.value;
+                        setSizeLimit(val ? Number(val) : 0); // Fixed: Always set a number
+                      }}
+                    />
+
+                    <Select 
+                      value={sizeLimitUnit} // Fixed: Controlled value
+                      onValueChange={(value: SizeLimitUnit) => setSizeLimitUnit(value)} // Fixed: Proper typing
+                    >
+                      <SelectTrigger className="w-24! min-w-24! max-w-24!">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {sizeLimitUnitOptions.map(u => (
+                            <SelectItem key={u} value={u}>
+                              {u}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center fullwidth gap-2 text-sm">
+                  <Switch 
+                    checked={isRestrictedTypes}
+                    onCheckedChange={checked => {
+                      if (checked) {
+                        setIsRestrictedTypes(true)
+                      } else {
+                        setIsRestrictedTypes(false)
+                      }
+                    }}
+                  />
+                  <div className="flex flex-col">
+                    <h2>Restrict MIME Types</h2>
+                    <p className="text-muted-foreground">Allow certain types to be uploaded</p>
+                  </div>
+                </div>
+
+                {isRestrictedTypes && (
+                  <div className="flex flex-col gap-2">
+                    <Label className="fullwidth flex items-center justify-between" htmlFor="mime-types">
+                      <h1>Allowed Types</h1>
+                      <p className="text-muted-foreground">Comma separated</p>
+                    </Label>
+                    <Input
+                      className={`${allowedTypesError && "border-red-500! focus:border-red-500! ring-red-500!"}`}
+                      id="mime-types" 
+                      placeholder="image/jpeg, image/png, audio/mpeg, video/mp4"
+                      value={allowedTypes}
+                      onChange={e => setAllowedTypes(e.target.value)}
+                    />
+                    {allowedTypesError && (
+                      <p className="text-red-500 text-sm">Must be comma seperated & include a slash</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button
+                  variant={'outline'}
+                >
+                  Cancel
+                </Button>
+              </DialogClose>
+
+              <Button onClick={() => mutate()} disabled={isPending || existingBucketsSet.has(name) || name.length < 5}>
+                {!isPending && "Proceed"}
+                {isPending && <Loader2 className='animate-spin' />}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </form>
+      </Dialog>
   )
 }
