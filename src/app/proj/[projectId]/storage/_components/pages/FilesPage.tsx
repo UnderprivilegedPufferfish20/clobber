@@ -10,9 +10,9 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch";
 import { createBucket } from "@/lib/actions/storage/files/actions";
 import { getBucketNames } from "@/lib/actions/storage/files/cache-actions";
-import { cn } from "@/lib/utils";
+import { cn, formatGCSFileSize } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
-import { BoxIcon, FunctionSquare, FunctionSquareIcon, InboxIcon, Loader2, PackageOpenIcon, Search } from "lucide-react"
+import { BoxIcon, FunctionSquare, FunctionSquareIcon, GlobeIcon, InboxIcon, Loader2, PackageOpenIcon, Search } from "lucide-react"
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import path from "path";
@@ -133,6 +133,9 @@ const FilesPage = (props: Props) => {
                 id={f.id}
                 name={f.name}
                 key={f.id}
+                is_public={f.is_public}
+                size_lim={f.size_lim_bytes}
+                supported_types={f.allowed_types}
               />
             ))}
         </div>
@@ -158,25 +161,38 @@ function BucketCard({
   id,
   name,
   createdAt,
+  is_public,
+  supported_types,
+  size_lim
 }: {
   projectId: string,
   id: string,
   name: string,
-  createdAt: any
+  createdAt: any,
+  is_public: boolean,
+  supported_types: string[],
+  size_lim: bigint
 }) {
   const pathname = usePathname()
 
   return (
     <Link
       href={`${pathname}?page=files&path=${name}`}
-      className="group rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20"
+      className="flex flex-col gap-2 group rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20"
     >
-      <div className="min-w-0">
-          <div className="group flex items-center gap-2">
-            <BoxIcon className="h-6 w-6 text-muted-foreground" />
-            <h3>{name}</h3>
-          </div>
+      <div className="min-w-0 flex items-center justify-between">
+        <div className="group flex items-center gap-2">
+          <BoxIcon className="h-6 w-6 text-muted-foreground" />
+          <h3 className="font-bold text-2xl">{name}</h3>
         </div>
+
+        {is_public && <GlobeIcon className="h-6 w-6"/>}
+      </div>
+
+      <Separator />
+
+      <p>Size Cap: {formatGCSFileSize(String(size_lim))}</p>
+      <p className="truncate">Supported Types: {supported_types.join(", ")}</p>
     </Link>
   )
 }

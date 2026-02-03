@@ -234,23 +234,32 @@ const FoldersPage = (props: Props) => {
               <FolderPlusIcon className='w-6 h-6'/>
               Create Folder
             </Button>
-            <Input
-              className='max-w-3xs'
-              placeholder='Search for resources' 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
           </div>
         </div>
 
 
         <Separator className="mb-6" />
 
-        <div className='flex flex-col gap-8'>
+        <div className='flex items-center gap-2'>
+          <Input
+              className='max-w-3xs'
+              placeholder='Search for resources' 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+          />
+          <Select>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className='flex flex-col'>
           <div>
-            <h1 className='text-2xl font-semibold mb-4'>Folders</h1>
             {filteredFolders.length === 0 ? (
-              searchTerm ? (
                 <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
                   <Search size={48} className="text-muted-foreground" />
                   <div className="space-y-1">
@@ -264,23 +273,9 @@ const FoldersPage = (props: Props) => {
                   </Button>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
-                  <FolderIcon size={48} className="text-muted-foreground" />
-                  <div className="space-y-1">
-                    <h2 className="text-lg font-semibold">No folders yet</h2>
-                    <p className="text-muted-foreground text-sm">
-                      Create a folder to organize your files
-                    </p>
-                  </div>
-                  <Button onClick={() => setCreateFolderOpen(true)}>
-                    Create Folder
-                  </Button>
-                </div>
-              )
-            ) : (
               <div 
                 ref={foldersRef}
-                className='flex gap-2 overflow-x-auto scrollbar-hide p-2 mb-7'
+                className='flex gap-2 overflow-x-auto scrollbar-hide p-2'
               >
                 {filteredFolders.map((folder) => (
                   <FolderCard 
@@ -293,8 +288,7 @@ const FoldersPage = (props: Props) => {
           </div>
           
           <div className='fullscreen'>
-            <div className='group flex items-center gap-2 mb-4'>
-              <h1 className='text-2xl font-semibold'>Files</h1>
+            <div className='group flex items-center gap-2 mt-4'>
               {selectedObjects.length > 0 ? (
                 <div className='flex items-center justify-between rounded-full w-lg min-w-lg max-w-lg bg-indigo-500 text-white px-3 py-0.5'>
                   <div className='flex items-center gap-1'>
@@ -350,7 +344,6 @@ const FoldersPage = (props: Props) => {
               )}
             </div>
             {filteredFiles.length === 0 ? (
-              searchTerm ? (
                 <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
                   <Search size={48} className="text-muted-foreground" />
                   <div className="space-y-1">
@@ -364,30 +357,16 @@ const FoldersPage = (props: Props) => {
                   </Button>
                 </div>
               ) : (
-                <div className="fullscreen flex flex-col items-center justify-center gap-4 text-center py-8">
-                  <FileTextIcon size={48} className="text-muted-foreground" />
-                  <div className="space-y-1">
-                    <h2 className="text-lg font-semibold">No files yet</h2>
-                    <p className="text-muted-foreground text-sm">
-                      Upload a file to get started
-                    </p>
-                  </div>
-                  <Button onClick={onPickFile}>
-                    Upload File
-                  </Button>
-                </div>
-              )
-            ) : (
               <div className='flex items-center gap-2 flex-wrap'>
                 {filteredFiles.map((file) => {
 
-                  console.log("@RENDERED FILE: ", typeof file.createdAt)
+                  console.log("@RENDERED FILE: ", typeof file.created_at)
 
-                  if (typeof file.createdAt === 'object') {
+                  if (typeof file.created_at === 'object') {
 
-                    file.createdAt = file.createdAt.toLocaleDateString()
-                    file.lastAccessedAt = file.lastAccessedAt.toLocaleDateString()
-                    file.updatedAt = file.updatedAt.toLocaleDateString()
+                    file.created_at = file.created_at.toLocaleDateString()
+                    file.last_accessed_at = file.last_accessed_at.toLocaleDateString()
+                    file.updated_at = file.updated_at.toLocaleDateString()
                   }
 
                 

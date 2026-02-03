@@ -56,7 +56,9 @@ export type FileStorageBucket = {
   project_id: string,
   created_at: string,
   updated_at: string
-  objects: FileObject[]
+  size_lim_bytes: bigint,
+  allowed_types: string[],
+  is_public: boolean
 }
 
 export type FileObject = {

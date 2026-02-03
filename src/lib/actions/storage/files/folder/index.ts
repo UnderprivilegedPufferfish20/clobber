@@ -47,7 +47,7 @@ export async function createFolder(
   const dbBucket = dbBucketResult.rows[0];
 
   await pool.query(`
-    INSERT INTO "storage"."objects" ("lastAccessedAt", name, "bucketId")
+    INSERT INTO "storage"."objects" (last_accessed_at, name, bucket_id)
     VALUES ($1, $2, $3)
   `, [new Date(), fullPath, dbBucket.id]);
 

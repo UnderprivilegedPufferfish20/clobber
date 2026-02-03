@@ -89,7 +89,7 @@ export async function uploadFile(
   const metadata = await file.getMetadata();
 
   await pool.query(`
-    INSERT INTO "storage"."objects" ("lastAccessedAt", name, "bucketId", metadata)
+    INSERT INTO "storage"."objects" (last_accessed_at, name, bucket_id, metadata)
     VALUES ($1, $2, $3, $4)
   `, [new Date(), dest, dbBucket.id, JSON.stringify(metadata)]);
 
