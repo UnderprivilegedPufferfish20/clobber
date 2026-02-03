@@ -6,8 +6,6 @@ import { toast } from 'sonner'
 import { Loader2, Columns, ArrowUpRightSquareIcon, Link, FolderIcon, ArrowRightIcon, ChevronRightIcon, FileIcon, FolderPlusIcon } from 'lucide-react'
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Sheet,
   SheetClose,
@@ -17,7 +15,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import CustomDialogHeader from '@/components/CustomDialogHeader'
-import { Object as DatabaseObject } from '@/lib/db/generated'
 import { useSearchParams } from 'next/navigation'
 import { childName } from '@/lib/utils'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
@@ -33,7 +30,7 @@ function MoveObjectSheet({
   setMoveSheetOpen
 }: {
   projectId: string,
-  objects: DatabaseObject[],
+  objects: any[],
   moveSheetOpen: boolean;
   setMoveSheetOpen: Dispatch<SetStateAction<boolean>>;
 }) {
@@ -91,8 +88,6 @@ function MoveObjectSheet({
       toast.error(error.message || "Failed to move object", { id: "move-object" });
     }
   })
-
-  console.log("@@MOVE SHEET OBJECTS: ", objects)
 
   return (
     <Sheet open={moveSheetOpen} onOpenChange={setMoveSheetOpen}>

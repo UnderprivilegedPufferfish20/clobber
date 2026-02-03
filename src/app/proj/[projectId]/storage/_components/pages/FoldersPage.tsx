@@ -11,21 +11,21 @@ import { Separator } from '@/components/ui/separator';
 import { mimeTypeToIcon } from '@/lib/constants';
 import { childName, formatGCSFileSize } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeftIcon, ArrowUpRightFromSquare, ArrowUpRightFromSquareIcon, CloudUploadIcon, DownloadIcon, EditIcon, FileTextIcon, FolderIcon, FolderPlusIcon, Heading1, InboxIcon, LinkIcon, Loader2, Search, Trash2Icon, XIcon } from 'lucide-react';
+import { ArrowLeftIcon, ArrowUpRightFromSquare, ArrowUpRightFromSquareIcon, BookTypeIcon, CloudUploadIcon, DownloadIcon, EditIcon, FileArchive, FileArchiveIcon, FileTextIcon, FolderIcon, FolderPlusIcon, Heading1, HeadphonesIcon, ImageIcon, Inbox, InboxIcon, LinkIcon, Loader2, LucideIcon, Search, Trash2Icon, VideoIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { ChangeEvent, Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateFolderDialog from '../dialogs/CreateFolderDialog';
 import MoveObjectSheet from '../sheets/MoveSheet';
 import { Checkbox } from '@/components/ui/checkbox';
-import { deleteFolder } from '@/lib/actions/database/sql';
-import { downloadFolder } from '@/lib/actions/storage/files/folder';
+import { downloadFolder, deleteFolder } from '@/lib/actions/storage/files/folder';
 import { getFolderData } from '@/lib/actions/storage/files/folder/cache-actions';
 import { uploadFile, downloadObject, deleteObject, renameObject, getURL, downloadSelected } from '@/lib/actions/storage/files/object';
 import { FileObject } from '@/lib/types';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 type Props = {
@@ -38,11 +38,33 @@ const FoldersPage = (props: Props) => {
   const searchParams = useSearchParams()
   const router = useRouter()
 
+  
+  type MediaTypes = "image" | "audio" | "video" | "text" | "application"
+
+  const mediaTypeToIcon = (t: MediaTypes): LucideIcon => {
+    switch (t) {
+      case "application":
+        return FileArchiveIcon
+      case "audio":
+        return HeadphonesIcon
+      case "image":
+        return ImageIcon
+      case "text":
+        return FileTextIcon
+      case "video":
+        return VideoIcon
+    }
+  }
+
+  const MediaTypesList = ["image", "audio", "video", "text", "application"] as MediaTypes[]
+
   const inputRef = useRef<HTMLInputElement | null>(null);
   const foldersRef = useRef<HTMLDivElement | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string>("");
+
+  const [filteredType, setFilteredType] = useState<MediaTypes[]>(MediaTypesList)
 
   const projectId = pathname.split("/")[2]
   const currentPath = searchParams.get("path") as string;
@@ -128,11 +150,19 @@ const FoldersPage = (props: Props) => {
     return folders.filter(f => childName(f, prefix).toLowerCase().includes(q));
   }, [folders, searchTerm]);
 
+    const selectedTypeFilterSet = useMemo(() => {
+    return new Set(filteredType)
+  }, [filteredType])
+
   const filteredFiles = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return files;
-    return files.filter(f => childName(f, prefix).toLowerCase().includes(q));
-  }, [files, searchTerm]);
+
+    console.log("@FILES: ", files)
+    return files.filter(f => {
+      console.log("@@M", f.metadata[0])
+      return childName(f, prefix).toLowerCase().includes(q) && selectedTypeFilterSet.has(f.metadata[0]["contentType"].split("/")[0])
+    });
+  }, [files, searchTerm, selectedTypeFilterSet]);
 
   const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null
@@ -164,10 +194,13 @@ const FoldersPage = (props: Props) => {
     return () => div.removeEventListener('wheel', handleWheel);
   }, []);
 
+
+
+
   return (
     <>
       <div className="fullscreen flex flex-col p-8 overflow-y-auto">
-        <div className="flex items-center justify-between gap-4 pb-4">
+        <div className="flex items-center justify-between pb-4 gap-4">
           <div className='flex gap-2 items-baseline justify-baseline'>
             <ArrowLeftIcon 
               className='w-6 h-6 cursor-pointer'
@@ -240,57 +273,8 @@ const FoldersPage = (props: Props) => {
 
         <Separator className="mb-6" />
 
-        <div className='flex items-center gap-2'>
-          <Input
-              className='max-w-3xs'
-              placeholder='Search for resources' 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-          />
-          <Select>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className='flex flex-col'>
-          <div>
-            {filteredFolders.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
-                  <Search size={48} className="text-muted-foreground" />
-                  <div className="space-y-1">
-                    <h2 className="text-lg font-semibold">No matching folders</h2>
-                    <p className="text-muted-foreground text-sm">
-                      No folders match "{searchTerm.trim()}".
-                    </p>
-                  </div>
-                  <Button onClick={() => setSearchTerm("")}>
-                    Clear Search
-                  </Button>
-                </div>
-              ) : (
-              <div 
-                ref={foldersRef}
-                className='flex gap-2 overflow-x-auto scrollbar-hide p-2'
-              >
-                {filteredFolders.map((folder) => (
-                  <FolderCard 
-                    key={`folder:${folder.id}`} 
-                    object={folder}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div className='fullscreen'>
-            <div className='group flex items-center gap-2 mt-4'>
-              {selectedObjects.length > 0 ? (
-                <div className='flex items-center justify-between rounded-full w-lg min-w-lg max-w-lg bg-indigo-500 text-white px-3 py-0.5'>
+          {selectedObjects.length > 0 ? (
+                <div className='flex items-center justify-between rounded-full w-lg min-w-lg max-w-lg bg-indigo-500 text-white px-3 m-2 p-0.5'>
                   <div className='flex items-center gap-1'>
                     <Button
                       variant={'ghost'}
@@ -331,32 +315,157 @@ const FoldersPage = (props: Props) => {
 
                 </div>
               ) : (
-                <Checkbox
-                  className='hidden group-hover:inline w-5 h-5' 
-                  onCheckedChange={checked => {
-                    if (checked) {
-                      setSelectedObjects(files)
-                    } else {
-                      setSelectedObjects([])
-                    }
-                  }}
-                />
-              )}
-            </div>
-            {filteredFiles.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
-                  <Search size={48} className="text-muted-foreground" />
-                  <div className="space-y-1">
-                    <h2 className="text-lg font-semibold">No matching files</h2>
-                    <p className="text-muted-foreground text-sm">
-                      No files match "{searchTerm.trim()}".
-                    </p>
-                  </div>
-                  <Button onClick={() => setSearchTerm("")}>
-                    Clear Search
-                  </Button>
+                <div className='flex items-center gap-2 m-2 p-0.5 mb-6'>
+
+                        <Input
+                      disabled={props.folderData.length === 0}
+                      className={`max-w-3xs ${props.folderData.length === 0 && "cursor-not-allowed"}`}
+                      placeholder='Search for resources' 
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                  />
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger 
+                      asChild
+                      disabled={props.folderData.length === 0}
+                      className='relative'
+                    >
+                      <Button
+                        variant={"outline"}
+                        className='flex items-center gap-2 relative'
+                      >
+                        <BookTypeIcon className='w-6 h-6'/>
+                        File Types
+                        <div className={`${MediaTypesList.length === filteredType.length && "hidden"} absolute -top-1 -right-1 w-5 h-5 bg-white text-black text-xs rounded-full flex items-center justify-center shadow-lg border-2 border-background`}> 
+                          {Math.abs(filteredType.length - MediaTypesList.length)} 
+                        </div> 
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='start' className='w-xs min-w-xs max-w-xs' onClick={e => e.preventDefault()}>
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel className='flex items-center fullwidth justify-between'>
+                          <h3>File Types to Show</h3>
+                          <Button
+                            variant={"ghost"}
+                            onClick={() => {
+                              if (MediaTypesList.length === filteredType.length) {
+                                setFilteredType([])
+                              } else {
+                                setFilteredType(MediaTypesList as MediaTypes[])
+                              }
+                            }}
+                          >
+                            {MediaTypesList.length === filteredType.length ? "Deselect All" : "Select All"}
+                          </Button>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {MediaTypesList.map(m => {
+
+                          const Icon = mediaTypeToIcon(m)
+
+                          return (
+                            <DropdownMenuCheckboxItem
+                              onSelect={e => e.preventDefault()} 
+                              className='flex items-center justify-between group'
+                              key={m} 
+                              checked={selectedTypeFilterSet.has(m as MediaTypes)}
+                              onCheckedChange={checked => {
+                                if (checked) {
+                                  setFilteredType(p => [...p, m as MediaTypes])
+                                } else {
+                                  setFilteredType(p => p.filter(v => v !== m))
+                                }
+                              }}
+                            >
+                              <div className='flex items-center gap-2'>
+                                <Icon />
+                                <h1>{m}</h1>
+                              </div>
+
+                              <span
+                                className='hidden group-hover:block text-muted-foreground cursor-pointer'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setFilteredType([m as MediaTypes])
+                                }}
+                              >
+                                Only
+                              </span>
+                            </DropdownMenuCheckboxItem>
+
+                          )
+                        })}
+                      </DropdownMenuGroup>
+                      
+                      
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              ) : (
+              )}
+
+        {searchTerm.length !== 0 && filteredFiles.length === 0 && filteredFolders.length === 0 && (
+          <div className="fullscreen flex-1 flex flex-col items-center justify-center gap-4 text-center py-8">
+            <Search size={48} className="text-muted-foreground" />
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">No matching files</h2>
+              <p className="text-muted-foreground text-sm">
+                No items match "{searchTerm.trim()}".
+              </p>
+            </div>
+            <Button onClick={() => setSearchTerm("")}>
+              Clear Search
+            </Button>
+          </div>
+        )}
+
+        {searchTerm.length === 0 && props.folderData.length === 0 && (
+          <div className="fullscreen flex-1 flex flex-col items-center justify-center gap-4 text-center py-8">
+            <InboxIcon size={48} className="text-muted-foreground" />
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">This folder is empty</h2>
+              <p className="text-muted-foreground text-sm">
+                No items inside "{props.bucketName}".
+              </p>
+            </div>
+            <div className='flex items-center gap-2'>
+              <Button
+                className="flex items-center gap-2"
+                variant="outline"
+                onClick={onPickFile}
+                disabled={isUploadPending}
+              >
+                <CloudUploadIcon className="w-6 h-6" />
+                Upload
+              </Button>
+              <Button
+                className='flex items-center gap-2'
+                variant={"outline"}
+                onClick={() => setCreateFolderOpen(true)}
+              >
+                <FolderPlusIcon className='w-6 h-6'/>
+                Create Folder
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className='flex flex-col m-2 gap-8'>
+          <div>
+            <div 
+              ref={foldersRef}
+              className='flex gap-2 overflow-x-auto scrollbar-hide'
+            >
+              {filteredFolders.map((folder) => (
+                <FolderCard 
+                  key={`folder:${folder.id}`} 
+                  object={folder}
+                />
+              ))}
+            </div>
+          </div>
+          
+          <div className='fullscreen'>
               <div className='flex items-center gap-2 flex-wrap'>
                 {filteredFiles.map((file) => {
 
@@ -380,7 +489,6 @@ const FoldersPage = (props: Props) => {
                   );
                 })}
               </div>
-            )}
           </div>
         </div>
       </div>
@@ -415,8 +523,6 @@ function FileCard({
   selectedObjects: FileObject[],
   setSelectedObjects: Dispatch<SetStateAction<FileObject[]>>
 }) {
-  console.log("@METADATA: ", object.metadata[0])
-
   const fileMetadata = object.metadata[0]
 
   const pathname = usePathname();

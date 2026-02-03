@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createBucket } from "@/lib/actions/storage/files/actions";
 import { getBucketNames } from "@/lib/actions/storage/files/cache-actions";
 import { cn, formatGCSFileSize } from "@/lib/utils";
@@ -186,13 +187,22 @@ function BucketCard({
           <h3 className="font-bold text-2xl">{name}</h3>
         </div>
 
-        {is_public && <GlobeIcon className="h-6 w-6"/>}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              {is_public && <GlobeIcon className="h-6 w-6"/>}
+            </TooltipTrigger>
+            <TooltipContent>
+              This bucket can be accessed by anyone without authentication
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       <Separator />
 
       <p>Size Cap: {formatGCSFileSize(String(size_lim))}</p>
-      <p className="truncate">Supported Types: {supported_types.join(", ")}</p>
+      <p className="truncate">Supported Types: {supported_types ? supported_types.join(", ") : 'all'}</p>
     </Link>
   )
 }
