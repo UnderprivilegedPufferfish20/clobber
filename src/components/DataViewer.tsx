@@ -52,12 +52,12 @@ export default function DataViewer<T>({
   name?: string,
   timeMs: number
 }) {
-  console.log("@COLS: ", columns)
 
   const router = useRouter();
   const pathname = usePathname()
   const searchParams = useSearchParams();
   const table = name ? name : searchParams.get("table");
+  const pkeyCols = new Set(columns.filter(c => c.is_pkey).map(c => c.name))
 
   const setSearchParam = (key: string, value: string) => {
     const ps = new URLSearchParams(searchParams)
@@ -146,12 +146,12 @@ export default function DataViewer<T>({
 
   const [activeCols, setActiveCols] = useState<ColumnType[]>(columns)
 
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
+  const [selectedRows, setSelectedRows] = useState<string[][]>([])
 
   const {mutate: downloadSelected, isPending: isDownloadPending} = useMutation({
     mutationFn: async (type: DATA_EXPORT_FORMATS) => {
       const exportData = await downloadSelectedRows(
-        data,
+        selectedRows.values().map(),
         type,
         name ?? "Users",
         "auth",
@@ -172,8 +172,8 @@ export default function DataViewer<T>({
     },
     onMutate: () => toast.loading("Downloading...", { id: "download-sel" }),
     onSuccess: () => {
-      toast.success(`${selectedRows.size} rows downloaded`, {id: "download-sel"})
-      setSelectedRows(new Set())
+      toast.success(`${selectedRows.keys()} rows downloaded`, {id: "download-sel"})
+      setSelectedRows([])
     },
     onError: (e) => toast.error(`Failed to download: ${e}`, { id: "download-sel"})
   })
@@ -181,10 +181,10 @@ export default function DataViewer<T>({
 
   const {mutate: deleteSelected, isPending: isDeletePending} = useMutation({
     mutationFn: async () => {
-      const pkeyCols = new Set(columns.filter(c => c.is_pkey).map(c => c.name))
+      
       console.log("@PKEY COLS: ", pkeyCols)
       await deleteSelectedRows(
-        data,
+        selectedRows,
         "auth",
         "users",
         projectId,
@@ -192,12 +192,12 @@ export default function DataViewer<T>({
         pkeyCols
       )
 
-      setSelectedRows(new Set())
+      setSelectedRows([])
     },
     onMutate: () => toast.loading("Deleting...", { id: "delete-sel" }),
     onSuccess: () => {
-      toast.success(`${selectedRows.size} rows deleted`, {id: "delete-sel"})
-      setSelectedRows(new Set())
+      toast.success(`${selectedRows.length} rows deleted`, {id: "delete-sel"})
+      setSelectedRows([])
     },
     onError: (e) => toast.error(`Failed to delete: ${e}`, { id: "delete-sel"})
   })
@@ -410,13 +410,14 @@ return (
               <Checkbox
                 className="w-4 h-4 border-r-2" 
                 onCheckedChange={checked => {
+                  if (pkeyCols.size === 0) return;
                   if (checked) {
-                    setSelectedRows(p => new Set(data.map((_, idx) => `${currentPage}-${idx}`)))
+                    setSelectedRows(data.map(v =>  [...pkeyCols].map(colName => v[colName])))
                   } else {
-                    setSelectedRows(new Set())
+                    setSelectedRows([])
                   }
                 }}
-                checked={data.length === selectedRows.size && data.length > 0}
+                checked={data.length === selectedRows.length && data.length > 0}
               />
             </div>
             {activeCols.map((col: ColumnType) => {
@@ -477,6 +478,7 @@ return (
                         className="w-4 h-4"
                         checked={selectedRows.has(rowKey)}
                         onCheckedChange={checked => {
+                          if (pkeyCols.size === 0) return;
                           setSelectedRows(prev => {
                             const newSet = new Set(prev);
                             if (checked) {
@@ -494,7 +496,9 @@ return (
                           className="hidden group-hover:block"
                           checked={selectedRows.has(rowKey)}
                           onCheckedChange={checked => {
+                            if (pkeyCols.size === 0) return;
                             setSelectedRows(prev => {
+                              
                               const newSet = new Set(prev);
                               if (checked) {
                                 newSet.add(rowKey);
