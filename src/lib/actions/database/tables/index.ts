@@ -153,15 +153,15 @@ export async function addTable(
   const pkeyCols: string[] = [];
 
   for (const col of data.columns) {
-    let colDef = `"${col.name}" ${col.dtype}${col.isArray ? '[]' : ''}`;
-    if (!col.isNullable) colDef += ' NOT NULL';
-    if (col.isUnique) colDef += ' UNIQUE';
+    let colDef = `"${col.name}" ${col.dtype}${col.is_array ? '[]' : ''}`;
+    if (!col.is_nullable) colDef += ' NOT NULL';
+    if (col.is_unique) colDef += ' UNIQUE';
 
     if (col.default !== undefined) {
-      colDef += ` ${col.default ? col.isArray ? `DEFAULT ARRAY[${col.default}]` : `DEFAULT ${col.default}` : ""}`;
+      colDef += ` ${col.default ? col.is_array ? `DEFAULT ARRAY[${col.default}]` : `DEFAULT ${col.default}` : ""}`;
     }
 
-    if (col.isPkey) {
+    if (col.is_pkey) {
       pkeyCols.push(`"${col.name}"`);
     }
 
@@ -178,8 +178,8 @@ export async function addTable(
 
       constraints.unshift(`
         CONSTRAINT ${createFkeyName(data.name, fk)}
-          FOREIGN KEY (${fk.cols.map(fkc => `"${fkc.referencorColumn}"`).join(", ")}) REFERENCES "${fk.cols[0].referenceeSchema}"."${fk.cols[0].referenceeTable}"(${fk.cols.map(fkc => `"${fkc.referenceeColumn}"`).join(", ")})
-          ON DELETE ${fk.deleteAction} ON UPDATE ${fk.updateAction}
+          FOREIGN KEY (${fk.cols.map(fkc => `"${fkc.referencor_column}"`).join(", ")}) REFERENCES "${fk.cols[0].referencee_schema}"."${fk.cols[0].referencee_table}"(${fk.cols.map(fkc => `"${fkc.referencee_column}"`).join(", ")})
+          ON DELETE ${fk.delete_action} ON UPDATE ${fk.update_action}
       `)
     })
   }
@@ -267,11 +267,11 @@ export async function updateTable(
     return (
       a.name !== b.name ||
       a.dtype !== b.dtype ||
-      a.isArray !== b.isArray ||
+      a.is_array !== b.is_array ||
       (a.default ?? "") !== (b.default ?? "") ||
-      a.isNullable !== b.isNullable ||
-      a.isUnique !== b.isUnique ||
-      a.isPkey !== b.isPkey
+      a.is_nullable !== b.is_nullable ||
+      a.is_unique !== b.is_unique ||
+      a.is_pkey !== b.is_pkey
       // include fkey etc if applicable
     );
   }
@@ -361,4 +361,91 @@ export async function addRow(
   console.log("@@Cols: ", cols_to_dtype)
 
 
+}
+
+export async function deleteSelectedRows(
+  rows: any[],
+  schema: string,
+  table: string,
+  projectId: string,
+  cacheTag: string,
+  pkey_cols: Set<string>
+) {
+  if (pkey_cols.size === 0) {
+    throw new Error("Must have at least on pkey col");
+  }
+
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+
+
+
+  if (rows.length === 0) return;
+
+  await Promise.all(
+    rows.map(async r => {
+      const clauses = Object.entries(r).filter(([k, v]) => Boolean(v) && pkey_cols.has(k)).map(([k, v]) => {
+        
+        if (v instanceof Date) {
+          v = v.toISOString()
+          k = `DATE_TRUNC('milliseconds', "${k}")`
+        } else {
+          k = `"${k}"`
+        }
+
+        
+        return `${k} = '${v}'`
+      })
+      console.log("@CLAUSES: ", clauses)
+      const q = `DELETE FROM "${schema}"."${table}" WHERE ${clauses.join(" AND ")};`
+
+      console.log("@DELSEL QUERY: ", q)
+
+      await pool.query(q)
+    })
+  )
+
+  revalidateTag(t(cacheTag, projectId, schema, table), "max")
+}
+
+export async function downloadSelectedRows(
+  rows: any[],
+  format: DATA_EXPORT_FORMATS,
+  tablename: string,
+  schema: string,
+  columns: ColumnType[]
+) {
+  if (rows.length===0) return;
+
+  switch (format) {
+    case DATA_EXPORT_FORMATS.JSON:
+      return {
+        fileName: `${tablename}-selected.json`,
+        contentType: "application/json; charset=utf-8",
+        data: rowsToJson(rows, columns),
+      }
+    case DATA_EXPORT_FORMATS.CSV:
+      return {
+        fileName: `${tablename}-selected.json`,
+        contentType: "text/csv; charset=utf-8",
+        data: rowsToCsv(rows, columns),
+      }
+    case DATA_EXPORT_FORMATS.SQL:
+      return {
+        fileName: `${tablename}-selected.json`,
+        contentType: "application/sql; charset=utf-8",
+        data: rowsToSql(schema, tablename, rows, columns)
+      }
+  }
 }

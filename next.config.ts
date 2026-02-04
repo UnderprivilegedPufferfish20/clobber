@@ -4,7 +4,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: "50mb"
-    }
+    },
+    turbopackUseSystemTlsCerts: true
   },
   images: {
     remotePatterns: [new URL("https://lh3.googleusercontent.com/**")]

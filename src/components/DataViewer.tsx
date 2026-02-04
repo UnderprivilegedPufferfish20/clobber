@@ -9,7 +9,7 @@ import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns
 import {  Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
-import { ColumnType, FilterConfig, FilterOperator } from "@/lib/types";
+import { ColumnType, DATA_EXPORT_FORMATS, FilterConfig, FilterOperator } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "./ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -28,6 +28,8 @@ import { Checkbox } from "./ui/checkbox";
 import { DTypes } from "@/lib/constants";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectLabel, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { deleteSelectedRows, downloadSelectedRows } from "@/lib/actions/database/tables";
 
 
 
@@ -50,6 +52,8 @@ export default function DataViewer<T>({
   name?: string,
   timeMs: number
 }) {
+  console.log("@COLS: ", columns)
+
   const router = useRouter();
   const pathname = usePathname()
   const searchParams = useSearchParams();
@@ -144,6 +148,60 @@ export default function DataViewer<T>({
 
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
 
+  const {mutate: downloadSelected, isPending: isDownloadPending} = useMutation({
+    mutationFn: async (type: DATA_EXPORT_FORMATS) => {
+      const exportData = await downloadSelectedRows(
+        data,
+        type,
+        name ?? "Users",
+        "auth",
+        columns,
+      )
+
+      if (!exportData) throw new Error("Failed to export");
+
+      const blob = new Blob([exportData.data], { type: exportData.contentType });
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = exportData.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href)
+    },
+    onMutate: () => toast.loading("Downloading...", { id: "download-sel" }),
+    onSuccess: () => {
+      toast.success(`${selectedRows.size} rows downloaded`, {id: "download-sel"})
+      setSelectedRows(new Set())
+    },
+    onError: (e) => toast.error(`Failed to download: ${e}`, { id: "download-sel"})
+  })
+
+
+  const {mutate: deleteSelected, isPending: isDeletePending} = useMutation({
+    mutationFn: async () => {
+      const pkeyCols = new Set(columns.filter(c => c.is_pkey).map(c => c.name))
+      console.log("@PKEY COLS: ", pkeyCols)
+      await deleteSelectedRows(
+        data,
+        "auth",
+        "users",
+        projectId,
+        "auth-users",
+        pkeyCols
+      )
+
+      setSelectedRows(new Set())
+    },
+    onMutate: () => toast.loading("Deleting...", { id: "delete-sel" }),
+    onSuccess: () => {
+      toast.success(`${selectedRows.size} rows deleted`, {id: "delete-sel"})
+      setSelectedRows(new Set())
+    },
+    onError: (e) => toast.error(`Failed to delete: ${e}`, { id: "delete-sel"})
+  })
+
   useEffect(() => {
     if (selectedRows.size === 0) {
       toast.dismiss("selected-rows");
@@ -173,7 +231,7 @@ export default function DataViewer<T>({
             <DropdownMenuContent className="z-800">
               <DropdownMenuItem 
                 className="flex items-center gap-2"
-                onClick={() => {}}
+                onClick={() => downloadSelected(DATA_EXPORT_FORMATS.JSON)}
 
               >
                 <FileJson className="w-6 h-6" />
@@ -181,14 +239,14 @@ export default function DataViewer<T>({
               </DropdownMenuItem>
               <DropdownMenuItem 
                 className="flex items-center gap-2"
-                onClick={() => {}}
+                onClick={() => downloadSelected(DATA_EXPORT_FORMATS.CSV)}
               >
                 <FileSpreadsheetIcon className="w-6 h-6" />
                 CSV
               </DropdownMenuItem>
               <DropdownMenuItem 
                 className="flex items-center gap-2"
-                onClick={() => {}}
+                onClick={() => downloadSelected(DATA_EXPORT_FORMATS.SQL)}
               >
                 <FileTextIcon className="w-6 h-6" />
                 SQL
@@ -197,6 +255,7 @@ export default function DataViewer<T>({
           </DropdownMenu>
 
           <Button
+            onClick={() => deleteSelected()}
             variant={"outline"}
             className="flex items-center gap-2"
           > 
@@ -220,6 +279,8 @@ export default function DataViewer<T>({
       className: "w-[542px] min-w-[542px] max-w-[542px]" 
     })
   }, [selectedRows])
+
+  
 
   
 
@@ -387,18 +448,27 @@ return (
 
         <div className="fullscreen flex flex-col">
           {data.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="text-center">
+            <div
+              className="hover:bg-muted/40 flex flex-1 items-center justify-center max-h-8 cursor-pointer"
+            >
+              <div
+                className={[
+                  "p-2 align-top cursor-pointer",
+                  "border-b",
+                  "border-l-2 first:border-l-0",
+                  "truncate",
+                  "flex-1! text-sm text-center"
+                ].join(" ")}
+              >
                 No data in this table
-              </TableCell>
-            </TableRow>
+              </div>
+            </div>
           )}
           {data.map((row: any, idx: number) => {
             const rowKey = String(`${currentPage}-${idx}`);
             return (
-              <TooltipProvider delayDuration={5000}>
+              <TooltipProvider key={row.ctid} delayDuration={5000}>
                 <div
-                  key={rowKey}
                   className="hover:bg-muted/40 flex flex-1 items-center max-h-8 cursor-pointer"
                 >
                   <div className="flex items-center justify-center w-9 h-9 group border-b">

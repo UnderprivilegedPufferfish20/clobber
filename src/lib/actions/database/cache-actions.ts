@@ -174,8 +174,8 @@ WITH
       json_agg(
         json_build_object(
           'cols', cols,
-          'updateAction', on_update,
-          'deleteAction', on_delete
+          'update_action', on_update,
+          'delete_action', on_delete
         )
       ) AS fkeys
     FROM (
@@ -187,12 +187,12 @@ WITH
         on_delete,
         json_agg(
           json_build_object(
-            'referencorSchema', schema,
-            'referencorTable', tab,
-            'referencorColumn', from_column,
-            'referenceeSchema', to_schema,
-            'referenceeTable', to_table,
-            'referenceeColumn', to_column
+            'referencor_schema', schema,
+            'referencor_table', tab,
+            'referencor_column', from_column,
+            'referencee_schema', to_schema,
+            'referencee_table', to_table,
+            'referencee_column', to_column
           ) ORDER BY ord
         ) AS cols
       FROM foreign_keys
@@ -211,11 +211,11 @@ SELECT
           json_build_object(
             'name', cf.name,
             'dtype', cf.dtype,
-            'isArray', cf.is_array,
+            'is_array', cf.is_array,
             'default', cf.default_value,
-            'isPkey', cf.is_primary_key,
-            'isUnique', cf.is_unique,
-            'isNullable', NOT cf.is_nullable
+            'is_pkey', cf.is_primary_key,
+            'is_unique', cf.is_unique,
+            'is_nullable', NOT cf.is_nullable
           )
           ORDER BY cf.attnum
         )

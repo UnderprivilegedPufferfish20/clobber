@@ -102,11 +102,11 @@ const SchemaEditorPage = ({
         fk.cols.forEach((c, colIdx) => {
           const edge = {
             id: `edge:${createFkeyName(table.name, fk)}`,
-            source: `${c.referencorSchema}.${c.referencorTable}`,
-            target: `${c.referenceeSchema}.${c.referenceeTable}`,
+            source: `${c.referencor_schema}.${c.referencor_table}`,
+            target: `${c.referencee_schema}.${c.referencee_table}`,
             
-            sourceHandle: `col:${c.referencorSchema}.${c.referencorTable}.${c.referencorColumn}:source`,
-            targetHandle: `col:${c.referenceeSchema}.${c.referenceeTable}.${c.referenceeColumn}:target`,
+            sourceHandle: `col:${c.referencor_schema}.${c.referencor_table}.${c.referencor_column}:source`,
+            targetHandle: `col:${c.referencee_schema}.${c.referencee_table}.${c.referencee_column}:target`,
             type: "smoothstep",
             markerEnd: { type: MarkerType.ArrowClosed },
           }
@@ -236,7 +236,7 @@ function TableColumn({
   tableName: string,
   column: ColumnType
 }) {
-  const handleId = `col:${schema}.${tableName}.${column.name}`;
+  console.log("@DISPLAY COL: ", column)
 
   const { mutate: delCol } = useMutation({
     mutationFn: async (name: string) => {
@@ -264,7 +264,7 @@ function TableColumn({
 
           <div className="flex items-center gap-2">
             <TooltipProvider>
-              {column.isPkey && (
+              {column.is_pkey && (
                 <Tooltip>
                   <TooltipTrigger>
                     <KeyRoundIcon className="h-4 w-4" />
@@ -272,7 +272,7 @@ function TableColumn({
                   <TooltipContent>Primary Key</TooltipContent>
                 </Tooltip>
               )}
-              {column.isNullable && (
+              {column.is_nullable && (
                 <Tooltip>
                   <TooltipTrigger>
                     <CircleIcon className="h-4 w-4" />
@@ -280,7 +280,7 @@ function TableColumn({
                   <TooltipContent>Nullable</TooltipContent>
                 </Tooltip>
               )}
-              {column.isUnique && (
+              {column.is_unique && (
                 <Tooltip>
                   <TooltipTrigger>
                     <FingerprintIcon className="h-4 w-4" /> {/* Assuming typo; use RecycleCwOffIcon if it exists */}
@@ -288,7 +288,7 @@ function TableColumn({
                   <TooltipContent>Unique</TooltipContent>
                 </Tooltip>
               )}
-              {!column.isUnique && !column.isNullable && !column.isPkey && (
+              {!column.is_unique && !column.is_nullable && !column.is_pkey && (
                 <Tooltip>
                   <TooltipTrigger>
                     <CircleIcon className="h-4 w-4 bg-white rounded-full" /> {/* Assuming typo; use RecycleCwOffIcon if it exists */}
@@ -297,10 +297,10 @@ function TableColumn({
                 </Tooltip>
               )}
             </TooltipProvider>
-            <h2 className={`text-base ${column.isPkey && "font-extrabold"}`}>{column.name}</h2>
+            <h2 className={`text-base ${column.is_pkey && "font-extrabold"}`}>{column.name}</h2>
           </div>
 
-          <p className="text-muted-foreground text-sm">{column.isArray ? `${column.dtype}[]` : column.dtype}</p>
+          <p className="text-muted-foreground text-sm">{column.is_array ? `${column.dtype}[]` : column.dtype}</p>
 
           <Handle
             type="source"

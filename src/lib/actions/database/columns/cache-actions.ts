@@ -46,11 +46,11 @@ export async function getCols(
   const returnval = col_details.rows.map(r => ({
     name: r.column_name,
     dtype: r.data_type,
-    isArray: r.is_array || false,
+    is_array: r.is_array || false,
     default: r.column_default || '',
-    isPkey: r.is_pkey || false,
-    isUnique: r.is_unique || false,
-    isNullable: r.is_nullable === 'YES'
+    is_pkey: r.is_pkey || false,
+    is_unique: r.is_unique || false,
+    is_nullable: r.is_nullable === 'YES'
   }))
 
   return returnval as ColumnType[]

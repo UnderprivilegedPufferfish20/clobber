@@ -1,8 +1,7 @@
 "use cache";
 
-import { DATA_TYPES } from "@/lib/types";
+import { DATA_TYPES, FilterConfig } from "@/lib/types";
 import { t, buildWhereClause } from "@/lib/utils";
-import { QueryFilters } from "@/lib/types";
 import { cacheTag } from "next/cache";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
@@ -14,7 +13,7 @@ export async function getTableData<T>(
   table: string,
   limit: number = 50,
   offset: number = 0,
-  filters: QueryFilters = {},
+  filters: FilterConfig[],
   caceTag: string,
   sort?: { column: string; direction: "ASC" | "DESC" },
 ) {
