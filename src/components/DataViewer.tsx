@@ -2,21 +2,15 @@
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
-  Table,
-  TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, Database, DotIcon, XIcon } from "lucide-react";
-import { act, Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import {  Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
-import { parseFiltersParam, stringifyFilters } from "@/lib/utils";
+import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
 import { ColumnType, FilterConfig, FilterOperator } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import Filter from "./Filter";
-import AddColumnSheet from "@/app/proj/[projectId]/database/_components/sheets/AddColumnSheet";
 import { Input } from "./ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import {
@@ -24,11 +18,16 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "./ui/separator";
-import FilterComponent from "./Filter";
+import { Checkbox } from "./ui/checkbox";
+import { DTypes } from "@/lib/constants";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectLabel, SelectItem } from "@/components/ui/select";
+import { toast } from "sonner";
 
 
 
@@ -143,6 +142,87 @@ export default function DataViewer<T>({
 
   const [activeCols, setActiveCols] = useState<ColumnType[]>(columns)
 
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (selectedRows.size === 0) {
+      toast.dismiss("selected-rows");
+      return
+    }
+
+    toast(() => (
+      <div className="flex flex-1 items-center justify-between gap-2 rounded-md text-muted-foreground w-lg min-w-lg max-w-lg">
+        <div className="flex items-center gap-2">
+          <div className="text-white bg-indigo-500 rounded-sm w-6 h-6 flex items-center justify-center">
+            <p>{selectedRows.size}</p>
+          </div>
+          <p className="text-lg">rows selected</p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={"outline"}
+                onClick={() => {}}
+              >
+                <DownloadIcon className="w-4 h-4"/>
+                Download
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="z-800">
+              <DropdownMenuItem 
+                className="flex items-center gap-2"
+                onClick={() => {}}
+
+              >
+                <FileJson className="w-6 h-6" />
+                JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="flex items-center gap-2"
+                onClick={() => {}}
+              >
+                <FileSpreadsheetIcon className="w-6 h-6" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="flex items-center gap-2"
+                onClick={() => {}}
+              >
+                <FileTextIcon className="w-6 h-6" />
+                SQL
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant={"outline"}
+            className="flex items-center gap-2"
+          > 
+            <Trash2Icon className="w-4 h-4"/>
+            Delete
+          </Button>
+
+          <Button
+            variant={"ghost"}
+            size={"icon-sm"}
+            onClick={() => setSelectedRows(new Set())}
+          >
+            <XIcon className="w-4 h-4"/>
+          </Button>
+        </div>
+      </div>
+    ), { 
+      position: "bottom-center", 
+      id: "selected-rows",
+      duration: Infinity,
+      className: "w-[542px] min-w-[542px] max-w-[542px]" 
+    })
+  }, [selectedRows])
+
+  
+
 return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex items-center justify-between border-b shrink-0 p-2">
@@ -219,7 +299,7 @@ return (
               </Tooltip>
 
               <Tooltip>
-                <TooltipTrigger>
+                <TooltipTrigger asChild>
                   <Input 
                     className="min-w-14 w-fit max-w-14 rounded-none! text-center"
                     value={offset}
@@ -240,7 +320,7 @@ return (
               </Tooltip>
             
               <Tooltip>
-                <TooltipTrigger>
+                <TooltipTrigger asChild>
                   <Button
                     className="rounded-bl-none! rounded-tl-none!"
                     disabled={offset + limit >= rowCnt}
@@ -262,92 +342,145 @@ return (
         </div>
       </div>
 
-      {/* Scrolling container */}
-      <div
-        className="flex-1 min-h-0 overflow-auto pb-20"
-      >
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-background shrink-0">
-            <TableRow className="bg-muted/30">
-              {activeCols.map((col: ColumnType) => (
-                <TableHead
-                  key={col.name}
-                  className={[
-                    "font-semibold align-bottom cursor-pointer",
-                    "border-b border-border",
-                    "border-r border-border last:border-r-0",
-                    "px-3 py-2",
-                    "bg-white/5",
-                  ].join(" ")}
-                  onClick={() => handleSort(col.name)}
-                >
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate">{col.name}</span>
-                      {sortColumn === col.name ? (
-                        sortDir === "asc" ? (
-                          <ArrowUp size={14} />
-                        ) : (
-                          <ArrowDown size={14} />
-                        )
-                      ) : (
-                        <ArrowUpDown size={14} className="text-muted-foreground" />
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground font-normal truncate">
-                      {col.dtype}
-                    </span>
-                  </div>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
+      <div className="flex-1 min-h-0 overflow-auto pb-20 text-sm">
+        <div className="bg-white/5">
+          <div className="flex items-center border-b">  {/* Header row */}
+            <div className="flex items-center justify-center h-9 w-9">
+              <Checkbox
+                className="w-4 h-4 border-r-2" 
+                onCheckedChange={checked => {
+                  if (checked) {
+                    setSelectedRows(p => new Set(data.map((_, idx) => `${currentPage}-${idx}`)))
+                  } else {
+                    setSelectedRows(new Set())
+                  }
+                }}
+                checked={data.length === selectedRows.size && data.length > 0}
+              />
+            </div>
+            {activeCols.map((col: ColumnType) => {
 
-          <TableBody>
-            {data.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
-                  No data in this table
-                </TableCell>
-              </TableRow>
-            )}
-            {data.map((row: any, idx: number) => {
-              const rowKey = String(row.$id ?? `${currentPage}-${idx}`);
-              return (
-                <TableRow
+              const Icon = DTypes.find(d => d.dtype === ALIAS_TO_ENUM[col.dtype] )!.icon
+              
+                return (
+                  <div
+                    key={col.name}
+                    className="flex-1 p-2 border-l-2 first:border-l-0 cursor-pointer hover:bg-white/10 sticky"
+                    onClick={() => handleSort(col.name)}
+                  >
+                    <div className="flex items-center justify-between truncate flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate">{col.name}</span>
+                        {sortColumn === col.name ? (
+                          sortDir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                        ) : (
+                          <ArrowUpDown size={14} className="text-muted-foreground" />
+                        )}
+                      </div>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                  </div>
+                )
+            })}
+          </div>
+        </div>
+
+        <div className="fullscreen flex flex-col">
+          {data.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="text-center">
+                No data in this table
+              </TableCell>
+            </TableRow>
+          )}
+          {data.map((row: any, idx: number) => {
+            const rowKey = String(`${currentPage}-${idx}`);
+            return (
+              <TooltipProvider delayDuration={5000}>
+                <div
                   key={rowKey}
-                  className="hover:bg-muted/40"
+                  className="hover:bg-muted/40 flex flex-1 items-center max-h-8 cursor-pointer"
                 >
+                  <div className="flex items-center justify-center w-9 h-9 group border-b">
+                    {selectedRows.has(rowKey) ? (
+                      <Checkbox 
+                        className="w-4 h-4"
+                        checked={selectedRows.has(rowKey)}
+                        onCheckedChange={checked => {
+                          setSelectedRows(prev => {
+                            const newSet = new Set(prev);
+                            if (checked) {
+                              newSet.add(rowKey);
+                            } else {
+                              newSet.delete(rowKey);
+                            }
+                            return newSet;
+                          });
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <Checkbox 
+                          className="hidden group-hover:block"
+                          checked={selectedRows.has(rowKey)}
+                          onCheckedChange={checked => {
+                            setSelectedRows(prev => {
+                              const newSet = new Set(prev);
+                              if (checked) {
+                                newSet.add(rowKey);
+                              } else {
+                                newSet.delete(rowKey);
+                              }
+                              return newSet;
+                            });
+                          }}
+                        />
+                        <p className="group-hover:hidden text-muted-foreground">{idx + 1}</p>
+                      </>
+                    )}
+                  </div>
                   {activeCols.map((col: any, index: number) => {
                     const colName = col.name;
                     const raw = row[colName];
                     const isNull = raw === null;
 
+                    const value = 
+                      isNull ? (
+                        <span className="text-muted-foreground italic">NULL</span>
+                      ) : raw instanceof Date ? (
+                        <span>{raw.toLocaleDateString()}</span>
+                      ) : (
+                        <span>{String(raw)}</span>
+                      )
+
                     return (
-                      <TableCell
-                        key={colName}
-                        className={[
-                          "px-3 py-2 align-top",
-                          "border-b border-border",
-                          "border-r border-border last:border-r-0",
-                          "cursor-text truncate",
-                        ].join(" ")}
-                      >
-                        {isNull ? (
-                          <span className="text-muted-foreground italic">NULL</span>
-                        ) : raw instanceof Date ? (
-                          <span>{raw.toLocaleDateString()}</span>
-                        ) : (
-                          <span>{String(raw)}</span>
-                        )}
-                      </TableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            key={colName}
+                            className={[
+                              "p-2 align-top cursor-pointer",
+                              "border-b",
+                              "border-l-2 first:border-l-0",
+                              "truncate",
+                              "flex-1! text-sm"
+                            ].join(" ")}
+                          >
+                            {value}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent align="start" carat={false}>
+                          {value}
+                        </TooltipContent>
+                      </Tooltip>
+              
                     );
                   })}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                </div>
+              </TooltipProvider>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -514,3 +647,148 @@ function ColumnToggle({
     </DropdownMenu>
   )
 }
+
+
+const FilterComponent = ({
+  activeFilters,
+  setActiveFilters,
+  columns,
+}: {
+  activeFilters: FilterConfig[];
+  setActiveFilters: Dispatch<SetStateAction<FilterConfig[]>>;
+  columns: ColumnType[];
+}) => {
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterConfig[]>(activeFilters);
+
+  // Clean functional updates - use index correctly
+  const updateFilter = (index: number, updates: Partial<FilterConfig>) => {
+    setFilters(prev => prev.map((filter, i) => 
+      i === index ? { ...filter, ...updates } : filter
+    ));
+  };
+
+  const removeFilter = (index: number) => {
+    setFilters(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addFilter = () => {
+    setFilters(prev => [...prev, { 
+      column: columns[0]?.name || '', 
+      operator: FilterOperator.EQUALS, 
+      value: "" 
+    }]);
+  };
+
+  const applyFilters = () => {
+    setActiveFilters(filters);
+    setIsOpen(false);
+  };
+
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild className="relative">
+        <Button className="relative flex items-center gap-2" variant="outline">
+          <FilterIcon className="w-4 h-4"/>
+          <h1>Filters</h1>
+          <div className={`${
+            activeFilters.length === 0 && "hidden"
+          } absolute -top-1 -right-1 w-5 h-5 bg-white text-black text-xs rounded-full flex items-center justify-center shadow-lg border-2 border-background`}> 
+            {activeFilters.length} 
+          </div> 
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-md p-0 max-h-96 overflow-y-auto">
+        <DropdownMenuGroup>
+          {filters.length === 0 && (
+            <div className="flex flex-col p-4">
+              <h1 className="text-sm">No Filters</h1>
+            </div>
+          )}
+          {filters.map((f, index) => (
+            <div key={index} className="flex items-center gap-1 p-2 border-b last:border-b-0">
+              <Select
+                value={f.column}
+                onValueChange={(v) => updateFilter(index, { column: v })}
+              >
+                <SelectTrigger className="w-39! min-w-39! max-w-39! truncate!">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-150">
+                  <SelectGroup>
+                    <SelectLabel>Columns</SelectLabel>
+                    {columns.map(c => (
+                      <SelectItem key={c.name} value={c.name}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={f.operator}
+                onValueChange={(v) => updateFilter(index, { operator: v as FilterOperator })}
+              >
+                <SelectTrigger className="w-19! min-w-19! max-w-19! truncate!">
+                  <SelectValue>
+                    {filters[index]?.operator && OP_TO_TOKEN[filters[index].operator]}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="z-150" align="start">
+                  <SelectGroup>
+                    <SelectLabel>Operators</SelectLabel>
+                    {Object.values(FilterOperator).map((op) => (
+                      <SelectItem key={OP_TO_TOKEN[op]} value={OP_TO_TOKEN[op]} className="flex items-center gap-2">
+                        <p>{OP_TO_TOKEN[op]}</p>
+                        <p>{OP_TO_LABEL[op]}</p>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              <Input
+                className="w-39! min-w-39! max-w-39!"
+                value={f.value}
+                onChange={(e) => updateFilter(index, { value: e.target.value })}
+              />
+
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => removeFilter(index)}
+              >
+                <XIcon className="w-4 h-4"/>
+              </Button>
+            </div>
+          ))}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup className="flex items-center justify-between p-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={addFilter}
+            className="flex items-center gap-2"
+          >
+            <PlusIcon className="w-4 h-4"/>
+            Add Clause
+          </Button>
+
+          <Button
+            variant="default"
+            size="sm"
+            onClick={applyFilters}
+            
+            disabled={JSON.stringify(filters) === JSON.stringify(activeFilters)}
+          >
+            Apply Filters
+          </Button>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};

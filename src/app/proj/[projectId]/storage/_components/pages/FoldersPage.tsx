@@ -274,7 +274,7 @@ const FoldersPage = (props: Props) => {
         <Separator className="mb-6" />
 
           {selectedObjects.length > 0 ? (
-                <div className='flex items-center justify-between rounded-full w-lg min-w-lg max-w-lg bg-indigo-500 text-white px-3 m-2 p-0.5'>
+                <div className='flex items-center gap-6 rounded-full fullwidth bg-indigo-500 text-white px-3 m-2 p-0.5 mb-6'>
                   <div className='flex items-center gap-1'>
                     <Button
                       variant={'ghost'}

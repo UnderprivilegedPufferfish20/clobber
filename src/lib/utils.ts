@@ -244,7 +244,7 @@ export const t = (...parts: (string | number)[]) => parts.join(":");
  *  Now supports your enum spellings + common aliases.
  *  -------------------------- */
 
-const ALIAS_TO_ENUM: Record<string, DATA_TYPES> = {
+export const ALIAS_TO_ENUM: Record<string, DATA_TYPES> = {
   // ints/serials
   int2: DATA_TYPES.SMALLINT,
   smallint: DATA_TYPES.SMALLINT,
@@ -309,82 +309,6 @@ const ALIAS_TO_ENUM: Record<string, DATA_TYPES> = {
   point: DATA_TYPES.POINT,
   polygon: DATA_TYPES.POLYGON,
 };
-
-function normalizeTypeToken(raw: string): string {
-  // remove trailing commas, collapse spaces, lowercase
-  return raw.replace(/,+$/g, "").replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-/** Choose a sample literal for a type (for `SELECT fn(sample, ...)`). */
-function sampleLiteralForType(dtype: DATA_TYPES): string {
-  if (INT_LIKE.has(dtype)) return `2${getPostgresCast(dtype)}`;
-  if (FLOAT_LIKE.has(dtype)) return `3.2${getPostgresCast(dtype)}`;
-  if (BOOL_LIKE.has(dtype)) return `FALSE`;
-  if (dtype === DATA_TYPES.UUID) return `'00000000-0000-0000-0000-000000000000'::uuid`;
-  if (dtype === DATA_TYPES.BYTEA) return `'\\x01020304ff'::bytea`;
-  if (dtype === DATA_TYPES.JSON || dtype === DATA_TYPES.JSONB) return `'{"g":"a"}'${getPostgresCast(dtype)}`;
-  if (dtype === DATA_TYPES.DATE) return `'2025-01-01'::date`;
-  if (dtype === DATA_TYPES.TIME) return `'10:00:00'::time`;
-  if (dtype === DATA_TYPES.TIME_TZ) return `'10:00:00-06'::timetz`;
-  if (dtype === DATA_TYPES.INTERVAL) return `'1 day'::interval`;
-  if (dtype === DATA_TYPES.TIMESTAMPTZ) return `'2025-01-01 10:00:00-06'::timestamptz`;
-  if (dtype === DATA_TYPES.TIMESTAMP) return `'2025-01-01 10:00:00'::timestamp`;
-  if (dtype === DATA_TYPES.CIDR) return `'192.168.0.0/24'::cidr`;
-  if (dtype === DATA_TYPES.INET) return `'192.168.0.10'::inet`;
-  if (dtype === DATA_TYPES.MACADDR) return `'08:00:2b:01:02:03'::macaddr`;
-  if (dtype === DATA_TYPES.MACADDR8) return `'08:00:2b:01:02:03:04:05'::macaddr8`;
-  if (dtype === DATA_TYPES.XML) return `'<root />'::xml`;
-  if (dtype === DATA_TYPES.PG_LSN) return `'0/16B6C50'::pg_lsn`;
-  if (dtype === DATA_TYPES.PG_SNAPSHOT || dtype === DATA_TYPES.TXID_SNAPSHOT)
-    return `'1:2:'${getPostgresCast(dtype)}`;
-  if (dtype === DATA_TYPES.TSQUERY) return `'a & b'::tsquery`;
-  if (dtype === DATA_TYPES.TSVECTOR) return `'a b'::tsvector`;
-
-  // geometry-ish: simplest textual inputs with casts
-  if (dtype === DATA_TYPES.POINT) return `'(1,2)'::point`;
-  if (dtype === DATA_TYPES.LINE) return `'{1,2,3}'::line`;
-  if (dtype === DATA_TYPES.LSEG) return `'[(1,2),(3,4)]'::lseg`;
-  if (dtype === DATA_TYPES.BOX) return `'((1,2),(3,4))'::box`;
-  if (dtype === DATA_TYPES.PATH) return `'[(1,2),(3,4)]'::path`;
-  if (dtype === DATA_TYPES.POLYGON) return `'((1,2),(3,4),(5,6))'::polygon`;
-  if (dtype === DATA_TYPES.CIRCLE) return `'<(0,0),1>'::circle`;
-
-  // text fallback
-  return `'a'::text`;
-}
-
-export function callPostgresFunction(name: string, argstring: string): string {
-  if (!argstring.trim()) return `SELECT ${name}();`;
-
-  const args = argstring.split(",").map((a) => a.trim()).filter(Boolean);
-  const sqlArgs: string[] = [];
-
-  for (const arg of args) {
-    // arg format examples:
-    //  - "p_text text"
-    //  - "arg1 character varying"
-    //  - "x numeric(10,2)"
-    // We want the type part, then normalize & strip modifiers "(...)".
-    const parts = arg.split(/\s+/);
-    const typePart = parts.slice(1).join(" "); // drop arg name
-    const normalized = normalizeTypeToken(typePart);
-
-    // drop modifiers like "(10,2)" or "(n)"
-    const base = normalized.replace(/\s*\(.*\)\s*$/g, "").trim();
-
-    const dtype = ALIAS_TO_ENUM[base] ?? (Object.values(DATA_TYPES) as string[]).includes(base)
-      ? (base as DATA_TYPES)
-      : undefined;
-
-    if (!dtype) {
-      throw new Error(`Unsupported PostgreSQL type: ${typePart}`);
-    }
-
-    sqlArgs.push(sampleLiteralForType(dtype));
-  }
-
-  return `SELECT ${name}(${sqlArgs.join(", ")});`;
-}
 
 
 export function castFilterValue(

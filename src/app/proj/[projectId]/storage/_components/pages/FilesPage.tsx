@@ -176,6 +176,8 @@ function BucketCard({
 }) {
   const pathname = usePathname()
 
+  console.log("size_lim: ", size_lim)
+
   return (
     <Link
       href={`${pathname}?page=files&path=${name}`}
@@ -201,7 +203,7 @@ function BucketCard({
 
       <Separator />
 
-      <p>Size Cap: {formatGCSFileSize(String(size_lim))}</p>
+      <p>Size Cap: {!size_lim ? "None" : formatGCSFileSize(String(size_lim))}</p>
       <p className="truncate">Supported Types: {supported_types ? supported_types.join(", ") : 'all'}</p>
     </Link>
   )
