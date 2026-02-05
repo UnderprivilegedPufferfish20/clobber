@@ -52,7 +52,9 @@ export async function getTableData<T>(
 
 
   const result = await pool.query(`
-    SELECT * 
+    SELECT 
+      *
+      ${sort ? `, ROW_NUMBER() OVER (ORDER BY "${sort.column}" ${sort.direction}) AS row_index` : ""} 
     FROM "${schema}"."${table}"
     ${whereClause}
     ${sort ? `ORDER BY "${sort.column}" ${sort.direction}` : ''}

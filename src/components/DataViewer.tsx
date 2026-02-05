@@ -1,8 +1,8 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
-import {  Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, EllipsisVerticalIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, PlusIcon, RefreshCwIcon, Trash2Icon, XIcon } from "lucide-react";
+import {  Dispatch, SetStateAction, use, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
 import { ColumnType, DATA_EXPORT_FORMATS, FilterConfig, FilterOperator } from "@/lib/types";
@@ -17,6 +17,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "./ui/separator";
@@ -28,9 +31,6 @@ import { useMutation } from "@tanstack/react-query";
 import { deleteSelectedRows, downloadSelectedRows } from "@/lib/actions/database/tables";
 
 
-
-
-
 export default function DataViewer<T>({
   projectId,
   data,
@@ -38,21 +38,22 @@ export default function DataViewer<T>({
   columns,
   rowCnt,
   name,
-  timeMs
+  timeMs,
+  schema
 }: {
   projectId: string,
   data: T[],
   maxPage: number,
   columns: ColumnType[],
   rowCnt: number,
-  name?: string,
+  name: string,
+  schema: string,
   timeMs: number
 }) {
 
   const router = useRouter();
   const pathname = usePathname()
   const searchParams = useSearchParams();
-  const table = name ? name : searchParams.get("table");
   const pkeyCols = new Set(columns.filter(c => c.is_pkey).map(c => c.name))
 
   const pkeyArr = useMemo(() => [...pkeyCols].sort(), [pkeyCols]); // Sort for consistent order
@@ -73,9 +74,6 @@ export default function DataViewer<T>({
     sortColumn = col;
     sortDir = dir as "asc" | "desc";
   }
-
-
-  const [currentPage, setCurrentPage] = useState(1);
 
   
   const currentFilter = searchParams.get("filter") ?? "";
@@ -140,7 +138,6 @@ export default function DataViewer<T>({
       newParams.delete("sort");
     }
 
-    flushSync(() => setCurrentPage(1));
     router.push(`${window.location.pathname}?${newParams.toString()}`);
   };
 
@@ -154,8 +151,8 @@ export default function DataViewer<T>({
       const exportData = await downloadSelectedRows(
         rowsArray,
         type,
-        table ?? "Users",
-        "auth", // Or dynamic schema
+        name,
+        schema, // Or dynamic schema
         columns,
       );
       if (!exportData) throw new Error("Failed to export");
@@ -201,6 +198,8 @@ export default function DataViewer<T>({
     },
     onError: (e) => toast.error(`Failed to delete: ${e}`, { id: "delete-sel"})
   })
+
+  const totalPages = limit > 0 ? Math.ceil(rowCnt / limit) : 1;
 
   useEffect(() => {
     if (selectedRows.size === 0) {
@@ -281,15 +280,17 @@ export default function DataViewer<T>({
   }, [selectedRows])
 
   
+  const [selectedPage, setSelectedPage] = useState<number>(1)
 
+  useEffect(() => {
+    setOffset((selectedPage - 1) * limit)
+  }, [selectedPage]);
   
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex items-center justify-between border-b shrink-0 p-2">
         <div className="flex items-center gap-8">
-          <h1 className="font-semibold text-2xl">{table}</h1>
-
           <div className="flex items-center gap-2">
             <FilterComponent
               activeFilters={activeFilters}
@@ -314,7 +315,7 @@ export default function DataViewer<T>({
                 <TooltipTrigger asChild>
                   <Button
                     className="rounded-br-none! rounded-tr-none!"
-                    disabled={offset < 0}
+                    disabled={offset <= 0}
                     variant={"outline"}
                     size={"icon"}
                     onClick={() => {
@@ -395,11 +396,58 @@ export default function DataViewer<T>({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild className="ml-3">
+                <Button
+                  variant={"outline"}
+                  size={"icon"}
+                >
+                  <EllipsisVerticalIcon className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="z-150" align="end">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2">
+                    <DownloadIcon className="w-4 h-4" />
+                    Download Page
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent alignOffset={0}>
+                    <DropdownMenuItem 
+                      className="flex items-center gap-2"
+                      onClick={() => {}}
+                    >
+                      <FileJson className="w-6 h-6" />
+                      JSON
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="flex items-center gap-2"
+                      onClick={() => {}}
+                    >
+                      <FileSpreadsheetIcon className="w-6 h-6" />
+                      CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="flex items-center gap-2"
+                      onClick={() => {}}
+                    >
+                      <FileTextIcon className="w-6 h-6" />
+                      SQL
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                <DropdownMenuItem className="flex items-center gap-2">
+                  <RefreshCwIcon className="w-4 h-4"/>
+                  Refresh
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto hide-scrollbar text-sm">
+      <div className="flex-1 min-h-0 overflow-auto hide-scrollbar text-sm relative">
         <div
           className="min-w-max pb-20"
           style={{
@@ -410,7 +458,7 @@ export default function DataViewer<T>({
           {/* Sticky header row */}
           <div className="contents">
             <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-              <div className="h-9 w-9 flex items-center justify-center border-r dark:bg-white/10 bg-white/80">
+              <div className="h-9 w-9 flex items-center justify-center border-r bg-neutral-900">
                 <Checkbox
                   className="w-4 h-4"
                   onCheckedChange={(checked) => {
@@ -439,7 +487,7 @@ export default function DataViewer<T>({
                   className={[
                     "sticky top-0 z-10",
                     "border-b",
-                    "dark:bg-white/10 bg-white/80 backdrop-blur",
+                    "dark:bg-neutral-900",
                     i === 0 ? "border-l-0" : "border-l",
                     "p-2 h-9",
                     "cursor-pointer hover:bg-muted/40",
@@ -507,7 +555,7 @@ export default function DataViewer<T>({
                             });
                           }}
                         />
-                        <p className="group-hover:hidden text-muted-foreground">{idx + 1}</p>
+                        <p className="group-hover:hidden text-muted-foreground">{sortStr ? row.row_index : offset + idx + 1}</p>
                       </>
                     )}
                   </div>
@@ -554,6 +602,44 @@ export default function DataViewer<T>({
               );
             })
           )}
+ 
+        </div>
+
+        <div className="px-2 sticky bottom-20 left-0 right-0 h-12 min-h-12 max-h-12 fullwidth flex flex-1 items-center justify-between gap-2 dark:bg-neutral-900 opacity-100">
+          <div className="text-white text-2xl font-semibold flex items-baseline">
+            <span className="text-muted-foreground text-lg">{schema}.</span>
+            <h3>{name}</h3>
+          </div>
+
+          <div className="flex items-center gap-8">
+            <div className="flex items-center text-lg gap-2">
+              <p>page</p>
+              <Select value={String(selectedPage)} onValueChange={v => setSelectedPage(Number(v))}>
+                <SelectTrigger size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: totalPages }, (_, i) => String(i + 1))
+                    .reverse()
+                    .map(i => (
+                      <SelectItem value={i} key={i}>
+                        {i}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p>of {Math.ceil(rowCnt / limit) === Infinity ? rowCnt : Math.ceil(rowCnt / limit)}</p>
+            </div>
+
+            
+
+            
+
+          </div>
+
+          
+
+          
         </div>
       </div>
     </div>
