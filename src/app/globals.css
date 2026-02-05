@@ -163,4 +163,17 @@
   .sidebar {
     @apply h-full min-h-full max-h-full w-74 min-w-74 max-w-74 flex flex-col items-center border-r-2
   }
+
+  .hide-scrollbar {
+    /* For Chrome, Safari, Edge, Opera, and other WebKit-based browsers */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* For Internet Explorer and Edge (legacy) */
+    -ms-overflow-style: none;
+
+    /* For Firefox */
+    scrollbar-width: none;
+  }
 }

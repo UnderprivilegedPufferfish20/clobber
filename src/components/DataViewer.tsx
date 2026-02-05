@@ -1,10 +1,6 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import {
-  TableCell,
-  TableRow,
-} from "@/components/ui/table";
 import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import {  Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
@@ -58,6 +54,10 @@ export default function DataViewer<T>({
   const searchParams = useSearchParams();
   const table = name ? name : searchParams.get("table");
   const pkeyCols = new Set(columns.filter(c => c.is_pkey).map(c => c.name))
+
+  const pkeyArr = useMemo(() => [...pkeyCols].sort(), [pkeyCols]); // Sort for consistent order
+
+  const computeRowId = (row: any) => JSON.stringify(pkeyArr.map(col => row[col]));
 
   const setSearchParam = (key: string, value: string) => {
     const ps = new URLSearchParams(searchParams)
@@ -146,18 +146,18 @@ export default function DataViewer<T>({
 
   const [activeCols, setActiveCols] = useState<ColumnType[]>(columns)
 
-  const [selectedRows, setSelectedRows] = useState<string[][]>([])
+  const [selectedRows, setSelectedRows] = useState<Map<string, any>>(new Map())
 
   const {mutate: downloadSelected, isPending: isDownloadPending} = useMutation({
     mutationFn: async (type: DATA_EXPORT_FORMATS) => {
+      const rowsArray = Array.from(selectedRows.values());
       const exportData = await downloadSelectedRows(
-        selectedRows.values().map(),
+        rowsArray,
         type,
-        name ?? "Users",
-        "auth",
+        table ?? "Users",
+        "auth", // Or dynamic schema
         columns,
-      )
-
+      );
       if (!exportData) throw new Error("Failed to export");
 
       const blob = new Blob([exportData.data], { type: exportData.contentType });
@@ -173,7 +173,7 @@ export default function DataViewer<T>({
     onMutate: () => toast.loading("Downloading...", { id: "download-sel" }),
     onSuccess: () => {
       toast.success(`${selectedRows.keys()} rows downloaded`, {id: "download-sel"})
-      setSelectedRows([])
+      setSelectedRows(new Map())
     },
     onError: (e) => toast.error(`Failed to download: ${e}`, { id: "download-sel"})
   })
@@ -182,22 +182,22 @@ export default function DataViewer<T>({
   const {mutate: deleteSelected, isPending: isDeletePending} = useMutation({
     mutationFn: async () => {
       
-      console.log("@PKEY COLS: ", pkeyCols)
+      const rowsArray = Array.from(selectedRows.values());
       await deleteSelectedRows(
-        selectedRows,
-        "auth",
-        "users",
+        rowsArray,
+        "auth", // Or dynamic
+        "users", // Or dynamic
         projectId,
         "auth-users",
         pkeyCols
-      )
+      );
 
-      setSelectedRows([])
+      setSelectedRows(new Map())
     },
     onMutate: () => toast.loading("Deleting...", { id: "delete-sel" }),
     onSuccess: () => {
-      toast.success(`${selectedRows.length} rows deleted`, {id: "delete-sel"})
-      setSelectedRows([])
+      toast.success(`${selectedRows.size} rows deleted`, {id: "delete-sel"})
+      setSelectedRows(new Map())
     },
     onError: (e) => toast.error(`Failed to delete: ${e}`, { id: "delete-sel"})
   })
@@ -266,7 +266,7 @@ export default function DataViewer<T>({
           <Button
             variant={"ghost"}
             size={"icon-sm"}
-            onClick={() => setSelectedRows(new Set())}
+            onClick={() => setSelectedRows(new Map())}
           >
             <XIcon className="w-4 h-4"/>
           </Button>
@@ -284,34 +284,30 @@ export default function DataViewer<T>({
 
   
 
-return (
+  return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex items-center justify-between border-b shrink-0 p-2">
         <div className="flex items-center gap-8">
           <h1 className="font-semibold text-2xl">{table}</h1>
 
           <div className="flex items-center gap-2">
-            <FilterComponent 
+            <FilterComponent
               activeFilters={activeFilters}
               columns={columns}
-              setActiveFilters={setActiveFilters}         
+              setActiveFilters={setActiveFilters}
             />
-
-            <ColumnToggle 
-              activeCols={activeCols}
-              cols={columns}
-              setActiveCols={setActiveCols}
-            />
+            <ColumnToggle activeCols={activeCols} cols={columns} setActiveCols={setActiveCols} />
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground flex items-center gap-0.5">
             <p>{rowCnt} rows</p>
-            <DotIcon className="h-4 w-4"/>
+            <DotIcon className="h-4 w-4" />
             <p>{Math.round(timeMs)}ms</p>
           </div>
 
+          {/* Pagination controls */}
           <div className="flex items-center">
             <TooltipProvider>
               <Tooltip>
@@ -403,109 +399,111 @@ return (
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto pb-20 text-sm">
-        <div className="bg-white/5">
-          <div className="flex items-center border-b">  {/* Header row */}
-            <div className="flex items-center justify-center h-9 w-9">
-              <Checkbox
-                className="w-4 h-4 border-r-2" 
-                onCheckedChange={checked => {
-                  if (pkeyCols.size === 0) return;
-                  if (checked) {
-                    setSelectedRows(data.map(v =>  [...pkeyCols].map(colName => v[colName])))
-                  } else {
-                    setSelectedRows([])
-                  }
-                }}
-                checked={data.length === selectedRows.length && data.length > 0}
-              />
-            </div>
-            {activeCols.map((col: ColumnType) => {
-
-              const Icon = DTypes.find(d => d.dtype === ALIAS_TO_ENUM[col.dtype] )!.icon
-              
-                return (
-                  <div
-                    key={col.name}
-                    className="flex-1 p-2 border-l-2 first:border-l-0 cursor-pointer hover:bg-white/10 sticky"
-                    onClick={() => handleSort(col.name)}
-                  >
-                    <div className="flex items-center justify-between truncate flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate">{col.name}</span>
-                        {sortColumn === col.name ? (
-                          sortDir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />
-                        ) : (
-                          <ArrowUpDown size={14} className="text-muted-foreground" />
-                        )}
-                      </div>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                  </div>
-                )
-            })}
-          </div>
-        </div>
-
-        <div className="fullscreen flex flex-col">
-          {data.length === 0 && (
-            <div
-              className="hover:bg-muted/40 flex flex-1 items-center justify-center max-h-8 cursor-pointer"
-            >
-              <div
-                className={[
-                  "p-2 align-top cursor-pointer",
-                  "border-b",
-                  "border-l-2 first:border-l-0",
-                  "truncate",
-                  "flex-1! text-sm text-center"
-                ].join(" ")}
-              >
-                No data in this table
+      <div className="flex-1 min-h-0 overflow-auto hide-scrollbar text-sm">
+        <div
+          className="min-w-max pb-20"
+          style={{
+            display: "grid",
+            gridTemplateColumns: `36px repeat(${activeCols.length}, minmax(180px, 1fr))`,
+          }}
+        >
+          {/* Sticky header row */}
+          <div className="contents">
+            <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+              <div className="h-9 w-9 flex items-center justify-center border-r dark:bg-white/10 bg-white/80">
+                <Checkbox
+                  className="w-4 h-4"
+                  onCheckedChange={(checked) => {
+                    if (pkeyCols.size === 0) return;
+                    setSelectedRows((prev) => {
+                      const next = new Map(prev);
+                      data.forEach((row) => {
+                        const id = computeRowId(row);
+                        if (checked) next.set(id, row);
+                        else next.delete(id);
+                      });
+                      return next;
+                    });
+                  }}
+                  checked={data.length > 0 && selectedRows.size > 0}
+                />
               </div>
             </div>
-          )}
-          {data.map((row: any, idx: number) => {
-            const rowKey = String(`${currentPage}-${idx}`);
-            return (
-              <TooltipProvider key={row.ctid} delayDuration={5000}>
+
+            {activeCols.map((col: ColumnType, i: number) => {
+              const Icon = DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype])!.icon;
+
+              return (
                 <div
-                  className="hover:bg-muted/40 flex flex-1 items-center max-h-8 cursor-pointer"
+                  key={col.name}
+                  className={[
+                    "sticky top-0 z-10",
+                    "border-b",
+                    "dark:bg-white/10 bg-white/80 backdrop-blur",
+                    i === 0 ? "border-l-0" : "border-l",
+                    "p-2 h-9",
+                    "cursor-pointer hover:bg-muted/40",
+                    "flex items-center justify-between gap-2",
+                  ].join(" ")}
+                  onClick={() => handleSort(col.name)}
                 >
-                  <div className="flex items-center justify-center w-9 h-9 group border-b">
-                    {selectedRows.has(rowKey) ? (
-                      <Checkbox 
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="truncate">{col.name}</span>
+                    {sortColumn === col.name ? (
+                      sortDir === "asc" ? (
+                        <ArrowUp size={14} />
+                      ) : (
+                        <ArrowDown size={14} />
+                      )
+                    ) : (
+                      <ArrowUpDown size={14} className="text-muted-foreground" />
+                    )}
+                  </div>
+                  <Icon className="w-4 h-4 shrink-0" />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Body rows */}
+          {data.length === 0 ? (
+            <div className="col-span-full border-b p-2 text-center text-muted-foreground">
+              No data in this table
+            </div>
+          ) : (
+            data.map((row: any, idx: number) => {
+              const id = computeRowId(row);
+              const isSelected = selectedRows.has(id);
+
+              return (
+                <div key={row.ctid} className="contents">
+                  {/* left "row number / checkbox" cell */}
+                  <div className="border-b border-r h-9 w-9 flex items-center justify-center group hover:bg-muted/40">
+                    {isSelected ? (
+                      <Checkbox
                         className="w-4 h-4"
-                        checked={selectedRows.has(rowKey)}
-                        onCheckedChange={checked => {
+                        checked
+                        onCheckedChange={(checked) => {
                           if (pkeyCols.size === 0) return;
-                          setSelectedRows(prev => {
-                            const newSet = new Set(prev);
-                            if (checked) {
-                              newSet.add(rowKey);
-                            } else {
-                              newSet.delete(rowKey);
-                            }
-                            return newSet;
+                          setSelectedRows((prev) => {
+                            const next = new Map(prev);
+                            if (checked) next.set(id, row);
+                            else next.delete(id);
+                            return next;
                           });
                         }}
                       />
                     ) : (
                       <>
-                        <Checkbox 
-                          className="hidden group-hover:block"
-                          checked={selectedRows.has(rowKey)}
-                          onCheckedChange={checked => {
+                        <Checkbox
+                          className="hidden group-hover:block w-4 h-4"
+                          checked={false}
+                          onCheckedChange={(checked) => {
                             if (pkeyCols.size === 0) return;
-                            setSelectedRows(prev => {
-                              
-                              const newSet = new Set(prev);
-                              if (checked) {
-                                newSet.add(rowKey);
-                              } else {
-                                newSet.delete(rowKey);
-                              }
-                              return newSet;
+                            setSelectedRows((prev) => {
+                              const next = new Map(prev);
+                              if (checked) next.set(id, row);
+                              return next;
                             });
                           }}
                         />
@@ -513,51 +511,54 @@ return (
                       </>
                     )}
                   </div>
-                  {activeCols.map((col: any, index: number) => {
+
+                  {/* data cells */}
+                  {activeCols.map((col: any, i: number) => {
                     const colName = col.name;
                     const raw = row[colName];
                     const isNull = raw === null;
 
-                    const value = 
-                      isNull ? (
-                        <span className="text-muted-foreground italic">NULL</span>
-                      ) : raw instanceof Date ? (
-                        <span>{raw.toLocaleDateString()}</span>
-                      ) : (
-                        <span>{String(raw)}</span>
-                      )
+                    const value = isNull ? (
+                      <span className="text-muted-foreground italic">NULL</span>
+                    ) : raw instanceof Date ? (
+                      <span>{raw.toLocaleDateString()}</span>
+                    ) : (
+                      <span>{String(raw)}</span>
+                    );
 
                     return (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div
-                            key={colName}
-                            className={[
-                              "p-2 align-top cursor-pointer",
-                              "border-b",
-                              "border-l-2 first:border-l-0",
-                              "truncate",
-                              "flex-1! text-sm"
-                            ].join(" ")}
-                          >
+                      <TooltipProvider key={colName} delayDuration={5000}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={[
+                                "border-b",
+                                i === 0 ? "border-l-0" : "border-l",
+                                "p-2 h-9",
+                                "truncate",
+                                "hover:bg-muted/40",
+                                "cursor-pointer",
+                              ].join(" ")}
+                            >
+                              {value}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent align="start" carat={false}>
                             {value}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent align="start" carat={false}>
-                          {value}
-                        </TooltipContent>
-                      </Tooltip>
-              
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     );
                   })}
                 </div>
-              </TooltipProvider>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     </div>
   );
+
 };
 
 function ColumnToggle({
