@@ -50,6 +50,39 @@ export interface Feature {
   icon: LucideIcon;
 }
 
+export enum VECTOR_INDEX_TYPE {
+  DENSE = "DENSE",
+  SPARSE = "SPARSE"
+}
+
+export enum VECTOR_INDEX_METRIC {
+  COSINE = "COSINE",
+  EUCLIDEAN = "EUCLIDEAN",
+  DOTPRODUCT = "DOT_PRODUCT"
+}
+
+export enum INDEX_SEARCH_METHOD {
+  TEXT = "TEXT",
+  ID = "ID",
+  SPARSE_VECTOR = "SPARSE_VECTOR"
+}
+
+export type StorageIndex = {
+  id: string,
+  project_id: string,
+  namespaces: string[],
+  name: string,
+  dimensions: number,
+  vector_type: VECTOR_INDEX_TYPE,
+  metric: VECTOR_INDEX_METRIC
+}
+
+export type IndexVector = {
+  id: string,
+  namespace: string,
+  text: string
+}
+
 export type FileStorageBucket = {
   id: string,
   name: string,

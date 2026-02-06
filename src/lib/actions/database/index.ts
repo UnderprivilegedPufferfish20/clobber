@@ -192,6 +192,30 @@ export async function createTenantDatabase(opts: {
         last_accessed_at timestamp with time zone NOT NULL,
         CONSTRAINT objects_bucket_fkey FOREIGN KEY ("bucket_id") REFERENCES storage.buckets(id)
       );
+
+      -- Custom enum types (fixed syntax with comma-separated values)
+      CREATE TYPE "storage"."VECTOR_INDEX_TYPE" AS ENUM ('DENSE', 'SPARSE');
+      CREATE TYPE "storage"."VECTOR_INDEX_METRIC" AS ENUM ('DOT_PRODUCT', 'EUCLIDEAN', 'COSINE');
+
+      -- Indexes table (added missing comma after metric)
+      CREATE TABLE "storage"."indexes" (
+        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+        project_id uuid NOT NULL,
+        namespaces TEXT[],
+        name TEXT NOT NULL,
+        dimensions INTEGER NOT NULL,
+        vector_type "storage"."VECTOR_INDEX_TYPE" NOT NULL,
+        metric "storage"."VECTOR_INDEX_METRIC" NOT NULL,
+        CONSTRAINT unique_project_index_name UNIQUE (project_id, name)
+      );
+
+      -- Vectors table (added embedding column, fixed PRIMARY KEY)
+      CREATE TABLE "storage"."vectors" (
+        id TEXT NOT NULL,
+        "namespace" TEXT NOT NULL,
+        "text" TEXT NOT NULL,
+        PRIMARY KEY (id, "namespace")
+      );
     `);
 
     // Create table in vault schema
