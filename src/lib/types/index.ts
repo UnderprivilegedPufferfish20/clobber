@@ -64,7 +64,8 @@ export enum VECTOR_INDEX_METRIC {
 export enum INDEX_SEARCH_METHOD {
   TEXT = "TEXT",
   ID = "ID",
-  SPARSE_VECTOR = "SPARSE_VECTOR"
+  SPARSE_VECTOR = "SPARSE_VECTOR",
+  LIST_IDS = "LIST_IDS"
 }
 
 export type StorageIndex = {
@@ -80,7 +81,12 @@ export type StorageIndex = {
 export type IndexVector = {
   id: string,
   namespace: string,
-  text: string
+  text: string,
+  embedding: number[]
+}
+
+export interface IndexVectorWithScore extends IndexVector {
+  score: number
 }
 
 export type FileStorageBucket = {

@@ -956,7 +956,7 @@ function FolderCard({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <Link
-            href={`${pathname}?page=files&path=${constructNextPathname()}`}
+            href={`${pathname}?path=${constructNextPathname()}`}
             className="group rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20 w-md min-w-md max-w-md"
           >
             <div className="min-w-0">

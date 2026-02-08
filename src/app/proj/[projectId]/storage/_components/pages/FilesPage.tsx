@@ -180,7 +180,7 @@ function BucketCard({
 
   return (
     <Link
-      href={`${pathname}?page=files&path=${name}`}
+      href={`${pathname}?path=${name}`}
       className="flex flex-col gap-2 group rounded-xl border bg-background p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20"
     >
       <div className="min-w-0 flex items-center justify-between">

@@ -176,4 +176,8 @@
     /* For Firefox */
     scrollbar-width: none;
   }
+
+  .no-spinbtn {
+    @apply appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+  }
 }

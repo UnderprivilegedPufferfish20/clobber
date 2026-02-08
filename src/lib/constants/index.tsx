@@ -1,6 +1,6 @@
-import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon, Binary, Braces, Calendar, Camera, Circle, Clock, Cpu, Crosshair, DollarSign, Fingerprint, Hash, Hexagon, Minus, Network, Route, ScrollText, Search, Sigma, Square, TextCursorInput, ToggleRight } from "lucide-react";
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon, Binary, Braces, Calendar, Camera, Circle, Clock, Cpu, Crosshair, DollarSign, Fingerprint, Hash, Hexagon, Minus, Network, Route, ScrollText, Search, Sigma, Square, TextCursorInput, ToggleRight, ListOrderedIcon, ListIcon, TextSearchIcon, ListCollapseIcon } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
-import { DATA_TYPES, DataTypeType } from "../types";
+import { DATA_TYPES, DataTypeType, INDEX_SEARCH_METHOD } from "../types";
 
 
 export const SidebarRoutes = [
@@ -330,3 +330,30 @@ export const DTypes: DataTypeType[] = [
   { dtype: DATA_TYPES.UUID, description: "Universally unique identifier", icon: Fingerprint },
   { dtype: DATA_TYPES.XML, description: "XML data", icon: FileCode },
 ];
+
+export const INDEX_SEARCH_METHOD_OPTIONS: { label: string, description: string, icon: LucideIcon, method: INDEX_SEARCH_METHOD }[] = [
+  {
+    label: "Search by ID",
+    description: "Retrieve embeddings based on the ID",
+    icon: ListOrderedIcon,
+    method: INDEX_SEARCH_METHOD.ID
+  },
+  {
+    label: "List IDs",
+    description: "Get a paginated list of all records",
+    method: INDEX_SEARCH_METHOD.LIST_IDS,
+    icon: ListIcon
+  },
+  {
+    label: "Search by text",
+    description: "Semantic search to find records similar to a query",
+    method: INDEX_SEARCH_METHOD.TEXT,
+    icon: TextSearchIcon
+  },
+  {
+    label: "Search by sparse vector",
+    description: "Get records by some of the values of their embeddings",
+    method: INDEX_SEARCH_METHOD.SPARSE_VECTOR,
+    icon: ListCollapseIcon
+  }
+]

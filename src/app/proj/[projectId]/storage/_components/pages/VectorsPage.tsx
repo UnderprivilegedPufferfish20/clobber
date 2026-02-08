@@ -133,6 +133,7 @@ const VectorsPage = (props: Props) => {
             {filteredBuckets.map(f => (
               <IndexCard
                 {...f}
+                key={f.id}
               />
             ))}
         </div>
