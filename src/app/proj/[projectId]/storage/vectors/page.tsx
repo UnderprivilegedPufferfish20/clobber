@@ -25,6 +25,9 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/stora
       searchVars.query
     ) : null
 
+
+  
+
   return (
     <>
       {index ? (

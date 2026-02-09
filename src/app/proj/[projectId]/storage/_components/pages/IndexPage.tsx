@@ -2,22 +2,26 @@
 
 import CustomDialogHeader from '@/components/CustomDialogHeader';
 import TextInputDialog from '@/components/TextInputDialog';
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { createNamespace, createVector } from '@/lib/actions/storage/vectors';
+import { createNamespace, createVector, deleteVector, editVector } from '@/lib/actions/storage/vectors';
 import { INDEX_SEARCH_METHOD_OPTIONS } from '@/lib/constants';
 import { INDEX_SEARCH_METHOD, IndexVector, IndexVectorWithScore, StorageIndex } from '@/lib/types';
 import { useMutation } from '@tanstack/react-query';
 import { is, te } from 'date-fns/locale';
-import { ArrowLeftIcon, ListEndIcon, ListIcon, Move, MoveIcon, SearchIcon } from 'lucide-react';
+import { ArrowLeftIcon, Edit2Icon, EditIcon, EllipsisVerticalIcon, EyeIcon, InboxIcon, ListEndIcon, ListIcon, Move, MoveIcon, SearchIcon, Trash2Icon, XIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import React, { Dispatch, SetStateAction, useMemo, useState } from 'react'
+import React, { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react'
+import { Dropdown } from 'react-day-picker';
 import { toast } from 'sonner';
 
 const IndexPage = ({
@@ -66,7 +70,7 @@ const IndexPage = ({
       case INDEX_SEARCH_METHOD.TEXT:
         return "Query"
       case INDEX_SEARCH_METHOD.LIST_IDS:
-        return <p>Prefix <span className='text-xs text-muted-foreground'>(optional)</span></p>
+        return <span>Prefix <span className='text-xs text-muted-foreground'>(optional)</span></span>
       case INDEX_SEARCH_METHOD.SPARSE_VECTOR:
         return "Sparse Indices"
       default:
@@ -117,7 +121,113 @@ const IndexPage = ({
     }
   }, [method])
 
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+ 
+  const resultLabel = useMemo(() => {
+    switch (method) {
+      case INDEX_SEARCH_METHOD.LIST_IDS:
+        return (
+          <h1 className='font-semibold text-2xl'>List <span className='text-sm text-muted-foreground'>(limit = {topk})</span></h1>
+        )
+      case INDEX_SEARCH_METHOD.TEXT:
+        return <h1 className='font-semibold text-2xl'>Results <span className='text-sm text-muted-foreground'>(via {index.metric.toLowerCase()} similarity)</span></h1>
+      default:
+        return <h1 className='font-semibold text-2xl'>Results</h1> 
+    }
+  }, [method])
 
+  const { mutate: deleteSelected } = useMutation({
+    mutationFn: async () => {
+      await Promise.all(selectedIds.map(async v => deleteVector(project_id, index.name, selectedNamespace, v)))
+    },
+    onMutate: () => toast.loading("Deleting...", { id: "delete-selected-vectors" }),
+    onError: (e) => toast.error(`Failed to delete: ${e}`, { id: "delete-selected-vectors" }),
+    onSuccess: () => {
+      toast.success(`${selectedIds.length} vectors deleted`, { id: "delete-selected-vectors" }),
+      setSelectedIds([])
+    }
+  })
+
+  const skipNextMethodEffectRef = useRef(false);
+
+  useEffect(() => {
+    if (skipNextMethodEffectRef.current) {
+      skipNextMethodEffectRef.current = false;
+      return;
+    }
+
+    setQuery("");
+    router.push(`${pathname}?index=${index.name}`);
+
+    if (method === INDEX_SEARCH_METHOD.LIST_IDS) {
+      search();
+    }
+  }, [method]);
+
+  
+
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    if (selectedIds.length === 0) {
+      toast.dismiss("selected-vectors")
+      return
+    }
+
+    toast(() => (
+      <div className='flex items-center justify-between flex-1 w-lg min-w-lg max-w-lg'>
+        <div className="flex items-center gap-2">
+          <div className="text-white bg-indigo-500 rounded-sm w-6 h-6 flex items-center justify-center">
+            <p>{selectedIds.length}</p>
+          </div>
+          <p className="text-lg">vectors selected</p>
+        </div>
+
+        <div className='flex items-center gap-2 shrink-0'>
+          <Button
+            className='flex items-center gap-2'
+            variant={"outline"}
+            onClick={() => setIsConfirmDeleteOpen(true)}
+          >
+            <Trash2Icon className='w-4 h-4'/>
+            Delete
+          </Button>
+          <Button
+            className='flex items-center gap-2'
+            variant={"outline"}
+            onClick={() => {
+              skipNextMethodEffectRef.current = true;
+
+              const ids = selectedIds;           // capture before clearing
+              setSelectedIds([]);
+              setMethod(INDEX_SEARCH_METHOD.ID);
+              setQuery(ids.join(", "));
+              search();
+            }}
+          >
+            <EyeIcon className='w-4 h-4'/>
+            View
+          </Button>
+          <Button
+            size={"icon-sm"}
+            variant={"ghost"}
+            onClick={() => setSelectedIds([])}
+          >
+            <XIcon className='w-4 h-4'/>
+          </Button>
+        </div>
+      </div> 
+    ), {
+      duration: Infinity,
+      className: "w-[542px] min-w-[542px] max-w-[542px]",
+      id: "selected-vectors",
+      position: "bottom-center"
+    })
+  }, [selectedIds])
+
+  
+
+  
 
   return (
     <>
@@ -257,22 +367,54 @@ const IndexPage = ({
             
           </div>
         </div>
-
-
-        {searchResults && searchResults.length > 0 && (
-          <div className='flex flex-col gap-2 mt-6'>
-            <h1 className='font-semibold text-2xl'>Results <span className='text-sm text-muted-foreground'>({method === INDEX_SEARCH_METHOD.ID ? "by ID" : index.metric.toLowerCase()})</span></h1>
-            {searchResults.map((sr, idx) => (
-              <div key={sr.id}>
-                <SearchResultCard 
-                  {...sr}
-                  // @ts-ignore
-                  score={sr.score ? sr.score : ""}
-                  index={idx}
-                />
+        {searchResults && (
+          <>
+            {searchResults.length > 0 ? (
+              <div className='flex flex-col gap-2 mt-6'>
+                {resultLabel}
+                {method === INDEX_SEARCH_METHOD.LIST_IDS && (
+                  <div className='fullwidth bg-neutral-900 flex gap-4 items-center p-4 -mb-2'>
+                    <Checkbox
+                      className='w-5 h-5' 
+                      checked={Boolean(searchResults && searchResults.length === selectedIds.length)}
+                      onCheckedChange={checked => {
+                        if (checked && searchResults) {
+                          setSelectedIds(searchResults.map(sr => sr.id))
+                        } else {
+                          setSelectedIds([])
+                        }
+                      }}
+                    />
+                    <p className='text-sm text-muted-foreground'>Vector ID</p>
+                  </div>
+                )}
+                {searchResults.map((sr, idx) => (
+                  <div key={sr.id}>
+                    <SearchResultCard 
+                      {...sr}
+                      id={sr.id}
+                      indexName={index.name}
+                      namespace={sr.namespace}
+                      project_id={project_id}
+                      // @ts-ignore
+                      score={sr.score ? sr.score : ""}
+                      index={idx}
+                      method={method}
+                      selectedIds={selectedIds}
+                      setSelectedIds={setSelectedIds}
+                    />
               </div>
             ))}
           </div>
+            ) : (
+              <div className='fullscreen flex items-center justify-center dark:bg-neutral-900 mt-8 rounded-md'>
+                <div className='flex flex-col items-center gap-2'>
+                  <InboxIcon size={106}/>
+                  <p className='text-2xl'>No Results</p>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -299,6 +441,31 @@ const IndexPage = ({
         namespaces={index.namespaces}
         project_id={project_id}
       />
+
+      <AlertDialog
+        open={isConfirmDeleteOpen}
+        onOpenChange={setIsConfirmDeleteOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletetion of {selectedIds.length} vectors</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will permanently delete {selectedIds.length} vectors from your database, and cannot be undone
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant={"default"}
+              onClick={() => deleteSelected()}
+            >
+              Delete
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
@@ -408,36 +575,228 @@ function InsertEmbeddingDialog({
 }
 
 function SearchResultCard({
+  project_id,
+  indexName,
+  namespace,
   id,
   score,
   text,
-  index
+  index,
+  method,
+  selectedIds,
+  setSelectedIds
 }: {
+  project_id: string,
+  indexName: string,
+  namespace: string
   id: string,
   score?: string,
   text: string,
-  index: number
+  index: number,
+  method: INDEX_SEARCH_METHOD,
+  selectedIds: string[],
+  setSelectedIds: Dispatch<SetStateAction<string[]>>
 }) {
+
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
+  const [newText, setNewText] = useState(text)
+
+  const { mutate: del } = useMutation({
+    mutationFn: () => deleteVector(project_id, indexName, namespace, id),
+    onMutate: () => toast.loading("Deleting...", { id: "delete-vector" }),
+    onError: (e) => toast.error(`Failed to delete vector: ${e}`, { id: "delete-vector" }),
+    onSuccess: () => toast.success("Vector Deleted", { id: "delete-vector" })
+  })
+
+  const { mutate: edit } = useMutation({
+    mutationFn: () => editVector(project_id, indexName, namespace, id, newText),
+    onMutate: () => toast.loading("Applying Changes...", { id: "edit-vector" }),
+    onError: (e) => toast.error(`Failed to apply changes: ${e}`, { id: "edit-vector" }),
+    onSuccess: () => {
+      toast.success("Changes Applied", { id: "edit-vector" })
+      setNewText("")
+      setIsEditSheetOpen(false)
+    }
+  })
+
+  const dropdownMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button 
+          onClick={() => {}}
+          variant={"ghost"}
+          size={"icon-lg"}
+          className='cursor-pointer'
+        >
+          <EllipsisVerticalIcon className='w-4 h-4'/>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end'>
+        <DropdownMenuItem
+          className='flex items-center gap-2'
+          onClick={() => setIsEditSheetOpen(true)}
+        >
+          <EditIcon className='w-4 h-4'/>
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setIsConfirmDeleteOpen(true)}
+          className='flex items-center gap-2'
+        >
+          <Trash2Icon className='w-4 h-4'/>
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
+
   return (
-    <div className='fullwidth rounded-lg flex items-center gap-12 dark:bg-neutral-900 p-2'>
-      <div className='flex items-center gap-2'>
-        <span className='w-12 rounded-md h-12 flex items-center justify-center font-semibold bg-indigo-500 text-white'>
-          {index + 1}
-        </span>
+    <>
+      {method === INDEX_SEARCH_METHOD.LIST_IDS ? (
+        <div className='flex items-center gap-4 p-4 dark:bg-neutral-900'>
+          <Checkbox 
+            className='w-5 h-5'
+            checked={selectedSet.has(id)}
+            onCheckedChange={checked => {
+              if (checked) {
+                setSelectedIds(p => [...p, id])
+              } else {
+                setSelectedIds(p => p.filter(v => v !== id))
+              }
+            }}
+          />
 
-        <div className='flex flex-col gap-2'>
-          <p><span className='font-bold text-muted-foreground'>ID:</span> {id}</p>
-          <p><span className='font-bold text-muted-foreground'>Score:</span> {score ? score : "N/A"}</p>
+          <h1 className='text-sm'>{id}</h1>
         </div>
-      </div>
+      ) : method === INDEX_SEARCH_METHOD.ID ? (
+        <div className='fullwidth rounded-lg justify-between flex items-center gap-12 dark:bg-neutral-900 p-2'>
+          <div className='flex items-center gap-8'>
+            <span className='w-8 rounded-md h-8 flex items-center justify-center font-semibold bg-indigo-500 text-white'>
+              {index + 1}
+            </span>
 
-      <div className='flex flex-col gap-2'>
-        <p className='font-bold text-muted-foreground'>Text</p>
-        <p>{text}</p>
-      </div>
+            <div className='flex flex-col'>
+              <p><span className='font-bold text-muted-foreground'>ID:</span> {id}</p>
+              <p><span className='font-bold text-muted-foreground'>Text:</span> {text}</p>
+            </div>
+          </div>
 
+          {dropdownMenu}
 
-    </div>
+          
+        </div>  
+      ) : (
+        <div className='fullwidth rounded-lg flex items-center justify-between gap-12 dark:bg-neutral-900 p-2'>
+          <div className='flex items-center gap-8'>
+            <div className='flex items-center gap-4'>
+              <span className='w-8 rounded-md h-8 flex items-center justify-center font-semibold bg-indigo-500 text-white'>
+                {index + 1}
+              </span>
+
+              <div className='flex flex-col'>
+                <p><span className='font-bold text-muted-foreground'>ID:</span> {id}</p>
+                <p><span className='font-bold text-muted-foreground'>Score:</span> {score ? score : "N/A"}</p>
+              </div>
+            </div>
+
+            <div className='flex flex-col'>
+              <p className='font-bold text-muted-foreground'>Text</p>
+              <p>{text}</p>
+            </div>
+          </div>
+
+          {dropdownMenu}
+        </div>  
+
+      )}
+
+      <AlertDialog
+        open={isConfirmDeleteOpen}
+        onOpenChange={setIsConfirmDeleteOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will permanently delete this vector from your database, and cannot be undone
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant={"default"}
+              onClick={() => del()}
+            >
+              Delete
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={isEditSheetOpen}
+        onOpenChange={setIsEditSheetOpen}
+      >
+        <DialogContent className='flex flex-col gap-8'>
+
+          <CustomDialogHeader 
+            icon={Edit2Icon}
+            title='Edit Embedding'
+          />
+
+          <div className='flex flex-col gap-2'>
+            <p>Namespace</p>
+            <Input 
+              disabled
+              value={namespace}
+              className='fullwidth cursor-not-allowed'
+            />
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <Label htmlFor='id'>ID</Label>
+            <Input 
+              id="id"
+              className='fullwidth'
+              disabled
+              value={id}
+            />
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <Label htmlFor='txt'>Text</Label>
+            <Textarea 
+              id="txt"
+              className='fullwidth'
+              value={newText}
+              onChange={e => setNewText(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter className='flex items-center gap-2'>
+            <Button
+              variant={"secondary"}
+              onClick={() => setIsEditSheetOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={"default"}
+              onClick={() => edit()}
+              disabled={text === newText}
+            >
+              Apply Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

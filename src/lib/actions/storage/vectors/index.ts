@@ -135,5 +135,54 @@ export async function deleteIndex(
   project_id: string,
   name: string
 ) {
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
 
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+}
+
+
+export async function editVector(
+  project_id: string,
+  index: string,
+  namespace: string,
+  id: string,
+  newText: string
+) {
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const response = await client.embeddings.create({
+    model: "text-embedding-3-small",
+    input: newText,
+    encoding_format: "float"
+  });
+
+  const vector = response.data[0].embedding;
+
+  await pool.query(
+  `
+  UPDATE "storage"."vectors"
+  SET "text" = '${newText}',
+      "embedding" = '[${vector}]'::vector
+  WHERE "id" = '${id}' AND "namespace" = '${namespace}';
+  `
+);
+
+  revalidateTag(t(`index-search`, project_id, index, namespace, INDEX_SEARCH_METHOD.ID), "max")
+  revalidateTag(t(`index-search`, project_id, index, namespace, INDEX_SEARCH_METHOD.LIST_IDS), "max")
+  revalidateTag(t(`index-search`, project_id, index, namespace, INDEX_SEARCH_METHOD.SPARSE_VECTOR), "max")
+  revalidateTag(t(`index-search`, project_id, index, namespace, INDEX_SEARCH_METHOD.TEXT), "max")
 }

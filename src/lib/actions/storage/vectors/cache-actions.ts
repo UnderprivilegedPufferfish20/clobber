@@ -85,7 +85,7 @@ export async function searchIndex(
     case INDEX_SEARCH_METHOD.ID:
       const id_res = await pool.query(`
         SELECT * FROM "storage"."vectors"
-        WHERE "id" IN '[${query}]' AND "namespace" = '${namespace}'
+        WHERE "id" IN (${query.split(", ").map(v => `${v}::text`).join(", ")}) AND "namespace" = '${namespace}'
         LIMIT ${top_k};
         `)
 
