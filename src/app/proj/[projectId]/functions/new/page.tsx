@@ -11,13 +11,15 @@ import { EdgeFunctionType } from "@/lib/types";
 import CodeMirrorReact from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
-import { ArrowLeftIcon, ArrowRightIcon, Edit2Icon, EditIcon, EllipsisVerticalIcon, FileIcon, FilePlus2Icon, PlusIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, Edit2Icon, EditIcon, EllipsisVerticalIcon, FileIcon, FilePlus2Icon, FlagIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { uploadEdgeFunction } from "@/lib/actions/functions/actions";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipTrigger } from "@radix-ui/react-tooltip";
 
 export default function CreateEdgeFunctionPage({
     
@@ -30,17 +32,21 @@ export default function CreateEdgeFunctionPage({
     const projectId = pathname.split("/")[2]
 
     const [edgeFunc, setEdgeFunc] = useState<EdgeFunctionType>({
-        createdAt: "",
-        deploymentCount: 0,
-        files: [ { name: "index.ts", code: "" } ],
+        created_at: "",
+        deployment_count: 0,
+        files: [ { name: "index.ts", code: "export function entryPoint() {  }" } ],
         slug: '',
-        updatedAt: "",
+        updated_at: "",
+        entry_point_function_name: "",
         url: ""
     })
 
     const [selectedFile, setSelectedFile] = useState<{ name: string, code: string }>({ name: "index.ts", code: "" })
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
     const [newFileName, setNewFileName] = useState("")
+
+    const [isDoubleExport, setIsDoubleExport] = useState(true)
+    const [isNoExport, setIsNoExport] = useState(true)
 
 
     const currentFileNames = useMemo(() => {
@@ -91,6 +97,99 @@ export default function CreateEdgeFunctionPage({
     })
 
     const [isDeploying, setIsDeploying] = useState(false)
+
+    useEffect(() => {
+        if (selectedFile.name !== "index.ts") return;
+
+        const matches = selectedFile.code.match(/\bexport\b/g);
+        const count = matches ? matches.length : 0;
+
+        if (count > 1) {
+            setIsDoubleExport(true)
+        } else {
+            if (count === 0) {
+                setIsDoubleExport(false)
+                setIsNoExport(true)
+            } else {
+                setIsDoubleExport(false)
+                setIsNoExport(false)
+            }
+        }
+
+    }, [selectedFile])
+
+    const [entryPointFuncName, setEntryPointFuncName] = useState("")
+
+    useEffect(() => {
+        if (selectedFile.name !== "index.ts") return;
+
+        const code = selectedFile.code;
+
+        // Pattern 1: export function name(...)
+        // Pattern 2: export const name = (...) =>
+        // @ts-ignore
+        const namedExportRegex = /\bexport\s+(?:async\s+)?(?:function|const|let|var)\s+(?<name>\w+)/;
+        
+        // Pattern 3: export default function name(...)
+        // @ts-ignore
+        const defaultExportRegex = /\bexport\s+default\s+(?:async\s+)?(?:function\s+)?(?<name>\w+)?/;
+
+        const namedMatch = code.match(namedExportRegex);
+        const defaultMatch = code.match(defaultExportRegex);
+
+        let detectedName = "";
+
+        if (namedMatch?.groups?.name) {
+            detectedName = namedMatch.groups.name;
+        } else if (defaultMatch) {
+            // If it's a default export, GCF entryPoint is literally "default" 
+            // unless it's a named function being exported as default
+            detectedName = defaultMatch.groups?.name || "default";
+        }
+
+        setEntryPointFuncName(detectedName);
+
+        // Keep your existing validation logic
+        const allExports = code.match(/\bexport\b/g) || [];
+        setIsNoExport(allExports.length === 0);
+        setIsDoubleExport(allExports.length > 1);
+
+        }, [selectedFile]);
+
+
+    useEffect(() => {
+        if (!isDoubleExport) {
+            toast.dismiss("double-export-error")
+            return;
+        }
+
+        toast.error("The \"index.ts\" file can only have one exported function that acts as the entry point", {
+            duration: Infinity,
+            id: "double-export-error",
+            className: "w-[564px] min-w-[564px] max-w-[564px]",
+            position: "bottom-center"
+            
+        })
+    }, [isDoubleExport])
+
+    useEffect(() => {
+        if (!isNoExport) {
+            toast.dismiss("no-export-error")
+            return;
+        }
+
+        toast.error("The \"index.ts\" file must export a function to act as the entry point", {
+            duration: Infinity,
+            id: "no-export-error",
+            className: "w-[564px] min-w-[564px] max-w-[564px]",
+            position: "bottom-center"
+            
+        })
+    }, [isNoExport])
+
+    useEffect(() => {
+        setEdgeFunc(p => ({ ...p, entry_point_function_name: entryPointFuncName }))
+    }, [entryPointFuncName])
 
 
     return (
@@ -148,16 +247,20 @@ export default function CreateEdgeFunctionPage({
                             />
                         </div>
 
-                        <Button
+                        <div className="flex items-center gap-6">
+                            
+                            <Button
 
-                            onClick={() => deploy()}
-                            disabled={!edgeFunc.slug || isDeploying} 
-                            variant={"default"}
-                            className="flex items-center group gap-2 p-4 bg-indigo-500 hover:bg-indigo-600 transition-colors duration-300"
-                        >
-                            <h1 className="text-white">Deploy Function</h1>
-                            <ArrowRightIcon className="h-6 w-6 group-hover:translate-x-1 transition-transform duration-300 stroke-white"/>
-                        </Button>
+                                onClick={() => deploy()}
+                                disabled={!edgeFunc.slug || isDeploying || isDoubleExport} 
+                                variant={"default"}
+                                className="flex items-center group gap-2 p-4 bg-indigo-500 hover:bg-indigo-600 transition-colors duration-300"
+                            >
+                                <h1 className="text-white">Deploy Function</h1>
+                                <ArrowRightIcon className="h-6 w-6 group-hover:translate-x-1 transition-transform duration-300 stroke-white"/>
+                            </Button>
+                        </div>
+
                     </header>
                     <div className="flex-1 overflow-hidden min-h-0 min-w-0">
                         <CodeMirrorReact
@@ -171,8 +274,6 @@ export default function CreateEdgeFunctionPage({
                                 const newCode = value ?? "";
                                 setSelectedFile(prev => ({ ...prev, code: newCode }));
                                 
-                                // Note: You likely also want to update the file inside edgeFunc state here 
-                                // so the changes persist when switching files.
                                 setEdgeFunc(prev => ({
                                     ...prev,
                                     files: prev.files.map(f => 

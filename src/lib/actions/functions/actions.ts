@@ -11,6 +11,8 @@ export async function uploadEdgeFunction(
   func: EdgeFunctionType,
   projectId: string
 ) {
+  console.log(`@FUNCTION ${func.slug} entry: ${func.entry_point_function_name}`)
+
   const client = await getFunctionClient();
   const parent = `projects/${gcloud_project_id}/locations/us-central1`;
   const storage = new Storage({ projectId: gcloud_project_id });
@@ -41,7 +43,7 @@ export async function uploadEdgeFunction(
       contentType: "application/zip",
     });
 
-    const functionId = `${projectId}-${func.slug}`;
+    const functionId = `cdb-edgefunc-${projectId}-${func.slug}`;
     const functionPath = `${parent}/functions/${functionId}`;
 
     const [operation] = await client.createFunction({
@@ -50,8 +52,8 @@ export async function uploadEdgeFunction(
       function: {
         name: functionPath,
         buildConfig: {
-          runtime: "nodejs24",
-          entryPoint: "index",  // Your main handler function name
+          runtime: "nodejs22",
+          entryPoint: func.entry_point_function_name,  // Your main handler function name
           source: {
             storageSource: {
               bucket: process.env.STORAGE_BUCKET_NAME!,

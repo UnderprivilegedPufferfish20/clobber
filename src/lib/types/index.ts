@@ -22,6 +22,7 @@ export type AuthUserType = {
 
 export type EdgeFunctionType = {
   files: { name: string, code: string }[],
+  entry_point_function_name: string,
   url: string,
   created_at: any,
   updated_at: any,
