@@ -11,15 +11,13 @@ import { EdgeFunctionType } from "@/lib/types";
 import CodeMirrorReact from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
-import { ArrowLeftIcon, ArrowRightIcon, Edit2Icon, EditIcon, EllipsisVerticalIcon, FileIcon, FilePlus2Icon, FlagIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, Edit2Icon, EditIcon, EllipsisVerticalIcon, FileIcon, FilePlus2Icon, Trash2Icon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { uploadEdgeFunction } from "@/lib/actions/functions/actions";
 import { toast } from "sonner";
-import { Tooltip, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { TooltipTrigger } from "@radix-ui/react-tooltip";
 
 export default function CreateEdgeFunctionPage({
     
@@ -34,14 +32,34 @@ export default function CreateEdgeFunctionPage({
     const [edgeFunc, setEdgeFunc] = useState<EdgeFunctionType>({
         created_at: "",
         deployment_count: 0,
-        files: [ { name: "index.ts", code: "export function entryPoint() {  }" } ],
+        files: [ 
+            { name: "index.js", 
+            code: `const functions = require('@google-cloud/functions-framework');
+
+            // Register an HTTP function
+            functions.http('yourFunctionName', (req, res) => {
+            // Your logic here
+            res.send('Hello World!');
+            });` 
+        } ],
         slug: '',
         updated_at: "",
         entry_point_function_name: "",
         url: ""
     })
 
-    const [selectedFile, setSelectedFile] = useState<{ name: string, code: string }>({ name: "index.ts", code: "" })
+    const [selectedFile, setSelectedFile] = useState<{ name: string, code: string }>({ 
+        name: "index.js", 
+        code: `const functions = require('@google-cloud/functions-framework');
+
+  // Register an HTTP function
+functions.http('yourFunctionName', (req, res) => {
+  // Your logic here
+  res.send('Hello World!');
+});
+        ` 
+    })
+
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
     const [newFileName, setNewFileName] = useState("")
 
@@ -60,7 +78,7 @@ export default function CreateEdgeFunctionPage({
     const AddFileAction= () => {
         setEdgeFunc(prev => ({
             ...prev,
-            files: [...prev.files, { name: `${newFileName}.ts`, code: "" }]
+            files: [...prev.files, { name: `${newFileName}.js`, code: "" }]
         }));
         setNewFileName(""); // Reset input
         setIsCreateDialogOpen(false)
@@ -70,7 +88,7 @@ export default function CreateEdgeFunctionPage({
 
     useEffect(() => {
         if (selectedFile) return;
-        setSelectedFile({ name: "index.ts", code: "" })
+        setSelectedFile({ name: "index.js", code: "" })
     })
 
     useEffect(() => {
@@ -99,7 +117,7 @@ export default function CreateEdgeFunctionPage({
     const [isDeploying, setIsDeploying] = useState(false)
 
     useEffect(() => {
-        if (selectedFile.name !== "index.ts") return;
+        if (selectedFile.name !== "index.js") return;
 
         const matches = selectedFile.code.match(/\bexport\b/g);
         const count = matches ? matches.length : 0;
@@ -121,40 +139,34 @@ export default function CreateEdgeFunctionPage({
     const [entryPointFuncName, setEntryPointFuncName] = useState("")
 
     useEffect(() => {
-        if (selectedFile.name !== "index.ts") return;
+        if (selectedFile.name !== "index.js") return;
 
         const code = selectedFile.code;
 
-        // Pattern 1: export function name(...)
-        // Pattern 2: export const name = (...) =>
+        // Regex to match exactly one functions.http('name', ...) pattern
         // @ts-ignore
-        const namedExportRegex = /\bexport\s+(?:async\s+)?(?:function|const|let|var)\s+(?<name>\w+)/;
+        const functionsHttpRegex = /functions\.http\(['"](?<name>\w+)['"],/;
         
-        // Pattern 3: export default function name(...)
-        // @ts-ignore
-        const defaultExportRegex = /\bexport\s+default\s+(?:async\s+)?(?:function\s+)?(?<name>\w+)?/;
+        const match = code.match(functionsHttpRegex);
 
-        const namedMatch = code.match(namedExportRegex);
-        const defaultMatch = code.match(defaultExportRegex);
+        console.log(`@MATCH: `, match?.groups)
+        
+        if (match?.groups?.name) {
 
-        let detectedName = "";
-
-        if (namedMatch?.groups?.name) {
-            detectedName = namedMatch.groups.name;
-        } else if (defaultMatch) {
-            // If it's a default export, GCF entryPoint is literally "default" 
-            // unless it's a named function being exported as default
-            detectedName = defaultMatch.groups?.name || "default";
+            setEdgeFunc(p => ({ ...p, entry_point_function_name: match.groups!.name }));
+            
+            // Check if there's exactly one such pattern
+            const allMatches = code.match(/functions\.http\(/g) || [];
+            console.log("@ALLMATCHES: ", allMatches)
+            setIsNoExport(allMatches.length === 0);
+            setIsDoubleExport(allMatches.length > 1);
+        } else {
+            setEdgeFunc(p => ({ ...p, entry_point_function_name: "" }));
+            setIsNoExport(true);
+            setIsDoubleExport(false);
         }
-
-        setEntryPointFuncName(detectedName);
-
-        // Keep your existing validation logic
-        const allExports = code.match(/\bexport\b/g) || [];
-        setIsNoExport(allExports.length === 0);
-        setIsDoubleExport(allExports.length > 1);
-
         }, [selectedFile]);
+
 
 
     useEffect(() => {
@@ -163,7 +175,7 @@ export default function CreateEdgeFunctionPage({
             return;
         }
 
-        toast.error("The \"index.ts\" file can only have one exported function that acts as the entry point", {
+        toast.error("The \"index.js\" file can only have one exported http function that acts as the entry point", {
             duration: Infinity,
             id: "double-export-error",
             className: "w-[564px] min-w-[564px] max-w-[564px]",
@@ -178,7 +190,7 @@ export default function CreateEdgeFunctionPage({
             return;
         }
 
-        toast.error("The \"index.ts\" file must export a function to act as the entry point", {
+        toast.error("The \"index.js\" file must export a function to act as the entry point", {
             duration: Infinity,
             id: "no-export-error",
             className: "w-[564px] min-w-[564px] max-w-[564px]",
@@ -187,9 +199,6 @@ export default function CreateEdgeFunctionPage({
         })
     }, [isNoExport])
 
-    useEffect(() => {
-        setEdgeFunc(p => ({ ...p, entry_point_function_name: entryPointFuncName }))
-    }, [entryPointFuncName])
 
 
     return (
@@ -269,7 +278,7 @@ export default function CreateEdgeFunctionPage({
                             height="100%"
                             value={selectedFile.code}
                             theme={cmTheme}
-                            extensions={[javascript({ typescript: true })]}
+                            extensions={[javascript({ jsx: true })]}
                             onChange={(value: string) => {
                                 const newCode = value ?? "";
                                 setSelectedFile(prev => ({ ...prev, code: newCode }));
@@ -323,7 +332,7 @@ export default function CreateEdgeFunctionPage({
                             <p className="text-md text-red-400">File with that name already exists</p>
                         )}
                         {newFileName.includes(".") && (
-                            <p className="text-md text-red-400">All files are typescript (.ts) and cannot contain dots</p>
+                            <p className="text-md text-red-400">All files are javascript (.js) and cannot contain dots</p>
                         )}
                     </div>
                     <DialogFooter>
@@ -382,7 +391,7 @@ function SidebarFile({
                 if (idx !== index) return file;
                 
                 // Return a new object for the renamed file
-                return { ...file, name: `${newName}.ts` };
+                return { ...file, name: `${newName}.js` };
             });
 
             return { ...prev, files: updatedFiles };
@@ -390,7 +399,7 @@ function SidebarFile({
 
         // 3. Keep selectedFile in sync if the file being renamed is the active one
         if (selectedFile.name === func.name) {
-            setSelectedFile(prev => ({ ...prev, name: `${newName}.ts` }));
+            setSelectedFile(prev => ({ ...prev, name: `${newName}.js` }));
         }
 
         setNewName("");
@@ -415,7 +424,7 @@ function SidebarFile({
 
                 <DropdownMenu>
                     <DropdownMenuTrigger>
-                        <EllipsisVerticalIcon className={`w-4 h-4 ${func.name === 'index.ts' && "hidden"}`}/>
+                        <EllipsisVerticalIcon className={`w-4 h-4 ${func.name === 'index.js' && "hidden"}`}/>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuItem 
@@ -479,7 +488,7 @@ function SidebarFile({
                             <p className="text-md text-red-400">File with that name already exists</p>
                         )}
                         {newName.includes(".") && (
-                            <p className="text-md text-red-400">All files are typescript (.ts) and cannot contain dots</p>
+                            <p className="text-md text-red-400">All files are javascript (.js) and cannot contain dots</p>
                         )}
                     </div>
                     <DialogFooter>

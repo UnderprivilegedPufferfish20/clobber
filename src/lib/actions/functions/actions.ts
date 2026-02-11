@@ -28,10 +28,10 @@ export async function uploadEdgeFunction(
     zip.file("package.json", JSON.stringify({
       "name": `${projectId}-${func.slug}`,
       "version": "1.0.0",
-      "main": "index.ts", 
+      "main": "index.js", 
       "dependencies": {
         "@google-cloud/functions-framework": "^3.4.0"  
-      }
+      },
     }));
 
 
