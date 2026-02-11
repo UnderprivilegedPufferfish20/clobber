@@ -13,12 +13,16 @@ const BucketsPage = async ({ params, searchParams }: PageProps<"/proj/[projectId
   const folderData = currentPath ? await getFolderData(p.projectId, currentPath) : []
   const buckets = await getBucketNames(p.projectId);
 
+  const openedBucket = currentPath ? buckets.find(b => b.name === currentPath)! : null
+
   return (
     <>
-      {currentPath ? (
+      {currentPath && openedBucket ? (
         <FoldersPage 
           bucketName={currentPath.split("/")[0]}
           folderData={folderData}
+          allowedTypes={new Set(openedBucket.allowed_types)}
+          maxSize={openedBucket.size_lim_bytes}
         />
       ) : (
          <FilesPage projectId={p.projectId} bucketDetails={buckets} />

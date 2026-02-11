@@ -849,9 +849,18 @@ function ColumnToggle({
                     setActiveCols(p => p.filter(column => column.name !== c.name))
                   }
                 }}
-                className={selectedIndex === index ? 'bg-accent text-accent-foreground' : 'hover:bg-accent text-accent-foreground cursor-pointer'}
+                className={selectedIndex === index ? 'group flex items-center justify-between fullwidth bg-accent text-accent-foreground' : 'group flex items-center justify-between fullwidth hover:bg-accent text-accent-foreground cursor-pointer'}
               >
-                {c.name}
+                <p>{c.name}</p>
+                <p 
+                  className="hidden group-hover:block text-sm text-muted-foreground cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setActiveCols([c])
+                  }}
+                >
+                  Only
+                </p>
               </DropdownMenuCheckboxItem>
             )
           })}

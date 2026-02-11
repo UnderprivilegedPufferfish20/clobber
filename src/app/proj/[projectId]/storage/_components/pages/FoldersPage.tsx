@@ -30,7 +30,9 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 
 type Props = {
   bucketName: string,
-  folderData: Awaited<ReturnType<typeof getFolderData>>
+  folderData: Awaited<ReturnType<typeof getFolderData>>,
+  allowedTypes: Set<string>,
+  maxSize: bigint
 }
 
 const FoldersPage = (props: Props) => {
@@ -168,6 +170,14 @@ const FoldersPage = (props: Props) => {
     const f = e.target.files?.[0] ?? null
     if (!f) return;
 
+    if (!props.allowedTypes.has(f.type)) {
+      toast.error(`File type not allowed for this bucket`);
+      return
+    } else if (f.size > props.maxSize) {
+      toast.error(`File size exceeds the limit of ${formatGCSFileSize(props.maxSize)} for this bucket`);
+      return
+    }
+
     setFile(f);
     setFileName(f.name);
 
@@ -247,6 +257,7 @@ const FoldersPage = (props: Props) => {
                 type="file"
                 className="hidden"
                 onChange={onFileChange}
+                
               />
 
               <Button

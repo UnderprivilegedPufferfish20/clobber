@@ -480,7 +480,7 @@ export function buildWhereClause(
 /** ---------------------------
  *  Misc
  *  -------------------------- */
-export function formatGCSFileSize(fileSize: string): string {
+export function formatGCSFileSize(fileSize: bigint): string {
   if (isNaN(Number(fileSize))) return "0 B";
 
   const bytes = Number(fileSize);
@@ -515,7 +515,7 @@ export function gridPosition(i: number) {
 }
 
 export function createFkeyName(table_name: string, fkey: FkeyType) {
-  return `${table_name}_${fkey.cols.map(c => `${c.referencorColumn}_to_${c.referenceeColumn}`).join("")}_fkey`
+  return `${table_name}_${fkey.cols.map(c => `${c.referencor_column}_to_${c.referencee_column}`).join("")}_fkey`
 }
 
 /** ---------------------------------------------
@@ -588,4 +588,8 @@ export function toCellString(v: any) {
   if (v === null || v === undefined) return "";
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
+}
+
+export function sizeFormatToByteNumber() {
+
 }
