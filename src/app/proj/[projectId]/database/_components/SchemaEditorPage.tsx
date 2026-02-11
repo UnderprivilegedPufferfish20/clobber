@@ -47,11 +47,24 @@ import DataViewer from "@/components/DataViewer";
 const SchemaEditorPage = ({
   projectId,
   schemas,
-  current_schema
+  current_schema,
+
+  data,
+  columns,
+  rowCnt,
+  name,
+  timeMs
 }: {
   projectId: string,
   schemas: string[],
   current_schema: SchemaEditorTable[]
+
+  data?: any,
+  columns?: ColumnType[],
+  rowCnt?: number,
+  name?: string,
+
+  timeMs: number
 }) => {
 
   const router = useRouter();
@@ -197,13 +210,22 @@ const SchemaEditorPage = ({
             </div>
           </div>
         </ResizablePanel>
-        {schema && table && (
+        {schema && table && columns && name && rowCnt && (
           <>
             <ResizableHandle withHandle />
 
-            <ResizablePanel defaultSize={100} className="min-h-0">
-              <div className="h-full min-h-0">
-                <DataViewer projectId={projectId} />
+            <ResizablePanel defaultSize={100} className="min-h-0 fullscreen flex-1">
+              <div className="h-full min-h-0 flex-1">
+                <DataViewer<any>
+                  projectId={projectId}
+                  schema={schema}
+                  columns={columns}
+                  data={data}
+                  name={name}
+                  rowCnt={rowCnt}
+                  timeMs={timeMs}
+                  closeBtn={true}
+                />
               </div>
             </ResizablePanel>
           </>
@@ -408,12 +430,20 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
     onError: (e) => { toast.error(`Failed to downlaod table: ${e}`, { id: 'download-table' }) }
   })
 
+  const isActive = useMemo(() => {
+    if (searchParams.get('schema') as string === schema && searchParams.get('table') as string === tableName) {
+      return true
+    } else {
+      return false
+    }
+  }, [searchParams])
+
 
 
   return (
     <>
       <TooltipProvider>
-        <div className="w-120 rounded-xl border bg-background shadow-sm drag-handle"> {/* Increased width for better table fit */}
+        <div className={`w-120 rounded-xl border bg-background shadow-sm drag-handle ${isActive && "border-2 dark:border-white"}`}>
           <div className="rounded-t-xl border-b px-3 py-2 flex items-center justify-between gap-2 font-semibold text-base dark:bg-white/10 bg-black/10">
             <div className="flex fullwidth justify-between items-center">
               <div className="flex items-center gap-2">

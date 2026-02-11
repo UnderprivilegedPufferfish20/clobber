@@ -41,11 +41,11 @@ function AddTableSheet({
   const emptyColumn: ColumnForm = {
     name: "",
     dtype: DATA_TYPES.INTEGER,      // or DATA_TYPES.INT if that matches your enum
-    isArray: false,
+    is_array: false,
     default: "",
-    isPkey: false,
-    isUnique: false,
-    isNullable: true,
+    is_pkey: false,
+    is_unique: false,
+    is_nullable: true,
   };
 
 
@@ -56,28 +56,28 @@ function AddTableSheet({
     {
       name: "id",
       dtype: DATA_TYPES.UUID,
-      isArray: false,
-      isNullable: false,
-      isPkey: true,
-      isUnique: true,
+      is_array: false,
+      is_nullable: false,
+      is_pkey: true,
+      is_unique: true,
       default: "uuid_generate_v4()",
     },
     {
       name: "$createdAt",
       dtype: DATA_TYPES.TIMESTAMPTZ,
-      isArray: false,
-      isNullable: false,
-      isPkey: false,
-      isUnique: false,
+      is_array: false,
+      is_nullable: false,
+      is_pkey: false,
+      is_unique: false,
       default: "now()",
     },
     {
       name: "$updatedAt",
       dtype: DATA_TYPES.TIMESTAMPTZ,
-      isArray: false,
-      isNullable: false,
-      isPkey: false,
-      isUnique: false,
+      is_array: false,
+      is_nullable: false,
+      is_pkey: false,
+      is_unique: false,
       default: "now()",
     }
   ]
@@ -200,7 +200,7 @@ function AddTableSheet({
                 return (
                     <div
                       key={`column-${idx}`}
-                      className={`${col.isPkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border border-border`}
+                      className={`${col.is_pkey && "bg-white/5"} flex items-center gap-2 fullwidth p-2 relative rounded-md border border-border`}
                     >
 
                       
@@ -222,20 +222,20 @@ function AddTableSheet({
                       <DefaultValueSelector 
                         defaultValue={col.default ?? ""}
                         dtype={col.dtype}
-                        isArray={col.isArray}
+                        isArray={col.is_array}
                         setDefaultValue={updateDefault}
                         className='truncate focus-visible:ring-0 focus-visible:ring-offset-0'
                       />
 
                       <Checkbox
-                        className={`w-6 h-6 ${col.isPkey ? "mr-30" : "mr-18"}`}
-                        checked={col.isPkey}
-                        onCheckedChange={(v) => updateColumn(idx, { isPkey: Boolean(v), isArray: false })}
+                        className={`w-6 h-6 ${col.is_pkey ? "mr-30" : "mr-18"}`}
+                        checked={col.is_pkey}
+                        onCheckedChange={(v) => updateColumn(idx, { is_pkey: Boolean(v), is_array: false })}
                       />
 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className={`${col.isPkey && "hidden"} relative`} type="button">
+                          <Button variant="ghost" className={`${col.is_pkey && "hidden"} relative`} type="button">
                             {getCheckedOptions(col) > 0 && (
                               <Badge className="absolute top-0 left-0 w-3 h-4">{getCheckedOptions(col)}</Badge>
                             )}
@@ -248,8 +248,8 @@ function AddTableSheet({
                           <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
                             <Checkbox
                               id={`isNullable-${idx}`}
-                              checked={col.isNullable}
-                              onCheckedChange={(v) => updateColumn(idx, { isNullable: Boolean(v) })}
+                              checked={col.is_nullable}
+                              onCheckedChange={(v) => updateColumn(idx, { is_nullable: Boolean(v) })}
                             />
                             <Label htmlFor={`isNullable-${idx}`}>Is Nullable</Label>
                           </DropdownMenuItem>
@@ -257,18 +257,18 @@ function AddTableSheet({
                           <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
                             <Checkbox
                               id={`isUnique-${idx}`}
-                              checked={col.isUnique}
-                              onCheckedChange={(v) => updateColumn(idx, { isUnique: Boolean(v) })}
+                              checked={col.is_unique}
+                              onCheckedChange={(v) => updateColumn(idx, { is_unique: Boolean(v) })}
                             />
                             <Label htmlFor={`isUnique-${idx}`}>Is Unique</Label>
                           </DropdownMenuItem>
 
-                          {!col.isPkey && (
+                          {!col.is_pkey && (
                             <DropdownMenuItem className="flex items-center gap-2" onSelect={(e) => e.preventDefault()}>
                               <Checkbox
                                 id={`isArray-${idx}`}
-                                checked={col.isArray}
-                                onCheckedChange={(v) => updateColumn(idx, { isArray: Boolean(v) })}
+                                checked={col.is_array}
+                                onCheckedChange={(v) => updateColumn(idx, { is_array: Boolean(v) })}
                               />
                               <Label htmlFor={`isArray-${idx}`}>Is Array</Label>
                             </DropdownMenuItem>
@@ -306,8 +306,8 @@ function AddTableSheet({
                 <div className='flex items-center gap-2'>
                   <Table2Icon className='w-4 h-4' />
                   <h2 className='text-md text-muted-foreground'>
-                    {fkey.cols[0]!.referenceeSchema}.
-                    <span className='text-white'>{fkey.cols[0]!.referenceeTable}</span>
+                    {fkey.cols[0]!.referencee_schema}.
+                    <span className='text-white'>{fkey.cols[0]!.referencee_table}</span>
                   </h2>
                 </div>
 
@@ -329,9 +329,9 @@ function AddTableSheet({
               <div className='ml-6 flex w-fit flex-col gap-1 text-sm'>
                 {fkey.cols.map(c => (
                   <div className='flex items-center justify-between p-1'>
-                    <span className='text-muted-foreground'>{c.referencorColumn}</span>
+                    <span className='text-muted-foreground'>{c.referencor_column}</span>
                     <ArrowRightIcon className='w-4 h-4 mx-1' />
-                    <span className='text-white'>{c.referenceeColumn}</span>
+                    <span className='text-white'>{c.referencee_column}</span>
                   </div>
                 ))}
               </div>

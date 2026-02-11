@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, EllipsisVerticalIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, PlusIcon, RefreshCwIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, EllipsisVerticalIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, Trash2Icon, XIcon } from "lucide-react";
 import {  Dispatch, SetStateAction, use, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
@@ -34,21 +34,21 @@ import { deleteSelectedRows, downloadSelectedRows } from "@/lib/actions/database
 export default function DataViewer<T>({
   projectId,
   data,
-  maxPage,
   columns,
   rowCnt,
   name,
   timeMs,
-  schema
+  schema,
+  closeBtn
 }: {
   projectId: string,
   data: T[],
-  maxPage: number,
   columns: ColumnType[],
   rowCnt: number,
   name: string,
   schema: string,
-  timeMs: number
+  timeMs: number,
+  closeBtn: boolean
 }) {
 
   const router = useRouter();
@@ -444,166 +444,218 @@ export default function DataViewer<T>({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          {closeBtn && (
+            <Button
+              variant={"ghost"}
+              size={"icon-lg"}
+              onClick={() => {
+                const sp = new URLSearchParams(searchParams)
+                sp.delete("table")
+                sp.delete("offset")
+                sp.delete("limit")
+                sp.delete("filter")
+                sp.delete("sort")
+
+                router.replace(`${pathname}?${sp}`)
+              }}
+            >
+              <XIcon className="w-6 h-6"/>
+            </Button>
+          )}
         </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto hide-scrollbar text-sm relative">
-        <div
-          className="min-w-max pb-20"
-          style={{
-            display: "grid",
-            gridTemplateColumns: `36px repeat(${activeCols.length}, minmax(180px, 1fr))`,
-          }}
-        >
-          {/* Sticky header row */}
-          <div className="contents">
-            <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-              <div className="h-9 w-9 flex items-center justify-center border-r bg-neutral-900">
-                <Checkbox
-                  className="w-4 h-4"
-                  onCheckedChange={(checked) => {
-                    if (pkeyCols.size === 0) return;
-                    setSelectedRows((prev) => {
-                      const next = new Map(prev);
-                      data.forEach((row) => {
-                        const id = computeRowId(row);
-                        if (checked) next.set(id, row);
-                        else next.delete(id);
-                      });
-                      return next;
-                    });
-                  }}
-                  checked={data.length > 0 && selectedRows.size > 0}
-                />
+        {activeCols.length > 0 ? (
+          data.length === 0 ? (
+            <div className="fullscreen flex flex-1 items-center justify-center text-muted-foreground text-2xl">
+              <div className="flex flex-col justify-center items-center gap-4">
+                <SquareDashedTopSolidIcon size={148}/>
+
+                <h1>
+                  No data in this table
+                </h1>
+                
               </div>
             </div>
-
-            {activeCols.map((col: ColumnType, i: number) => {
-              const Icon = DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype])!.icon;
-
-              return (
-                <div
-                  key={col.name}
-                  className={[
-                    "sticky top-0 z-10",
-                    "border-b",
-                    "dark:bg-neutral-900",
-                    i === 0 ? "border-l-0" : "border-l",
-                    "p-2 h-9",
-                    "cursor-pointer hover:bg-muted/40",
-                    "flex items-center justify-between gap-2",
-                  ].join(" ")}
-                  onClick={() => handleSort(col.name)}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="truncate">{col.name}</span>
-                    {sortColumn === col.name ? (
-                      sortDir === "asc" ? (
-                        <ArrowUp size={14} />
-                      ) : (
-                        <ArrowDown size={14} />
-                      )
-                    ) : (
-                      <ArrowUpDown size={14} className="text-muted-foreground" />
-                    )}
-                  </div>
-                  <Icon className="w-4 h-4 shrink-0" />
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Body rows */}
-          {data.length === 0 ? (
-            <div className="col-span-full border-b p-2 text-center text-muted-foreground">
-              No data in this table
-            </div>
           ) : (
-            data.map((row: any, idx: number) => {
-              const id = computeRowId(row);
-              const isSelected = selectedRows.has(id);
-
-              return (
-                <div key={row.ctid} className="contents">
-                  {/* left "row number / checkbox" cell */}
-                  <div className="border-b border-r h-9 w-9 flex items-center justify-center group hover:bg-muted/40">
-                    {isSelected ? (
-                      <Checkbox
-                        className="w-4 h-4"
-                        checked
-                        onCheckedChange={(checked) => {
-                          if (pkeyCols.size === 0) return;
-                          setSelectedRows((prev) => {
-                            const next = new Map(prev);
+            <div
+              className="min-w-max pb-20"
+              style={{
+                display: "grid",
+                gridTemplateColumns: `36px repeat(${activeCols.length}, minmax(180px, 1fr))`,
+                gridAutoRows: "min-content",
+                alignContent: "start",
+              }}
+            >
+              {/* Sticky header row */}
+              <div className="contents">
+                <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+                  <div className="h-9 w-9 flex items-center justify-center border-r bg-neutral-900">
+                    <Checkbox
+                      className="w-4 h-4"
+                      onCheckedChange={(checked) => {
+                        if (pkeyCols.size === 0) return;
+                        setSelectedRows((prev) => {
+                          const next = new Map(prev);
+                          data.forEach((row) => {
+                            const id = computeRowId(row);
                             if (checked) next.set(id, row);
                             else next.delete(id);
-                            return next;
                           });
-                        }}
-                      />
-                    ) : (
-                      <>
+                          return next;
+                        });
+                      }}
+                      checked={data.length > 0 && selectedRows.size > 0}
+                    />
+                  </div>
+                </div>
+
+                {activeCols.map((col: ColumnType, i: number) => {
+                  const Icon = DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype])!.icon;
+
+                  return (
+                    <div
+                      key={col.name}
+                      className={[
+                        "sticky top-0 z-10",
+                        "border-b",
+                        "dark:bg-neutral-900",
+                        i === 0 ? "border-l-0" : "border-l",
+                        "p-2 h-9",
+                        "cursor-pointer hover:bg-muted/40",
+                        "flex items-center justify-between gap-2",
+                      ].join(" ")}
+                      onClick={() => handleSort(col.name)}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="truncate">{col.name}</span>
+                        {sortColumn === col.name ? (
+                          sortDir === "asc" ? (
+                            <ArrowUp size={14} />
+                          ) : (
+                            <ArrowDown size={14} />
+                          )
+                        ) : (
+                          <ArrowUpDown size={14} className="text-muted-foreground" />
+                        )}
+                      </div>
+                      <Icon className="w-4 h-4 shrink-0" />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Body rows */}
+              {data.map((row: any, idx: number) => {
+                const id = computeRowId(row);
+                const isSelected = selectedRows.has(id);
+
+                return (
+                  <div key={row.ctid} className="contents">
+                    {/* left "row number / checkbox" cell */}
+                    <div className="border-b border-r h-9 w-9 flex items-center justify-center group hover:bg-muted/40">
+                      {isSelected ? (
                         <Checkbox
-                          className="hidden group-hover:block w-4 h-4"
-                          checked={false}
+                          key={row.ctid}
+                          className="w-4 h-4"
+                          checked
                           onCheckedChange={(checked) => {
                             if (pkeyCols.size === 0) return;
                             setSelectedRows((prev) => {
                               const next = new Map(prev);
                               if (checked) next.set(id, row);
+                              else next.delete(id);
                               return next;
                             });
                           }}
                         />
-                        <p className="group-hover:hidden text-muted-foreground">{sortStr ? row.row_index : offset + idx + 1}</p>
-                      </>
-                    )}
-                  </div>
+                      ) : (
+                        <>
+                          <Checkbox
+                            key={row.ctid}
+                            className="hidden group-hover:block w-4 h-4"
+                            checked={false}
+                            onCheckedChange={(checked) => {
+                              if (pkeyCols.size === 0) return;
+                              setSelectedRows((prev) => {
+                                const next = new Map(prev);
+                                if (checked) next.set(id, row);
+                                return next;
+                              });
+                            }}
+                          />
+                          <p key={row.ctid} className="group-hover:hidden text-muted-foreground">{sortStr ? row.row_index : offset + idx + 1}</p>
+                        </>
+                      )}
+                    </div>
 
-                  {/* data cells */}
-                  {activeCols.map((col: any, i: number) => {
-                    const colName = col.name;
-                    const raw = row[colName];
-                    const isNull = raw === null;
+                    {/* data cells */}
+                    {activeCols.map((col: any, i: number) => {
+                      const colName = col.name;
+                      const raw = row[colName];
+                      const isNull = raw === null;
 
-                    const value = isNull ? (
-                      <span className="text-muted-foreground italic">NULL</span>
-                    ) : raw instanceof Date ? (
-                      <span>{raw.toLocaleDateString()}</span>
-                    ) : (
-                      <span>{String(raw)}</span>
-                    );
+                      const value = isNull ? (
+                        <span className="text-muted-foreground italic">NULL</span>
+                      ) : raw instanceof Date ? (
+                        <span>{raw.toLocaleDateString()}</span>
+                      ) : (
+                        <span>{String(raw)}</span>
+                      );
 
-                    return (
-                      <TooltipProvider key={colName} delayDuration={5000}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              className={[
-                                "border-b",
-                                i === 0 ? "border-l-0" : "border-l",
-                                "p-2 h-9",
-                                "truncate",
-                                "hover:bg-muted/40",
-                                "cursor-pointer",
-                              ].join(" ")}
-                            >
+                      return (
+                        <TooltipProvider key={colName} delayDuration={5000}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={[
+                                  "border-b",
+                                  i === 0 ? "border-l-0" : "border-l",
+                                  "p-2 h-9",
+                                  "truncate",
+                                  "hover:bg-muted/40",
+                                  "cursor-pointer",
+                                ].join(" ")}
+                              >
+                                {value}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent align="start" carat={false}>
                               {value}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent align="start" carat={false}>
-                            {value}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    );
-                  })}
-                </div>
-              );
-            })
-          )}
- 
-        </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          <div className="fullscreen flex flex-1 items-center justify-center text-muted-foreground text-2xl">
+            <div className="flex flex-col justify-center items-center gap-4">
+              <Grid2x2XIcon size={148}/>
+
+              <div className="flex flex-col justify-center items-center gap-2">
+                <h1>
+                  No selected columns
+                </h1>
+                <Button
+                  variant={"default"}
+                  size={"lg"}
+                  onClick={() => {
+                    setActiveCols(columns)
+                  }}
+                >
+                  Select All
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="px-2 sticky bottom-20 left-0 right-0 h-12 min-h-12 max-h-12 fullwidth flex flex-1 items-center justify-between gap-2 dark:bg-neutral-900 opacity-100">
           <div className="text-white text-2xl font-semibold flex items-baseline">

@@ -3,12 +3,11 @@
 import { DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_UPDATED, FkeyColumnType, FkeyType, TableType } from "@/lib/types";
 import { Dispatch, SetStateAction, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getSchemas } from "@/lib/actions/database/cache-actions";
 import { getTables } from "@/lib/actions/database/tables/cache-actions";
 import { getCols } from "@/lib/actions/database/columns/cache-actions";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRightIcon, BoxesIcon, Table2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { ArrowRightIcon, Table2Icon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SheetWrapper from "@/components/SheetWrapper";
 import SheetSchemaSelect from "../selectors/SheetSchemaSelect";
@@ -40,13 +39,13 @@ export default function EditFkeySheet({
 
   if (editingFkey.cols.length === 0) throw new Error("No columns in fkey");
 
-  const [selectedSchema, setSelectedSchema] = useState(editingFkey.cols[0].referenceeSchema)
-  const [selectedTable, setSelectedTable] = useState(editingFkey.cols[0].referenceeTable)
+  const [selectedSchema, setSelectedSchema] = useState(editingFkey.cols[0].referencee_schema)
+  const [selectedTable, setSelectedTable] = useState(editingFkey.cols[0].referencee_table)
 
   const [fkeyCols, setFkeyCols] = useState<FkeyColumnType[]>(editingFkey.cols)
 
-  const [delAction, setDelAction] = useState<FKEY_REFERENCED_ROW_ACTION_DELETED>(editingFkey.deleteAction)
-  const [updateAction, setUpdateAction] = useState<FKEY_REFERENCED_ROW_ACTION_UPDATED>(editingFkey.updateAction)
+  const [delAction, setDelAction] = useState<FKEY_REFERENCED_ROW_ACTION_DELETED>(editingFkey.delete_action)
+  const [updateAction, setUpdateAction] = useState<FKEY_REFERENCED_ROW_ACTION_UPDATED>(editingFkey.update_action)
 
   const { data: tables } = useQuery({
     queryKey: ["tables", projectId, selectedSchema],
@@ -76,18 +75,18 @@ export default function EditFkeySheet({
   }
 
   const defaultColumn: FkeyColumnType = {
-    referenceeSchema: selectedSchema ?? "",
-    referenceeTable: selectedTable ?? "",
-    referenceeColumn: "",
+    referencee_schema: selectedSchema ?? "",
+    referencee_table: selectedTable ?? "",
+    referencee_column: "",
     
-    referencorSchema: schema,
-    referencorTable: table.name,
-    referencorColumn: ""
+    referencor_schema: schema,
+    referencor_table: table.name,
+    referencor_column: ""
   }
 
   function getReferencorMeta(table: TableType, referencorColumn: string) {
     const col = table.columns.find((c) => c.name === referencorColumn);
-    return col ? { dtype: col.dtype, isArray: col.isArray } : null;
+    return col ? { dtype: col.dtype, isArray: col.is_array } : null;
   }
 
   function getReferenceeMeta(
@@ -108,7 +107,7 @@ export default function EditFkeySheet({
       onSubmit={() => {
         setFkeys(prev => {
           const next = [...prev];
-          next.splice(index!, 1, { cols: fkeyCols, updateAction, deleteAction: delAction }); // replace 1
+          next.splice(index!, 1, { cols: fkeyCols, update_action: updateAction, delete_action: delAction });
           return next;
         });
 
@@ -170,20 +169,20 @@ export default function EditFkeySheet({
             return (
               <div className="flex items-center gap-2 fullwidth justify-between">
                 <Select
-                  value={c.referencorColumn}
+                  value={c.referencor_column}
                   onValueChange={(v) => {
                     const nextReferencor = v;
 
                     // if current referencee doesn't match the newly selected referencor dtype, clear it
                     const refMeta = getReferencorMeta(table, nextReferencor);
-                    const curReferenceeMeta = getReferenceeMeta(columns, c.referenceeColumn);
+                    const curReferenceeMeta = getReferenceeMeta(columns, c.referencee_column);
 
                     updateColumn(idx, {
-                      referencorColumn: nextReferencor,
-                      referenceeColumn:
+                      referencor_column: nextReferencor,
+                      referencee_column:
                         refMeta && curReferenceeMeta
                           ? (refMeta.dtype === curReferenceeMeta.dtype
-                              ? c.referenceeColumn
+                              ? c.referencee_column
                               : "")
                           : "",
                     });
@@ -194,7 +193,7 @@ export default function EditFkeySheet({
                   </SelectTrigger>
 
                   <SelectContent className="z-500">
-                    {table.columns.filter(c => !c.isArray).map(c => (
+                    {table.columns.filter(c => !c.is_array).map(c => (
                       <SelectItem
                         className="flex items-center justify-between fullwidth" 
                         key={c.name} 
@@ -210,9 +209,9 @@ export default function EditFkeySheet({
                 <ArrowRightIcon className="h-6 w-6"/>
 
                 <Select 
-                  value={c.referenceeColumn} 
-                  onValueChange={v => updateColumn(idx, { referenceeColumn: v })}
-                  disabled={!c.referencorColumn}
+                  value={c.referencee_column} 
+                  onValueChange={v => updateColumn(idx, { referencee_column: v })}
+                  disabled={!c.referencor_column}
                 >
                   <SelectTrigger className="truncate w-38 min-w-38 max-w-38">
                     <SelectValue placeholder="select a column..."/>
@@ -222,7 +221,7 @@ export default function EditFkeySheet({
                     <SelectGroup>
                       <SelectLabel className="font-bold!">Only matching data types</SelectLabel>
                       {(() => {
-                        const refMeta = getReferencorMeta(table, c.referencorColumn);
+                        const refMeta = getReferencorMeta(table, c.referencor_column);
 
                         // If no referencor selected yet, show nothing (or show a hint)
                         if (!refMeta) {

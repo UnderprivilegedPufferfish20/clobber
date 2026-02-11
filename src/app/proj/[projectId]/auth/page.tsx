@@ -56,12 +56,12 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/auth"
       <DataViewer<AuthUserType> 
         data={users.rows}
         schema="auth"
-        maxPage={5}
         rowCnt={users.rowCount ?? 0}
         projectId={p.projectId}
         columns={users.columns}
         name="users"
         timeMs={queryTimeMs}
+        closeBtn={false}
       />
  
   )

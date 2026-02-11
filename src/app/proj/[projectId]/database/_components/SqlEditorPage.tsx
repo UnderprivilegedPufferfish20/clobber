@@ -23,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { executeQuery } from "@/lib/actions/database";
 import { updateSqlQuery } from "@/lib/actions/database/sql";
-import { Prisma, sql } from "@/lib/db/generated";
+import { Prisma, sql } from "@prisma/client";
 import { useTheme } from "next-themes";
 
 export default function SqlEditorPage({

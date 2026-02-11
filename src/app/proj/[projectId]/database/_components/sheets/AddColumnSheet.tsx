@@ -3,24 +3,14 @@
 import { Dispatch, SetStateAction, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Separator } from '@/components/ui/separator'
-import { addColumn } from '@/lib/actions/database/columns'
 import DataTypeSelect from '../DataTypeSelect'
 import { Switch } from '@/components/ui/switch'
 import DefaultValueSelector from '../selectors/DefaultValueSelector'
 import { DATA_TYPES } from '@/lib/types'
 import SheetWrapper from '@/components/SheetWrapper'
+import { addColumn } from '@/lib/actions/database/columns'
+import { Separator } from '@/components/ui/separator'
 
 function AddColumnSheet({
   projectId,
@@ -38,6 +28,7 @@ function AddColumnSheet({
   const queryClient = useQueryClient()
 
   const [name, setName] = useState("")
+  // @ts-ignore
   const [dtype, setDtype] = useState<typeof DATA_TYPES[keyof typeof DATA_TYPES]>("boolean")
 
   const [isArray, setIsArray] = useState(false)
@@ -51,10 +42,10 @@ function AddColumnSheet({
     mutationFn: () =>
       addColumn({
         dtype,
-        isArray,
-        isNullable,
-        isPkey,
-        isUnique,
+        is_array: isArray,
+        is_nullable: isNullable,
+        is_pkey: isPkey,
+        is_unique: isUnique,
         name,
         default: defaultValue,
       }, schema, projectId, tableId),
@@ -115,6 +106,7 @@ function AddColumnSheet({
           defaultValue={defaultValue}
           setDefaultValue={setDefaultValue}
           dtype={dtype}
+          isArray={isArray}
         />
       </div>
 

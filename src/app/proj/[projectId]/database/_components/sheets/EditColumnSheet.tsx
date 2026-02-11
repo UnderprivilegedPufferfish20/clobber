@@ -2,30 +2,12 @@
 
 import { ColumnType, DATA_TYPES } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import { toast } from "sonner";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import DataTypeSelect from "../DataTypeSelect";
-import { Button } from "@/components/ui/button";
-import { Loader2, MenuIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { defaultSuggestions } from "@/lib/utils";
 import { editColumn } from "@/lib/actions/database/columns";
 import DefaultValueSelector from "../selectors/DefaultValueSelector";
 import SheetWrapper from "@/components/SheetWrapper";
@@ -51,10 +33,10 @@ export default function EditColumnSheet({
   const [name, setName] = useState(column.name)
   const [dtype, setDtype] = useState<typeof DATA_TYPES[keyof typeof DATA_TYPES]>(column.dtype)
 
-  const [isArray, setIsArray] = useState(column.isArray)
-  const [isPkey, setIsPkey] = useState(column.isPkey)
-  const [isUnique, setIsUnique] = useState(column.isUnique)
-  const [isNullable, setIsNullable] = useState(column.isNullable)
+  const [isArray, setIsArray] = useState(column.is_array)
+  const [isPkey, setIsPkey] = useState(column.is_pkey)
+  const [isUnique, setIsUnique] = useState(column.is_unique)
+  const [isNullable, setIsNullable] = useState(column.is_nullable)
 
   const [defaultValue, setDefaultValue] = useState(column.default)
 
@@ -66,10 +48,10 @@ export default function EditColumnSheet({
         table, 
         column, {
           dtype,
-          isArray,
-          isNullable,
-          isPkey,
-          isUnique,
+          is_array: isArray,
+          is_nullable: isNullable,
+          is_pkey: isPkey,
+          is_unique: isUnique,
           name,
           default: defaultValue
         }),
@@ -89,7 +71,7 @@ export default function EditColumnSheet({
 
   
   const isDirty = () => {
-    return isArray !== column.isArray || isPkey !== column.isPkey || isNullable !== column.isNullable || isUnique !== column.isUnique || name !== column.name || dtype !== column.dtype
+    return isArray !== column.is_array || isPkey !== column.is_pkey || isNullable !== column.is_nullable || isUnique !== column.is_unique || name !== column.name || dtype !== column.dtype
    }
   
 
@@ -107,10 +89,10 @@ export default function EditColumnSheet({
           setName(column.name)
           setDefaultValue(column.default)
           setDtype(column.dtype)
-          setIsUnique(column.isUnique)
-          setIsArray(column.isArray)
-          setIsPkey(column.isPkey)
-          setIsNullable(column.isNullable)
+          setIsUnique(column.is_unique)
+          setIsArray(column.is_array)
+          setIsPkey(column.is_pkey)
+          setIsNullable(column.is_nullable)
         }}
         isPending={isPending}
         isDirty={isDirty}
@@ -142,6 +124,7 @@ export default function EditColumnSheet({
             defaultValue={defaultValue ?? ""}
             setDefaultValue={setDefaultValue}
             dtype={dtype}
+            isArray={isArray}
           />
         </div>
 
