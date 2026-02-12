@@ -203,7 +203,7 @@ function BucketCard({
 
       <Separator />
 
-      <p>Size Cap: {!size_lim ? "None" : formatGCSFileSize(String(size_lim))}</p>
+      <p>Size Cap: {!size_lim ? "None" : formatGCSFileSize(size_lim)}</p>
       <p className="truncate">Supported Types: {supported_types ? supported_types.join(", ") : 'all'}</p>
     </Link>
   )

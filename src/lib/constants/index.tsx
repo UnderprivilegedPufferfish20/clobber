@@ -1,4 +1,4 @@
-import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon, Binary, Braces, Calendar, Camera, Circle, Clock, Cpu, Crosshair, DollarSign, Fingerprint, Hash, Hexagon, Minus, Network, Route, ScrollText, Search, Sigma, Square, TextCursorInput, ToggleRight, ListOrderedIcon, ListIcon, TextSearchIcon, ListCollapseIcon } from "lucide-react";
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon, Binary, Braces, Calendar, Camera, Circle, Clock, Cpu, Crosshair, DollarSign, Fingerprint, Hash, Hexagon, Minus, Network, Route, ScrollText, Search, Sigma, Square, TextCursorInput, ToggleRight, ListOrderedIcon, ListIcon, TextSearchIcon, ListCollapseIcon, BracketsIcon } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
 import { DATA_TYPES, DataTypeType, INDEX_SEARCH_METHOD } from "../types";
 
@@ -264,7 +264,7 @@ export const HomepageFeatures = [
 export const DTypes: DataTypeType[] = [
   { dtype: DATA_TYPES.BIGINT, description: "Signed 8-byte integer (alias: int8)", icon: Hash },
   { dtype: DATA_TYPES.BIGSERIAL, description: "Auto-incrementing 8-byte integer (alias: serial8)", icon: Hash },
-
+  {dtype: DATA_TYPES.VECTOR, description: "1536 dimensional vector for text embeddings", icon: BracketsIcon},
   { dtype: DATA_TYPES.BIT, description: "Fixed-length bit string (bit(n))", icon: Binary },
   { dtype: DATA_TYPES.BIT_VARYING, description: "Variable-length bit string (varbit(n))", icon: Binary },
 

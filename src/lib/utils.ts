@@ -214,7 +214,7 @@ export function rowsToJson(rows: any[], fields: readonly { name: string }[]): st
   fields.forEach((f) => (res[f.name] = []));
   rows.forEach((row: Record<string, any>) => {
     for (const [fName, value] of Object.entries(row)) {
-      res[fName].push(value);
+      if (res[fName]) res[fName].push(value);
     }
   });
   return JSON.stringify(res);
@@ -246,6 +246,7 @@ export const t = (...parts: (string | number)[]) => parts.join(":");
 
 export const ALIAS_TO_ENUM: Record<string, DATA_TYPES> = {
   // ints/serials
+  vector: DATA_TYPES.VECTOR,
   int2: DATA_TYPES.SMALLINT,
   smallint: DATA_TYPES.SMALLINT,
   int4: DATA_TYPES.INTEGER,

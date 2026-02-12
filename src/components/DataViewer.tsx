@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, EllipsisVerticalIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, EllipsisVerticalIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, TextIcon, Trash2Icon, XIcon } from "lucide-react";
 import {  Dispatch, SetStateAction, use, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
@@ -153,7 +153,7 @@ export default function DataViewer<T>({
         type,
         name,
         schema, // Or dynamic schema
-        columns,
+        activeCols,
       );
       if (!exportData) throw new Error("Failed to export");
 
@@ -302,12 +302,6 @@ export default function DataViewer<T>({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground flex items-center gap-0.5">
-            <p>{rowCnt} rows</p>
-            <DotIcon className="h-4 w-4" />
-            <p>{Math.round(timeMs)}ms</p>
-          </div>
-
           {/* Pagination controls */}
           <div className="flex items-center">
             <TooltipProvider>
@@ -481,11 +475,12 @@ export default function DataViewer<T>({
             </div>
           ) : (
             <div
-              className="min-w-max pb-20"
+              className="min-w-full min-h-full pb-20 overflow-x-auto"
               style={{
                 display: "grid",
-                gridTemplateColumns: `36px repeat(${activeCols.length}, minmax(180px, 1fr))`,
-                gridAutoRows: "min-content",
+                /* 1. Use 1fr to divide remaining space evenly after the 36px offset */
+                gridTemplateColumns: `36px repeat(${activeCols.length}, 1fr)`,
+                /* 2. Forces rows to the top; the 'empty' space will sit below them */
                 alignContent: "start",
               }}
             >
@@ -513,7 +508,7 @@ export default function DataViewer<T>({
                 </div>
 
                 {activeCols.map((col: ColumnType, i: number) => {
-                  const Icon = DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype])!.icon;
+                  const Icon = DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype]) ? DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype])!.icon : TextIcon;
 
                   return (
                     <div
@@ -658,9 +653,10 @@ export default function DataViewer<T>({
         )}
 
         <div className="px-2 sticky bottom-20 left-0 right-0 h-12 min-h-12 max-h-12 fullwidth flex flex-1 items-center justify-between gap-2 dark:bg-neutral-900 opacity-100">
-          <div className="text-white text-2xl font-semibold flex items-baseline">
-            <span className="text-muted-foreground text-lg">{schema}.</span>
-            <h3>{name}</h3>
+          <div className="text-sm text-muted-foreground flex items-center gap-0.5">
+            <p>{rowCnt} rows total</p>
+            <DotIcon className="h-4 w-4" />
+            <p>{Math.round(timeMs)}ms</p>
           </div>
 
           <div className="flex items-center gap-8">

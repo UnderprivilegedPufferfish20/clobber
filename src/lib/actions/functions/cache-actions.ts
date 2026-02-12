@@ -21,15 +21,16 @@ export async function getEdgeFunctions(
       return fn.name?.includes(`${projectId}-`)
     }).map((fn) => {
       // The 'name' is the full path: projects/{p}/locations/{l}/functions/{name}
-      const slug = fn.name?.split("/").pop()?.replace(`${projectId}-`, "") || "unknown";
+      const slug = fn.name?.split("/").pop()?.replace(`cdb-edgefunc-${projectId}-`, "") || "unknown";
         
 
       const func: EdgeFunctionType = {
         slug,
-        url: fn.name || "",
-        createdAt: fn.updateTime, // v2 metadata usually tracks updateTime for the current revision
-        updatedAt: fn.updateTime,
-        deploymentCount: 1, // API metadata doesn't natively track total historical deployments
+        url: fn.url || "",
+        created_at: fn.updateTime, // v2 metadata usually tracks updateTime for the current revision
+        updated_at: fn.updateTime,
+        deployment_count: 1, // API metadata doesn't natively track total historical deployments
+        entry_point_function_name: "",
         files: [
           {
             name: "source",

@@ -131,6 +131,8 @@ export enum DATA_TYPES {
   BIGINT = "bigint", // int8
   BIGSERIAL = "bigserial", // serial8
 
+  VECTOR = "VECTOR",
+
   BIT = "bit", // bit(n)
   BIT_VARYING = "bit varying", // varbit(n)
 

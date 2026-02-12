@@ -2,10 +2,13 @@ import { getSchema, getSchemas } from "@/lib/actions/database/cache-actions"
 import SchemaEditorPage from "./_components/SchemaEditorPage"
 import { parseFiltersParam } from "@/lib/utils"
 import { getTableData } from "@/lib/actions/database/tables/cache-actions"
+import DataViewer from "@/components/DataViewer"
+import BackHeader from "./_components/BackHeader"
 
 export default async function page({ params, searchParams }: PageProps<"/proj/[projectId]/database">) {
   const p = await params
   const sp = await searchParams
+
 
   const schema = sp['schema'] as string ?? "public"
   const table = sp['table'] ? sp['table'] as string : null
@@ -59,16 +62,29 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
   const queryTimeMs = performance.now() - start;
 
   return (
-      <SchemaEditorPage 
-        current_schema={currentSchema}
-        projectId={p.projectId}
-        schemas={schemas}
-        
-        columns={data?.columns}
-        data={data?.rows}
-        name={table ? table : undefined}
-        rowCnt={data?.rowCount}
-        timeMs={queryTimeMs}
-      />
+    <>
+      {table && schema && data ? (
+        <div className="fullscreen flex flex-col">
+          <BackHeader schema={schema} table={table} />
+          <DataViewer 
+            closeBtn={false}
+            columns={data.columns}
+            rowCnt={data.rowCount}
+            data={data.rows}
+            name={table}
+            projectId={p.projectId}
+            schema={schema}
+            timeMs={queryTimeMs}
+
+          />
+        </div>
+      ) : (
+        <SchemaEditorPage 
+          current_schema={currentSchema}
+          projectId={p.projectId}
+          schemas={schemas}
+        />
+      )}
+    </>
   )
 }

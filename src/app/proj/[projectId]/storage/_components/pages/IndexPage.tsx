@@ -336,10 +336,11 @@ const IndexPage = ({
               />
             </div>
 
-            <div className='flex flex-col gap-2 w-28 min-w-28 max-w-28'>
+            <div className='flex flex-col gap-2 w-15 min-w-15 max-w-15'>
               <p className='text-lg font-semibold'>Top K</p>
               <Input 
                 value={topk}
+                className='rounded-none!'
                 onChange={e => {
                   const v = e.target.value;
 

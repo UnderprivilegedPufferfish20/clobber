@@ -48,23 +48,10 @@ const SchemaEditorPage = ({
   projectId,
   schemas,
   current_schema,
-
-  data,
-  columns,
-  rowCnt,
-  name,
-  timeMs
 }: {
   projectId: string,
   schemas: string[],
   current_schema: SchemaEditorTable[]
-
-  data?: any,
-  columns?: ColumnType[],
-  rowCnt?: number,
-  name?: string,
-
-  timeMs: number
 }) => {
 
   const router = useRouter();
@@ -161,77 +148,49 @@ const SchemaEditorPage = ({
 
   return (
     <div className="flex-1 min-h-0 w-full flex flex-col">
-      <ResizablePanelGroup
-        direction="vertical"
-        className="flex-1 min-h-0 w-full"
-      >
-        <ResizablePanel defaultSize={100} className="min-h-0">
-          <div className="h-full min-h-0 flex flex-col">
-            <header className="h-12 shrink-0 flex items-center justify-between border-b-2 p-8">
-              <SchemaPicker
-                schemas={schemas ?? []}
-                value={schema}
-                onChange={setSchema}
-              />
+      <div className="h-full min-h-0 flex flex-col">
+        <header className="h-12 shrink-0 flex items-center justify-between border-b-2 p-8">
+          <SchemaPicker
+            schemas={schemas ?? []}
+            value={schema}
+            onChange={setSchema}
+          />
 
-              <Button
-                className="flex items-center gap-2"
-                variant={"default"}
-                onClick={() => setIsAddTableSheetOpen(true)}
-              >
-                <PlusIcon className="w-8 h-8"/>
-                Add Table
-              </Button>
+          <Button
+            className="flex items-center gap-2"
+            variant={"default"}
+            onClick={() => setIsAddTableSheetOpen(true)}
+          >
+            <PlusIcon className="w-8 h-8"/>
+            Add Table
+          </Button>
 
+          
+        </header>
+
+        {/* THIS must actually have height */}
+        <div className="flex-1 min-h-0 max-h-full w-full">
+          <ReactFlowProvider>
+            <div className="h-full w-full">
               
-            </header>
-
-            {/* THIS must actually have height */}
-            <div className="flex-1 min-h-0 max-h-full w-full">
-              <ReactFlowProvider>
-                <div className="h-full w-full">
-                  
-                  <ReactFlow
-                    defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-                    nodes={nodes}
-                    edges={edges}
-                    
-                    nodeTypes={nodeTypes}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    style={{ width: "100%", height: "100%" }}
-                    colorMode={theme === "dark" ? "dark" : "light"}
-                  >
-                    <MiniMap position="top-right"  />
-                    <Background variant={BackgroundVariant.Dots} gap={12} />
-                  </ReactFlow>
-                </div>
-              </ReactFlowProvider>
+              <ReactFlow
+                defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+                nodes={nodes}
+                edges={edges}
+                
+                nodeTypes={nodeTypes}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                style={{ width: "100%", height: "100%" }}
+                colorMode={theme === "dark" ? "dark" : "light"}
+              >
+                <MiniMap position="top-right"  />
+                <Background variant={BackgroundVariant.Dots} gap={12} />
+              </ReactFlow>
             </div>
-          </div>
-        </ResizablePanel>
-        {schema && table && columns && name && rowCnt && (
-          <>
-            <ResizableHandle withHandle />
-
-            <ResizablePanel defaultSize={100} className="min-h-0 fullscreen flex-1">
-              <div className="h-full min-h-0 flex-1">
-                <DataViewer<any>
-                  projectId={projectId}
-                  schema={schema}
-                  columns={columns}
-                  data={data}
-                  name={name}
-                  rowCnt={rowCnt}
-                  timeMs={timeMs}
-                  closeBtn={true}
-                />
-              </div>
-            </ResizablePanel>
-          </>
-        )}
-
-      </ResizablePanelGroup>
+          </ReactFlowProvider>
+        </div>
+      </div>
 
       <AddTableSheet 
         open={isAddTableSheetOpen}

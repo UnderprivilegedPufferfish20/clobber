@@ -13,7 +13,7 @@ const BucketsPage = async ({ params, searchParams }: PageProps<"/proj/[projectId
   const folderData = currentPath ? await getFolderData(p.projectId, currentPath) : []
   const buckets = await getBucketNames(p.projectId);
 
-  const openedBucket = currentPath ? buckets.find(b => b.name === currentPath)! : null
+  const openedBucket = currentPath ? buckets.find(b => b.name === currentPath.split("/")[0])! : null
 
   return (
     <>
