@@ -326,16 +326,17 @@ export async function updateTable(
 }
 
 export async function addRow(
+  project_id: string,
   schema: string,
-  projectId: string,
   table: string,
-  form: Record<string, any>
+  cache: string,
+  data: Record<string, string>
 ) {
 
   const user = await getUser();
   if (!user) throw new Error("No user");
 
-  const project = await getProjectById(projectId);
+  const project = await getProjectById(project_id);
   if (!project) throw new Error("No project found");
 
   const pool = await getTenantPool({
@@ -345,22 +346,12 @@ export async function addRow(
     database: project.db_name
   });
 
-  const col_details = await pool.query(`
-    SELECT *
-    FROM information_schema.columns
-    WHERE table_schema = '${schema}'
-      AND table_name = '${table}';
+  await pool.query(`
+    INSERT INTO "${schema}"."${table}" (${Object.keys(data).map(k => `"${k}"`).join(", ")}) VALUES (${Object.values(data).map(v => `'${v}'`).join(", ")});
   `)
 
-  const cols_to_dtype: Record<string, DATA_TYPES> = {}
 
-  for (let i = 0; i < col_details.rows.length; i++) {
-    cols_to_dtype[col_details.rows[i].column_name] = col_details.rows[i].data_type
-  }
-
-  console.log("@@Cols: ", cols_to_dtype)
-
-
+  revalidateTag(t(cache, project_id, schema, table), "max")
 }
 
 export async function deleteSelectedRows(
@@ -448,4 +439,71 @@ export async function downloadSelectedRows(
         data: rowsToSql(schema, tablename, rows, columns)
       }
   }
+}
+
+export async function deleteRow(
+  project_id: string,
+  schema: string,
+  cache: string,
+  table: string,
+  pkey_cols: ColumnType[],
+  pkey_vals: any[]
+) {
+  if (pkey_cols.length !== pkey_vals.length) throw new Error("Pkey count mismatch");
+
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  const q = `
+  DELETE FROM "${schema}"."${table}" WHERE ${pkey_cols.map((c, idx) => `"${c.name}" = '${pkey_vals[idx]}'`).join(" AND ")};  
+  `
+
+  console.log("@DEL ROW QUERY: ", q)
+
+  await pool.query(q)
+
+  revalidateTag(t(cache, project_id, schema, table), "max")
+}
+
+export async function editRow(
+  project_id: string,
+  schema: string,
+  cache: string,
+  table: string,
+  pkey_cols: ColumnType[],
+  pkey_vals: any[],
+  newData: Record<string, any>
+) {
+  if (pkey_cols.length !== pkey_vals.length) throw new Error("Pkey count mismatch");
+
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  await pool.query(`
+  UPDATE "${schema}"."${table}" 
+  SET ${Object.entries(newData).map(([k, v], idx) => `"${k}" = '${v}'`).join(", ")}
+  WHERE ${pkey_cols.map((c, idx) => `"${c.name}" = '${pkey_vals[idx]}'`).join(" AND ")};"  
+  `)
+
+  revalidateTag(t(cache, project_id, schema, table), "max")
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, DotIcon, DownloadIcon, EllipsisVerticalIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, TextIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, CopyIcon, CurlyBracesIcon, DotIcon, DownloadIcon, EditIcon, EllipsisIcon, EllipsisVerticalIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, TextIcon, Trash2Icon, XIcon } from "lucide-react";
 import {  Dispatch, SetStateAction, use, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
@@ -28,7 +28,11 @@ import { DTypes } from "@/lib/constants";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectLabel, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
-import { deleteSelectedRows, downloadSelectedRows } from "@/lib/actions/database/tables";
+import { addRow, deleteRow, deleteSelectedRows, downloadSelectedRows, editRow } from "@/lib/actions/database/tables";
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import SheetWrapper from "./SheetWrapper";
+import { Textarea } from "./ui/textarea";
 
 
 export default function DataViewer<T>({
@@ -285,412 +289,647 @@ export default function DataViewer<T>({
   useEffect(() => {
     setOffset((selectedPage - 1) * limit)
   }, [selectedPage]);
+
+  const [editRowId, setEditRowId] = useState<number | null>(null)
+  const [duplicateRowId, setDeplicateRowId] = useState<number | null>(null)
+  const [deleteRowId, setDeleteRowId] = useState<number | null>(null)
+
+  
+  type DuplicateRowVals = {
+    [K in (typeof columns)[number]["name"]]: string;
+  };
+  
+  const initialDup = Object.fromEntries(
+    columns.map(c => [c.name, ""])
+  ) as DuplicateRowVals;
+  
+  const [editRowVals, setEditRowVals] = useState<DuplicateRowVals>(initialDup)
+  const [duplicateRowVals, setDuplicateRowVals] = useState<DuplicateRowVals>(initialDup)
+
+  const pkeyColsNames = columns.filter(c => c.is_pkey)
+
+  const { mutate: delR } = useMutation({
+    mutationFn: (idx: number) => 
+      deleteRow(
+        projectId,
+        schema,
+        "auth-users",
+        "users",
+        pkeyColsNames,
+        //@ts-ignore
+        pkeyColsNames.map(n => data[idx][n.name])
+      ),
+    onMutate: () => {
+      toast.loading(`Deleting row...`, { id: "del-row" })
+      setDeleteRowId(null)
+    },
+    onSuccess: () => toast.success(`Row deleted`, { id: "del-row" }),
+    onError: (e) => toast.error(`Failed to delete row: ${e}`, { id: "del-row" })
+  })
+
+  const { mutate: updateR } = useMutation({
+    mutationFn: (idx: number) => 
+      editRow(
+        projectId,
+        schema,
+        "auth-users",
+        "users",
+        pkeyColsNames,
+        //@ts-ignore
+        pkeyColsNames.map(n => data[idx][n.name]),
+        editRowVals
+      ),
+    onMutate: () => {
+      toast.loading(`Updating row...`, { id: "up-row" })
+      setEditRowId(null)
+    },
+    onSuccess: () => toast.success(`Row updated`, { id: "up-row" }),
+    onError: (e) => toast.error(`Failed to update row: ${e}`, { id: "up-row" })
+  })
+
+    const { mutate: dupR } = useMutation({
+    mutationFn: () => 
+      addRow(
+        projectId,
+        schema,
+        "users",
+        "auth-users",
+        duplicateRowVals
+      ),
+    onMutate: () => {
+      toast.loading(`Duplicating row...`, { id: "dup-row" })
+      setDeplicateRowId(null)
+    },
+    onSuccess: () => toast.success(`Row duplicated`, { id: "dup-row" }),
+    onError: (e) => toast.error(`Failed to duplicate row: ${e}`, { id: "dup-row" })
+  })
+
+  useEffect(() => {
+    if (duplicateRowId === null) {
+      setDuplicateRowVals(initialDup)
+    } else {
+      const v = data[duplicateRowId!]
+      console.log("@ROW_VALS: ", v)
+      setDuplicateRowVals(v as DuplicateRowVals)
+    }
+  }, [duplicateRowId])
+
+    useEffect(() => {
+    if (editRowId === null) {
+      setEditRowVals(initialDup)
+    } else {
+      const v = data[editRowId!]
+      console.log("@ROW_VALS: ", v)
+      setEditRowVals(v as DuplicateRowVals)
+    }
+  }, [editRowId])
+
+  
   
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex items-center justify-between border-b shrink-0 p-2">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2">
-            <FilterComponent
-              activeFilters={activeFilters}
-              columns={columns}
-              setActiveFilters={setActiveFilters}
-            />
-            <ColumnToggle activeCols={activeCols} cols={columns} setActiveCols={setActiveCols} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {/* Pagination controls */}
-          <div className="flex items-center">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className="rounded-br-none! rounded-tr-none!"
-                    disabled={offset <= 0}
-                    variant={"outline"}
-                    size={"icon"}
-                    onClick={() => {
-                      if (offset - limit < 0) {
-                        setOffset(0);
-                        return
-                      }
-                      setOffset(p => p - limit)
-                    }}
-                  >
-                    <ArrowLeftIcon className="w-4 h-4"/>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Previous Page
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Input 
-                    className="w-14 min-w-14 max-w-14 rounded-none! text-center"
-                    placeholder="Lim"
-                    value={limit}
-                    onChange={(e) => {
-                      const val = e.target.value
-
-                      if (!val) setLimit(0);
-
-                      if (Number(val)) {
-                        setLimit(Number(val))
-                      }
-                    }}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  Limit
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Input 
-                    className="min-w-14 w-fit max-w-14 rounded-none! text-center"
-                    value={offset}
-                    placeholder="Off"
-                    onChange={(e) => {
-                      const val = e.target.value
-                      if (!val) setOffset(0);
-
-                      if (Number(val)) {
-                        setOffset(Number(val))
-                      }
-                    }}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  Offset
-                </TooltipContent>
-              </Tooltip>
-            
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className="rounded-bl-none! rounded-tl-none!"
-                    disabled={offset + limit >= rowCnt}
-                    variant={"outline"}
-                    size={"icon"}
-                    onClick={() => {
-                      setOffset(p => p + limit)
-                    }}
-                  >
-                    <ArrowRightIcon className="w-4 h-4"/>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Next Page
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild className="ml-3">
-                <Button
-                  variant={"outline"}
-                  size={"icon"}
-                >
-                  <EllipsisVerticalIcon className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="z-150" align="end">
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2">
-                    <DownloadIcon className="w-4 h-4" />
-                    Download Page
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent alignOffset={0}>
-                    <DropdownMenuItem 
-                      className="flex items-center gap-2"
-                      onClick={() => {}}
-                    >
-                      <FileJson className="w-6 h-6" />
-                      JSON
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="flex items-center gap-2"
-                      onClick={() => {}}
-                    >
-                      <FileSpreadsheetIcon className="w-6 h-6" />
-                      CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="flex items-center gap-2"
-                      onClick={() => {}}
-                    >
-                      <FileTextIcon className="w-6 h-6" />
-                      SQL
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                <DropdownMenuItem className="flex items-center gap-2">
-                  <RefreshCwIcon className="w-4 h-4"/>
-                  Refresh
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {closeBtn && (
-            <Button
-              variant={"ghost"}
-              size={"icon-lg"}
-              onClick={() => {
-                const sp = new URLSearchParams(searchParams)
-                sp.delete("table")
-                sp.delete("offset")
-                sp.delete("limit")
-                sp.delete("filter")
-                sp.delete("sort")
-
-                router.replace(`${pathname}?${sp}`)
-              }}
-            >
-              <XIcon className="w-6 h-6"/>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-auto hide-scrollbar text-sm relative">
-        {activeCols.length > 0 ? (
-          data.length === 0 ? (
-            <div className="fullscreen flex flex-1 items-center justify-center text-muted-foreground text-2xl">
-              <div className="flex flex-col justify-center items-center gap-4">
-                <SquareDashedTopSolidIcon size={148}/>
-
-                <h1>
-                  No data in this table
-                </h1>
-                
-              </div>
+    <>
+    
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex items-center justify-between border-b shrink-0 p-2">
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2">
+              <FilterComponent
+                activeFilters={activeFilters}
+                columns={columns}
+                setActiveFilters={setActiveFilters}
+              />
+              <ColumnToggle activeCols={activeCols} cols={columns} setActiveCols={setActiveCols} />
             </div>
-          ) : (
-            <div
-              className="min-w-full min-h-full pb-20 overflow-x-auto"
-              style={{
-                display: "grid",
-                /* 1. Use 1fr to divide remaining space evenly after the 36px offset */
-                gridTemplateColumns: `36px repeat(${activeCols.length}, 1fr)`,
-                /* 2. Forces rows to the top; the 'empty' space will sit below them */
-                alignContent: "start",
-              }}
-            >
-              {/* Sticky header row */}
-              <div className="contents">
-                <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-                  <div className="h-9 w-9 flex items-center justify-center border-r bg-neutral-900">
-                    <Checkbox
-                      className="w-4 h-4"
-                      onCheckedChange={(checked) => {
-                        if (pkeyCols.size === 0) return;
-                        setSelectedRows((prev) => {
-                          const next = new Map(prev);
-                          data.forEach((row) => {
-                            const id = computeRowId(row);
-                            if (checked) next.set(id, row);
-                            else next.delete(id);
-                          });
-                          return next;
-                        });
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Pagination controls */}
+            <div className="flex items-center">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className="rounded-br-none! rounded-tr-none!"
+                      disabled={offset <= 0}
+                      variant={"outline"}
+                      size={"icon"}
+                      onClick={() => {
+                        if (offset - limit < 0) {
+                          setOffset(0);
+                          return
+                        }
+                        setOffset(p => p - limit)
                       }}
-                      checked={data.length > 0 && selectedRows.size > 0}
+                    >
+                      <ArrowLeftIcon className="w-4 h-4"/>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Previous Page
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Input 
+                      className="w-14 min-w-14 max-w-14 rounded-none! text-center"
+                      placeholder="Lim"
+                      value={limit}
+                      onChange={(e) => {
+                        const val = e.target.value
+
+                        if (!val) setLimit(0);
+
+                        if (Number(val)) {
+                          setLimit(Number(val))
+                        }
+                      }}
                     />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Limit
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Input 
+                      className="min-w-14 w-fit max-w-14 rounded-none! text-center"
+                      value={offset}
+                      placeholder="Off"
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (!val) setOffset(0);
+
+                        if (Number(val)) {
+                          setOffset(Number(val))
+                        }
+                      }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Offset
+                  </TooltipContent>
+                </Tooltip>
+              
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className="rounded-bl-none! rounded-tl-none!"
+                      disabled={offset + limit >= rowCnt}
+                      variant={"outline"}
+                      size={"icon"}
+                      onClick={() => {
+                        setOffset(p => p + limit)
+                      }}
+                    >
+                      <ArrowRightIcon className="w-4 h-4"/>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Next Page
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild className="ml-3">
+                  <Button
+                    variant={"outline"}
+                    size={"icon"}
+                  >
+                    <EllipsisVerticalIcon className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="z-150" align="end">
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <DownloadIcon className="w-4 h-4" />
+                      Download Page
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent alignOffset={0}>
+                      <DropdownMenuItem 
+                        className="flex items-center gap-2"
+                        onClick={() => {}}
+                      >
+                        <FileJson className="w-6 h-6" />
+                        JSON
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="flex items-center gap-2"
+                        onClick={() => {}}
+                      >
+                        <FileSpreadsheetIcon className="w-6 h-6" />
+                        CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="flex items-center gap-2"
+                        onClick={() => {}}
+                      >
+                        <FileTextIcon className="w-6 h-6" />
+                        SQL
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuItem className="flex items-center gap-2">
+                    <RefreshCwIcon className="w-4 h-4"/>
+                    Refresh
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {closeBtn && (
+              <Button
+                variant={"ghost"}
+                size={"icon-lg"}
+                onClick={() => {
+                  const sp = new URLSearchParams(searchParams)
+                  sp.delete("table")
+                  sp.delete("offset")
+                  sp.delete("limit")
+                  sp.delete("filter")
+                  sp.delete("sort")
+
+                  router.replace(`${pathname}?${sp}`)
+                }}
+              >
+                <XIcon className="w-6 h-6"/>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-auto hide-scrollbar text-sm relative">
+          {activeCols.length > 0 ? (
+            data.length === 0 ? (
+              <div className="fullscreen flex flex-1 items-center justify-center text-muted-foreground text-2xl">
+                <div className="flex flex-col justify-center items-center gap-4">
+                  <SquareDashedTopSolidIcon size={148}/>
+
+                  <h1>
+                    No data in this table
+                  </h1>
+                  
+                </div>
+              </div>
+            ) : (
+              <div
+                className="min-w-full min-h-full pb-20 overflow-x-auto"
+                style={{
+                  display: "grid",
+                  /* 1. Use 1fr to divide remaining space evenly after the 36px offsets */
+                  gridTemplateColumns: `40px repeat(${activeCols.length}, 1fr) 40px`,
+                  /* 2. Forces rows to the top; the 'empty' space will sit below them */
+                  alignContent: "start",
+                }}
+              >
+                {/* Sticky header row */}
+                <div className="contents">
+                  <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+                    <div className="h-9 w-10 flex items-center justify-center border-r bg-neutral-900">
+                      <Checkbox
+                        className="w-4 h-4"
+                        onCheckedChange={(checked) => {
+                          if (pkeyCols.size === 0) return;
+                          setSelectedRows((prev) => {
+                            const next = new Map(prev);
+                            data.forEach((row) => {
+                              const id = computeRowId(row);
+                              if (checked) next.set(id, row);
+                              else next.delete(id);
+                            });
+                            return next;
+                          });
+                        }}
+                        checked={data.length > 0 && selectedRows.size > 0}
+                      />
+                    </div>
+                  </div>
+
+                  {activeCols.map((col: ColumnType, i: number) => {
+                    const Icon = DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype]) ? DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype])!.icon : TextIcon;
+
+                    return (
+                      <div
+                        key={col.name}
+                        className={[
+                          "sticky top-0 z-10",
+                          "border-b",
+                          "dark:bg-neutral-900",
+                          i === 0 ? "border-l-0" : "border-l",
+                          "p-2 h-9",
+                          "cursor-pointer hover:bg-muted/40",
+                          "flex items-center justify-between gap-2",
+                        ].join(" ")}
+                        onClick={() => handleSort(col.name)}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="truncate">{col.name}</span>
+                          {sortColumn === col.name ? (
+                            sortDir === "asc" ? (
+                              <ArrowUp size={14} />
+                            ) : (
+                              <ArrowDown size={14} />
+                            )
+                          ) : (
+                            <ArrowUpDown size={14} className="text-muted-foreground" />
+                          )}
+                        </div>
+                        <Icon className="w-4 h-4 shrink-0" />
+                      </div>
+                    );
+                  })}
+
+                  <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+                    <div className="h-9 w-10 flex items-center justify-center border-l bg-neutral-900 hover:bg-neutral-800 cursor-pointer">
+                      <PlusIcon className="w-5 h-5" />
+                    </div>
                   </div>
                 </div>
 
-                {activeCols.map((col: ColumnType, i: number) => {
-                  const Icon = DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype]) ? DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[col.dtype])!.icon : TextIcon;
+                {/* Body rows */}
+                {data.map((row: any, idx: number) => {
+                  const id = computeRowId(row);
+                  const isSelected = selectedRows.has(id);
 
                   return (
-                    <div
-                      key={col.name}
-                      className={[
-                        "sticky top-0 z-10",
-                        "border-b",
-                        "dark:bg-neutral-900",
-                        i === 0 ? "border-l-0" : "border-l",
-                        "p-2 h-9",
-                        "cursor-pointer hover:bg-muted/40",
-                        "flex items-center justify-between gap-2",
-                      ].join(" ")}
-                      onClick={() => handleSort(col.name)}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="truncate">{col.name}</span>
-                        {sortColumn === col.name ? (
-                          sortDir === "asc" ? (
-                            <ArrowUp size={14} />
+                    <TooltipProvider key={row.ctid} delayDuration={5000}>
+                      <div key={row.ctid} className="contents group">
+                        {/* left "row number / checkbox" cell */}
+                        <div className="border-b border-r h-10 w-10 flex items-center justify-center group hover:bg-muted/40 group-hover:bg-neutral-800">
+                          {isSelected ? (
+                            <Checkbox
+                              key={row.ctid}
+                              className="w-4 h-4"
+                              checked
+                              onCheckedChange={(checked) => {
+                                if (pkeyCols.size === 0) return;
+                                setSelectedRows((prev) => {
+                                  const next = new Map(prev);
+                                  if (checked) next.set(id, row);
+                                  else next.delete(id);
+                                  return next;
+                                });
+                              }}
+                            />
                           ) : (
-                            <ArrowDown size={14} />
-                          )
-                        ) : (
-                          <ArrowUpDown size={14} className="text-muted-foreground" />
-                        )}
+                            <>
+                              <Checkbox
+                                key={row.ctid}
+                                className="hidden group-hover:block w-4 h-4"
+                                checked={false}
+                                onCheckedChange={(checked) => {
+                                  if (pkeyCols.size === 0) return;
+                                  setSelectedRows((prev) => {
+                                    const next = new Map(prev);
+                                    if (checked) next.set(id, row);
+                                    return next;
+                                  });
+                                }}
+                              />
+                              <p key={row.ctid} className="group-hover:hidden text-muted-foreground">{sortStr ? row.row_index : offset + idx + 1}</p>
+                            </>
+                          )}
+                        </div>
+
+                        {/* data cells */}
+                        {activeCols.map((col: any, i: number) => {
+                          const colName = col.name;
+                          const raw = row[colName];
+                          const isNull = raw === null;
+
+                          const value = isNull ? (
+                            <span className="text-muted-foreground italic">NULL</span>
+                          ) : raw instanceof Date ? (
+                            <span>{raw.toLocaleDateString()}</span>
+                          ) : (
+                            <span>{String(raw)}</span>
+                          );
+
+                          return (
+                            <div
+                              className={[
+                                "border-b",
+                                i === 0 ? "border-l-0" : "border-l",
+                                "p-2 h-10",
+                                "group-hover:bg-neutral-800",
+                                "truncate",
+                                "cursor-pointer",
+                              ].join(" ")}
+                            >
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  {value}
+                                </TooltipTrigger>
+                                <TooltipContent align="start" carat={false}>
+                                  {value}
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          );
+                        })}
+
+                        {/* right ellipses cell */}
+                        <div className="group-hover:bg-neutral-800 border-b border-l h-10 w-10 flex items-center justify-center cursor-pointer">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger>
+                              <EllipsisIcon className="w-6 h-6 text-muted-foreground font-bold" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="flex items-center gap-2"
+                                onClick={() => setEditRowId(idx)}
+                              >
+                                <EditIcon className="w-4 h-4"/>
+                                Update
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="flex items-center gap-2"
+                                onClick={() => setDeplicateRowId(idx)}
+                              >
+                                <CopyIcon className="w-4 h-4"/>
+                                Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="flex items-center gap-2"
+                                onClick={() =>{ }}
+                              >
+                                <CurlyBracesIcon className="w-4 h-4"/>
+                                Copy as JSON
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="flex items-center gap-2"
+                                onClick={() => setDeleteRowId(idx)}
+                              >
+                                <Trash2Icon className="w-4 h-4"/>
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
-                      <Icon className="w-4 h-4 shrink-0" />
-                    </div>
+                    </TooltipProvider>
                   );
                 })}
               </div>
+            )
+          ) : (
+            <div className="fullscreen flex flex-1 items-center justify-center text-muted-foreground text-2xl">
+              <div className="flex flex-col justify-center items-center gap-4">
+                <Grid2x2XIcon size={148}/>
 
-              {/* Body rows */}
-              {data.map((row: any, idx: number) => {
-                const id = computeRowId(row);
-                const isSelected = selectedRows.has(id);
-
-                return (
-                  <div key={row.ctid} className="contents">
-                    {/* left "row number / checkbox" cell */}
-                    <div className="border-b border-r h-9 w-9 flex items-center justify-center group hover:bg-muted/40">
-                      {isSelected ? (
-                        <Checkbox
-                          key={row.ctid}
-                          className="w-4 h-4"
-                          checked
-                          onCheckedChange={(checked) => {
-                            if (pkeyCols.size === 0) return;
-                            setSelectedRows((prev) => {
-                              const next = new Map(prev);
-                              if (checked) next.set(id, row);
-                              else next.delete(id);
-                              return next;
-                            });
-                          }}
-                        />
-                      ) : (
-                        <>
-                          <Checkbox
-                            key={row.ctid}
-                            className="hidden group-hover:block w-4 h-4"
-                            checked={false}
-                            onCheckedChange={(checked) => {
-                              if (pkeyCols.size === 0) return;
-                              setSelectedRows((prev) => {
-                                const next = new Map(prev);
-                                if (checked) next.set(id, row);
-                                return next;
-                              });
-                            }}
-                          />
-                          <p key={row.ctid} className="group-hover:hidden text-muted-foreground">{sortStr ? row.row_index : offset + idx + 1}</p>
-                        </>
-                      )}
-                    </div>
-
-                    {/* data cells */}
-                    {activeCols.map((col: any, i: number) => {
-                      const colName = col.name;
-                      const raw = row[colName];
-                      const isNull = raw === null;
-
-                      const value = isNull ? (
-                        <span className="text-muted-foreground italic">NULL</span>
-                      ) : raw instanceof Date ? (
-                        <span>{raw.toLocaleDateString()}</span>
-                      ) : (
-                        <span>{String(raw)}</span>
-                      );
-
-                      return (
-                        <TooltipProvider key={colName} delayDuration={5000}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                className={[
-                                  "border-b",
-                                  i === 0 ? "border-l-0" : "border-l",
-                                  "p-2 h-9",
-                                  "truncate",
-                                  "hover:bg-muted/40",
-                                  "cursor-pointer",
-                                ].join(" ")}
-                              >
-                                {value}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent align="start" carat={false}>
-                              {value}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          )
-        ) : (
-          <div className="fullscreen flex flex-1 items-center justify-center text-muted-foreground text-2xl">
-            <div className="flex flex-col justify-center items-center gap-4">
-              <Grid2x2XIcon size={148}/>
-
-              <div className="flex flex-col justify-center items-center gap-2">
-                <h1>
-                  No selected columns
-                </h1>
-                <Button
-                  variant={"default"}
-                  size={"lg"}
-                  onClick={() => {
-                    setActiveCols(columns)
-                  }}
-                >
-                  Select All
-                </Button>
+                <div className="flex flex-col justify-center items-center gap-2">
+                  <h1>
+                    No selected columns
+                  </h1>
+                  <Button
+                    variant={"default"}
+                    size={"lg"}
+                    onClick={() => {
+                      setActiveCols(columns)
+                    }}
+                  >
+                    Select All
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="px-2 sticky bottom-20 left-0 right-0 h-12 min-h-12 max-h-12 fullwidth flex flex-1 items-center justify-between gap-2 dark:bg-neutral-900 opacity-100">
-          <div className="text-sm text-muted-foreground flex items-center gap-0.5">
-            <p>{rowCnt} rows total</p>
-            <DotIcon className="h-4 w-4" />
-            <p>{Math.round(timeMs)}ms</p>
-          </div>
+          <div className="sticky bottom-20 left-0 right-0 h-10 min-h-10 max-h-10 fullwidth flex flex-1 items-center justify-between gap-2 dark:bg-neutral-900 opacity-100">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 border-r w-10 h-10 hover:bg-neutral-800 justify-center">
+                <PlusIcon className="w-5 h-5"/>
+              </div>
+              <div className="text-sm text-muted-foreground flex items-center gap-0.5">
+                <p>{rowCnt} rows total</p>
+                <DotIcon className="h-4 w-4" />
+                <p>{Math.round(timeMs)}ms</p>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-8">
-            <div className="flex items-center text-lg gap-2">
-              <p>page</p>
-              <Select value={String(selectedPage)} onValueChange={v => setSelectedPage(Number(v))}>
-                <SelectTrigger size="sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalPages }, (_, i) => String(i + 1))
-                    .reverse()
-                    .map(i => (
-                      <SelectItem value={i} key={i}>
-                        {i}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              <p>of {Math.ceil(rowCnt / limit) === Infinity ? rowCnt : Math.ceil(rowCnt / limit)}</p>
+            <div className="flex items-center gap-8 pr-4">
+              <div className="flex items-center text-lg gap-2">
+                <p>page</p>
+                <Select value={String(selectedPage)} onValueChange={v => setSelectedPage(Number(v))}>
+                  <SelectTrigger size="sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: totalPages }, (_, i) => String(i + 1))
+                      .reverse()
+                      .map(i => (
+                        <SelectItem value={i} key={i}>
+                          {i}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p>of {Math.ceil(rowCnt / limit) === Infinity ? rowCnt : Math.ceil(rowCnt / limit)}</p>
+              </div>
+
+              
+
+              
+
             </div>
 
             
 
             
-
           </div>
-
-          
-
-          
         </div>
       </div>
-    </div>
+
+      <AlertDialog
+        open={deleteRowId !== null}
+        onOpenChange={() => setDeleteRowId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this row from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              onClick={() => delR(deleteRowId!)}
+            >
+              Delete
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+      <SheetWrapper
+        open={duplicateRowId !== null}
+        onOpenChange={() => setDeplicateRowId(null)}
+        title="Duplicate row"
+        onDiscard={() => setDuplicateRowVals(initialDup)}
+        submitButtonText="Duplicate"
+        onSubmit={() => dupR()}
+        disabled={JSON.stringify(duplicateRowVals) === JSON.stringify(data[duplicateRowId!])}
+        bodyClassname="overflow-y-scroll! overflow-x-hide!"
+        isDirty={() => JSON.stringify(duplicateRowVals) !== JSON.stringify(data[duplicateRowId!])}
+      >
+        <>
+          {columns.map(c => {
+
+            return (
+              <div>
+                <h1 className="text-lg font-semibold">{c.name}</h1>
+
+                <Textarea 
+                  value={duplicateRowVals[c.name]}
+                  onChange={e => setDuplicateRowVals(p => ({ ...p, [c.name]: e.target.value }))}
+                  className="fullwidth"
+                />
+
+              </div>
+            )
+          })}
+        </>
+      </SheetWrapper>
+
+
+      <SheetWrapper
+        open={editRowId !== null}
+        onOpenChange={() => setEditRowId(null)}
+        title="Edit row"
+        onDiscard={() => setEditRowVals(initialDup)}
+        submitButtonText="Apply Changes"
+        onSubmit={() => updateR(editRowId!)}
+        disabled={JSON.stringify(editRowVals) === JSON.stringify(data[editRowId!])}
+        bodyClassname="overflow-y-scroll! overflow-x-hide!"
+        isDirty={() => JSON.stringify(editRowVals) !== JSON.stringify(data[editRowId!])}
+      >
+        <>
+          {columns.map(c => {
+
+            return (
+              <div>
+                <h1 className="text-lg font-semibold">{c.name}</h1>
+
+                <Textarea 
+                  value={editRowVals[c.name]}
+                  onChange={e => setEditRowVals(p => ({ ...p, [c.name]: e.target.value }))}
+                  className="fullwidth"
+                />
+
+              </div>
+            )
+          })}
+        </>
+      </SheetWrapper>
+    </>
   );
 
 };
