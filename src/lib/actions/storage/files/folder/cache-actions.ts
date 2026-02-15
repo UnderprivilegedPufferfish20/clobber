@@ -25,8 +25,6 @@ export async function getFolderData(projectId: string, path: string) {
     WHERE project_id = $1 AND name = $2
   `, [projectId, bucketName]);
 
-  console.log("@BUCKET RESULT", bucketResult.rows)
-
   if (bucketResult.rowCount !== 1) throw new Error("Bucket not found");
 
   const bucket = bucketResult.rows[0];

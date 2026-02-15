@@ -69,13 +69,13 @@ export async function addColumn(
 
   // 1) Resolve Postgres data type (handling arrays)
   const baseType = data.dtype;
-  const finalType = data.isArray ? `${baseType}[]` : baseType;
+  const finalType = data.is_array ? `${baseType}[]` : baseType;
 
   // 2) Column constraints
   const constraints: string[] = [];
-  if (data.isPkey) constraints.push("PRIMARY KEY");
-  if (data.isUnique) constraints.push("UNIQUE");
-  if (!data.isNullable) constraints.push("NOT NULL");
+  if (data.is_pkey) constraints.push("PRIMARY KEY");
+  if (data.is_unique) constraints.push("UNIQUE");
+  if (!data.is_nullable) constraints.push("NOT NULL");
   const constraintString = constraints.join(" ");
 
   console.log("@@ DEFAULT: ", data.default)
@@ -85,7 +85,7 @@ export async function addColumn(
   if (data.default && data.default.length > 0) {
     const isFunction = data.default.endsWith("()");
     
-    if (data.isArray) {
+    if (data.is_array) {
       if (isFunction) {
         defaultStatement = `DEFAULT ${data.default.replace(/'/g, "''")}`;
       } else {
@@ -156,12 +156,12 @@ export async function editColumn(
 
   const queries: string[] = []
 
-  if (oldCol.dtype !== newCol.dtype || oldCol.isArray !== newCol.isArray) {
-    const targetType = `${newCol.dtype}${newCol.isArray ? "[]" : ""}`;
+  if (oldCol.dtype !== newCol.dtype || oldCol.is_array !== newCol.is_array) {
+    const targetType = `${newCol.dtype}${newCol.is_array ? "[]" : ""}`;
 
     let using = "";
-    if (oldCol.isArray !== newCol.isArray) {
-      using = newCol.isArray
+    if (oldCol.is_array !== newCol.is_array) {
+      using = newCol.is_array
         ? ` USING ARRAY["${oldCol.name}"]`
         : "";
     }
@@ -180,7 +180,7 @@ export async function editColumn(
       
       let statement = `ALTER COLUMN "${oldCol.name}" SET DEFAULT ${def}`
 
-      if (newCol.isArray === true) {
+      if (newCol.is_array === true) {
         statement = `ALTER COLUMN "${oldCol.name}" SET DEFAULT ARRAY[${def}]`
       }
       queries.push(statement);
@@ -192,15 +192,15 @@ export async function editColumn(
     
 
     // NULLABILITY change
-  if (oldCol.isNullable !== newCol.isNullable) {
+  if (oldCol.is_nullable !== newCol.is_nullable) {
     queries.push(
-      `ALTER COLUMN "${oldCol.name}" ${newCol.isNullable ? "DROP NOT NULL" : "SET NOT NULL"}`
+      `ALTER COLUMN "${oldCol.name}" ${newCol.is_nullable ? "DROP NOT NULL" : "SET NOT NULL"}`
     );
   }
 
 
-  if (oldCol.isUnique !== newCol.isUnique) {
-    if (newCol.isUnique) {
+  if (oldCol.is_unique !== newCol.is_unique) {
+    if (newCol.is_unique) {
       queries.push(
         `ADD CONSTRAINT "${table}_${newCol.name}_key" UNIQUE ("${oldCol.name}")`
       );
@@ -210,8 +210,8 @@ export async function editColumn(
   }
 
   // Add new PK if changed and exists
-  if (oldCol.isPkey !== newCol.isPkey) {
-    if (oldCol.isPkey) {
+  if (oldCol.is_pkey !== newCol.is_pkey) {
+    if (oldCol.is_pkey) {
       queries.push(
         `DROP CONSTRAINT "${table}_pkey" CASCADE`
       );
