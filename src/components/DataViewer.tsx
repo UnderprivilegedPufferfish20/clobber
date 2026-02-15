@@ -1,8 +1,8 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, CopyIcon, CurlyBracesIcon, DotIcon, DownloadIcon, EditIcon, EllipsisIcon, EllipsisVerticalIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, TextIcon, Trash2Icon, XIcon } from "lucide-react";
-import {  Dispatch, SetStateAction, use, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, CopyIcon, CurlyBracesIcon, DotIcon, DownloadIcon, EditIcon, EllipsisIcon, EllipsisVerticalIcon, ExpandIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, Maximize2Icon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, TextIcon, Trash2Icon, XIcon } from "lucide-react";
+import {  ChangeEvent, Dispatch, SetStateAction, use, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
 import { ColumnType, DATA_EXPORT_FORMATS, FilterConfig, FilterOperator } from "@/lib/types";
@@ -33,6 +33,7 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import SheetWrapper from "./SheetWrapper";
 import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
 
 
 export default function DataViewer<T>({
@@ -347,15 +348,19 @@ export default function DataViewer<T>({
     onError: (e) => toast.error(`Failed to update row: ${e}`, { id: "up-row" })
   })
 
-    const { mutate: dupR } = useMutation({
-    mutationFn: () => 
-      addRow(
+  const { mutate: dupR } = useMutation({
+    mutationFn: async () => {
+
+      delete duplicateRowVals.row_index;
+
+      await addRow(
         projectId,
         schema,
         "users",
         "auth-users",
         duplicateRowVals
-      ),
+      )
+    },
     onMutate: () => {
       toast.loading(`Duplicating row...`, { id: "dup-row" })
       setDeplicateRowId(null)
@@ -365,9 +370,7 @@ export default function DataViewer<T>({
   })
 
   useEffect(() => {
-    if (duplicateRowId === null) {
-      setDuplicateRowVals(initialDup)
-    } else {
+    if (duplicateRowId !== null) {
       const v = data[duplicateRowId!]
       console.log("@ROW_VALS: ", v)
       setDuplicateRowVals(v as DuplicateRowVals)
@@ -375,9 +378,7 @@ export default function DataViewer<T>({
   }, [duplicateRowId])
 
     useEffect(() => {
-    if (editRowId === null) {
-      setEditRowVals(initialDup)
-    } else {
+    if (editRowId !== null) {
       const v = data[editRowId!]
       console.log("@ROW_VALS: ", v)
       setEditRowVals(v as DuplicateRowVals)
@@ -581,7 +582,7 @@ export default function DataViewer<T>({
                 style={{
                   display: "grid",
                   /* 1. Use 1fr to divide remaining space evenly after the 36px offsets */
-                  gridTemplateColumns: `40px repeat(${activeCols.length}, 1fr) 40px`,
+                  gridTemplateColumns: `56px repeat(${activeCols.length}, 1fr) 40px`,
                   /* 2. Forces rows to the top; the 'empty' space will sit below them */
                   alignContent: "start",
                 }}
@@ -589,7 +590,7 @@ export default function DataViewer<T>({
                 {/* Sticky header row */}
                 <div className="contents">
                   <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-                    <div className="h-9 w-10 flex items-center justify-center border-r bg-neutral-900">
+                    <div className="h-9 w-14 flex items-center border-r bg-neutral-900 pl-2">
                       <Checkbox
                         className="w-4 h-4"
                         onCheckedChange={(checked) => {
@@ -659,7 +660,7 @@ export default function DataViewer<T>({
                     <TooltipProvider key={row.ctid} delayDuration={5000}>
                       <div key={row.ctid} className="contents group">
                         {/* left "row number / checkbox" cell */}
-                        <div className="border-b border-r h-10 w-10 flex items-center justify-center group hover:bg-muted/40 group-hover:bg-neutral-800">
+                        <div className="pl-2 border-b border-r h-10 w-14 flex items-center gap-2 group group-hover:bg-neutral-800">
                           {isSelected ? (
                             <Checkbox
                               key={row.ctid}
@@ -690,9 +691,13 @@ export default function DataViewer<T>({
                                   });
                                 }}
                               />
-                              <p key={row.ctid} className="group-hover:hidden text-muted-foreground">{sortStr ? row.row_index : offset + idx + 1}</p>
+                              <p key={row.ctid} className="pl-1 group-hover:hidden text-muted-foreground">{sortStr ? row.row_index : offset + idx + 1}</p>
                             </>
                           )}
+                          <Maximize2Icon 
+                            onClick={() => setEditRowId(idx)}
+                            className="stroke-muted-foreground hover:stroke-white cursor-pointer w-3 h-3 hidden group-hover:block"
+                          />
                         </div>
 
                         {/* data cells */}
@@ -736,7 +741,7 @@ export default function DataViewer<T>({
                         <div className="group-hover:bg-neutral-800 border-b border-l h-10 w-10 flex items-center justify-center cursor-pointer">
                           <DropdownMenu>
                             <DropdownMenuTrigger>
-                              <EllipsisIcon className="w-6 h-6 text-muted-foreground font-bold" />
+                              <EllipsisIcon className="w-6 h-6 text-muted-foreground font-bold cursor-pointer"  />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
@@ -756,7 +761,21 @@ export default function DataViewer<T>({
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="flex items-center gap-2"
-                                onClick={() =>{ }}
+                                onClick={async () => {
+                                  const result: Record<string, string> = {}
+                                  for (let c of activeCols) {
+                                    
+                                    result[c.name] = row[c.name]
+                                  }
+
+                                  try {
+                                    await navigator.clipboard.writeText(JSON.stringify(result))
+                                    toast.success("Row copied", { id: "copy-row-json" })
+                                  } catch (e) {
+                                    toast.error(`Failed to copy row: ${e}`, { id: "copy-row-json" })
+                                  }
+
+                                }}
                               >
                                 <CurlyBracesIcon className="w-4 h-4"/>
                                 Copy as JSON
@@ -803,7 +822,7 @@ export default function DataViewer<T>({
 
           <div className="sticky bottom-20 left-0 right-0 h-10 min-h-10 max-h-10 fullwidth flex flex-1 items-center justify-between gap-2 dark:bg-neutral-900 opacity-100">
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 border-r w-10 h-10 hover:bg-neutral-800 justify-center">
+              <div className="flex items-center gap-2 border-r w-14 h-10 hover:bg-neutral-800 justify-center">
                 <PlusIcon className="w-5 h-5"/>
               </div>
               <div className="text-sm text-muted-foreground flex items-center gap-0.5">
@@ -876,26 +895,19 @@ export default function DataViewer<T>({
         onDiscard={() => setDuplicateRowVals(initialDup)}
         submitButtonText="Duplicate"
         onSubmit={() => dupR()}
-        disabled={JSON.stringify(duplicateRowVals) === JSON.stringify(data[duplicateRowId!])}
+        disabled={false}
         bodyClassname="overflow-y-scroll! overflow-x-hide!"
         isDirty={() => JSON.stringify(duplicateRowVals) !== JSON.stringify(data[duplicateRowId!])}
       >
         <>
-          {columns.map(c => {
-
-            return (
-              <div>
-                <h1 className="text-lg font-semibold">{c.name}</h1>
-
-                <Textarea 
-                  value={duplicateRowVals[c.name]}
-                  onChange={e => setDuplicateRowVals(p => ({ ...p, [c.name]: e.target.value }))}
-                  className="fullwidth"
-                />
-
-              </div>
-            )
-          })}
+          {columns.map((c, idx) => (
+            <RowSheetOption 
+              column={c}
+              idx={idx}
+              valSetter={setDuplicateRowVals}
+              val={duplicateRowVals[c.name]}
+            />
+          ))}
         </>
       </SheetWrapper>
 
@@ -912,21 +924,14 @@ export default function DataViewer<T>({
         isDirty={() => JSON.stringify(editRowVals) !== JSON.stringify(data[editRowId!])}
       >
         <>
-          {columns.map(c => {
-
-            return (
-              <div>
-                <h1 className="text-lg font-semibold">{c.name}</h1>
-
-                <Textarea 
-                  value={editRowVals[c.name]}
-                  onChange={e => setEditRowVals(p => ({ ...p, [c.name]: e.target.value }))}
-                  className="fullwidth"
-                />
-
-              </div>
-            )
-          })}
+          {columns.map((c, idx) => (
+            <RowSheetOption 
+              column={c}
+              idx={idx}
+              valSetter={setEditRowVals}
+              val={editRowVals[c.name]}
+            />
+          ))}
         </>
       </SheetWrapper>
     </>
@@ -1249,3 +1254,69 @@ const FilterComponent = ({
     </DropdownMenu>
   );
 };
+
+const RowSheetOption = ({
+  column,
+  valSetter,
+  val,
+  idx
+}: {
+  column: ColumnType,
+  valSetter: Dispatch<SetStateAction<any>>,
+  idx: number,
+  val: any
+}) => {
+  const Icon = DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[column.dtype]) ? DTypes.find((d) => d.dtype === ALIAS_TO_ENUM[column.dtype])!.icon : TextIcon;
+
+  const lastValidValue = useRef(val);
+
+  // Update the "memory" only when the user types, not when they click NULL
+  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    const newVal = e.target.value;
+    lastValidValue.current = newVal; // Remember the typing
+    valSetter((p: any) => ({ ...p, [column.name]: newVal }));
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Icon className="stroke-muted-foreground h-4 w-t"/>
+        <h1 className="text-sm text-muted-foreground font-semibod">{column.name}</h1>
+        {column.is_nullable && (
+          <span className="text-sm text-muted-foreground">
+            (optional)
+          </span>
+        )}
+      </div>
+        
+      <div className="relative fullwidth">
+        <Textarea
+          placeholder={val==="" ? "NULL" : ""} 
+          value={val}
+          onChange={handleChange}
+          className="fullwidth"
+        />
+
+        {column.is_nullable && (
+          <div className="absolute bottom-2 right-2 flex gap-2 items-center z-400">
+            <Checkbox
+              onCheckedChange={checked => {
+                if (checked) {
+                  valSetter((p: any) => ({ ...p, [column.name]: "" }))
+                } else {
+                  valSetter((p: any) => ({ ...p, [column.name]: lastValidValue.current }))
+                }
+              }} 
+              className="w-3 h-3"
+              id={`nullbox${idx}`}
+
+            />
+
+            <Label htmlFor={`nullbox${idx}`} className="text-muted-foreground text-sm">NULL</Label>
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}

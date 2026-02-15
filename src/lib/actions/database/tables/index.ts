@@ -330,7 +330,7 @@ export async function addRow(
   schema: string,
   table: string,
   cache: string,
-  data: Record<string, string>
+  data: Record<string, any>
 ) {
 
   const user = await getUser();
@@ -346,9 +346,18 @@ export async function addRow(
     database: project.db_name
   });
 
-  await pool.query(`
-    INSERT INTO "${schema}"."${table}" (${Object.keys(data).map(k => `"${k}"`).join(", ")}) VALUES (${Object.values(data).map(v => `'${v}'`).join(", ")});
-  `)
+  const q = `
+    INSERT INTO "${schema}"."${table}" 
+    (${Object.keys(data).map(k => `"${k}"`).join(", ")}) 
+    VALUES (${Object.values(data).map(v => {
+      if (v instanceof Date) v = v.toISOString()
+      return `'${v}'`
+    }).join(", ")});
+  `
+
+  console.log("@ ADD ROW QUERY: ", q)
+
+  await pool.query(q)
 
 
   revalidateTag(t(cache, project_id, schema, table), "max")
@@ -501,8 +510,14 @@ export async function editRow(
 
   await pool.query(`
   UPDATE "${schema}"."${table}" 
-  SET ${Object.entries(newData).map(([k, v], idx) => `"${k}" = '${v}'`).join(", ")}
-  WHERE ${pkey_cols.map((c, idx) => `"${c.name}" = '${pkey_vals[idx]}'`).join(" AND ")};"  
+  SET ${Object.entries(newData).map(([k, v], idx) => {
+    if (v instanceof  Date) {
+      v = v.toISOString()
+    }
+
+    return `"${k}" = '${v}'`
+  }).join(", ")}
+  WHERE ${pkey_cols.map((c, idx) => `"${c.name}" = '${pkey_vals[idx]}'`).join(" AND ")};
   `)
 
   revalidateTag(t(cache, project_id, schema, table), "max")
