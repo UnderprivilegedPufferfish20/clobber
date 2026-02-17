@@ -1,6 +1,6 @@
 "use cache";
 
-import { DATA_TYPES, FilterConfig } from "@/lib/types";
+import { ColumnSortType, DATA_TYPES, FilterConfig } from "@/lib/types";
 import { t, buildWhereClause } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 import { getProjectById } from "../cache-actions";
@@ -15,7 +15,7 @@ export async function getTableData<T>(
   offset: number = 0,
   filters: FilterConfig[],
   caceTag: string,
-  sort?: { column: string; direction: "ASC" | "DESC" },
+  sort: ColumnSortType[],
 ) {
   cacheTag(t(caceTag, projectId, schema, table))
 
@@ -42,24 +42,30 @@ export async function getTableData<T>(
   }
 
   // Build WHERE clause with type safety
-  const { whereClause, whereParams, errors } = buildWhereClause(filters, columnTypes);
+  const { whereClause, errors } = buildWhereClause(filters, columnTypes);
 
   // Return errors if any filters are invalid
   if (Object.keys(errors).length > 0) {
     throw new Error(`Invalid filters: ${JSON.stringify(errors)}`);
   }
-  const paramCount = whereParams.length + 1;
 
+  const sortClauses = sort && sort[0] && sort[0].column !== '' ? sort.map(s => {
+    return `"${s.column}" ${s.dir}`
+  }) : []
 
-  const result = await pool.query(`
+  console.log("@SRT: ", sort)
+
+  const q = `
     SELECT 
-      *
-      ${sort ? `, ROW_NUMBER() OVER (ORDER BY "${sort.column}" ${sort.direction}) AS row_index` : ""} 
+      * 
     FROM "${schema}"."${table}"
     ${whereClause}
-    ${sort ? `ORDER BY "${sort.column}" ${sort.direction}` : ''}
-    LIMIT $${paramCount} OFFSET $${paramCount + 1};
-  `, [...whereParams, limit, offset])
+    ${sortClauses.length > 0 ? `ORDER BY ${sortClauses.join(", ")}` : ''}
+    LIMIT ${limit} OFFSET ${offset};
+  `
+  console.log("@Q: ", q)
+
+  const result = await pool.query(q)
 
   const rowCountResult = await pool.query(`SELECT COUNT(*) FROM "${schema}"."${table}";`)
 

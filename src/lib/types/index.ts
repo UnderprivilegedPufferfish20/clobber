@@ -221,6 +221,11 @@ export type FilterConfig = {
   value: string;
 };
 
+export type ColumnSortType = {
+  column: string,
+  dir: "ASC" | "DESC"
+}
+
 
 export type PostgresInstance = {
   port: number;

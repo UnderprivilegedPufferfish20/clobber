@@ -1,11 +1,11 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, CopyIcon, CurlyBracesIcon, DotIcon, DownloadIcon, EditIcon, EllipsisIcon, EllipsisVerticalIcon, ExpandIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, Maximize2Icon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, TextIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, CopyIcon, CurlyBracesIcon, DotIcon, DownloadIcon, EditIcon, EllipsisIcon, EllipsisVerticalIcon, ExpandIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, ListOrderedIcon, Maximize2Icon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, TextIcon, Trash2Icon, XIcon } from "lucide-react";
 import {  ChangeEvent, Dispatch, SetStateAction, use, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from 'react-dom'
 import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
-import { ColumnType, DATA_EXPORT_FORMATS, FilterConfig, FilterOperator } from "@/lib/types";
+import { ColumnSortType, ColumnType, DATA_EXPORT_FORMATS, FilterConfig, FilterOperator } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "./ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -34,6 +34,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import SheetWrapper from "./SheetWrapper";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
+import { Switch } from "./ui/switch";
 
 
 export default function DataViewer<T>({
@@ -71,18 +72,15 @@ export default function DataViewer<T>({
     router.push(`${pathname}?${ps}`)
   }
 
-  const sortStr = searchParams.get("sort") || "";
-  let sortColumn: string | undefined;
-  let sortDir: "asc" | "desc" | undefined;
-  if (sortStr) {
-    const [col, dir] = sortStr.split(":");
-    sortColumn = col;
-    sortDir = dir as "asc" | "desc";
-  }
-
   
   const currentFilter = searchParams.get("filter") ?? "";
+  const currentSort = searchParams.get("sort") ?? ""
+
+  
   const [activeFilters, setActiveFilters] = useState<FilterConfig[]>(parseFiltersParam(currentFilter));
+  const [activeSort, setActiveSort] = useState<{column: string, dir: "ASC" | "DESC"}[]>([])
+  
+
 
   useEffect(() => {
     const next = activeFilters.length === 0 
@@ -121,30 +119,23 @@ export default function DataViewer<T>({
     setActiveFilters(qf);
   }, [searchParams]);
 
+  const [addSheetOpen, setAddSheetOpen] = useState(false)
 
+  useEffect(() => {
+    const newStr: string[] = []
+    const newParams = new URLSearchParams(searchParams.toString())
+    if (activeSort.length === 0) {
+      newParams.delete("sort")
+    } else {
 
-
-  const handleSort = (col: string) => {
-    let newSort: string | null = null;
-    if (sortColumn === col) {
-      if (sortDir === "asc") {
-        newSort = `${col}:desc`;
-      } else {
-        newSort = null;
+      for (let as of activeSort) {
+        newStr.push(`${as.column}:${as.dir}`)
       }
-    } else {
-      newSort = `${col}:asc`;
-    }
-
-    const newParams = new URLSearchParams(searchParams.toString());
-    if (newSort) {
-      newParams.set("sort", newSort);
-    } else {
-      newParams.delete("sort");
+      newParams.set("sort", newStr.join(";"))
     }
 
     router.push(`${window.location.pathname}?${newParams.toString()}`);
-  };
+  }, [activeSort, currentSort])
 
   const [activeCols, setActiveCols] = useState<ColumnType[]>(columns)
 
@@ -306,6 +297,7 @@ export default function DataViewer<T>({
   
   const [editRowVals, setEditRowVals] = useState<DuplicateRowVals>(initialDup)
   const [duplicateRowVals, setDuplicateRowVals] = useState<DuplicateRowVals>(initialDup)
+  const [addRowVals, setAddRowVals] = useState<DuplicateRowVals>(initialDup)
 
   const pkeyColsNames = columns.filter(c => c.is_pkey)
 
@@ -386,7 +378,35 @@ export default function DataViewer<T>({
   }, [editRowId])
 
   
-  
+  const updateSort = (index: number, updates: Partial<ColumnSortType>) => {
+    setActiveSort(prev => prev.map((filter, i) => 
+      i === index ? { ...filter, ...updates } : filter
+    ));
+  };
+
+  const deleteSort = (i: number) => {
+    setActiveSort(p => p.filter((_, idx) => i !== idx))
+  }
+
+  const { mutate: addR } = useMutation({
+    mutationFn: async () => {
+
+      delete duplicateRowVals.row_index;
+
+      await addRow(
+        projectId,
+        schema,
+        "users",
+        "auth-users",
+        addRowVals
+      )
+    },
+    onMutate: () => {
+      toast.loading(`Adding row...`, { id: "ad-row" })
+    },
+    onSuccess: () => toast.success(`Row added`, { id: "ad-row" }),
+    onError: (e) => toast.error(`Failed to add row: ${e}`, { id: "ad-row" })
+  })
 
   return (
     <>
@@ -400,7 +420,16 @@ export default function DataViewer<T>({
                 columns={columns}
                 setActiveFilters={setActiveFilters}
               />
-              <ColumnToggle activeCols={activeCols} cols={columns} setActiveCols={setActiveCols} />
+              <SortComponent 
+                activeSorts={activeSort}
+                columns={columns}
+                setActiveSorts={setActiveSort}
+              />
+              <ColumnToggle 
+                activeCols={activeCols} 
+                cols={columns} 
+                setActiveCols={setActiveCols} 
+              />
             </div>
           </div>
 
@@ -625,12 +654,28 @@ export default function DataViewer<T>({
                           "cursor-pointer hover:bg-muted/40",
                           "flex items-center justify-between gap-2",
                         ].join(" ")}
-                        onClick={() => handleSort(col.name)}
+                        onClick={() => {
+                          if (activeSort.map(c => c.column).includes(col.name)) {
+                            const sortedColumn = activeSort.find(c => c.column === col.name)!
+
+                            const sortedColumnIndex = activeSort.indexOf(sortedColumn)!
+
+                            if (sortedColumn.dir === "ASC") {
+                              updateSort(sortedColumnIndex, { dir: "DESC" })
+                            } else {
+                              deleteSort(sortedColumnIndex)
+                            }
+                            
+                          } else {
+                            setActiveSort(p => [...p, { column: col.name, dir: "ASC" }])
+                          }
+
+                        }}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="truncate">{col.name}</span>
-                          {sortColumn === col.name ? (
-                            sortDir === "asc" ? (
+                          {activeSort.map(s => s.column).includes(col.name) ? (
+                            activeSort.find(s => s.column === col.name)!.dir === "ASC" ? (
                               <ArrowUp size={14} />
                             ) : (
                               <ArrowDown size={14} />
@@ -691,7 +736,7 @@ export default function DataViewer<T>({
                                   });
                                 }}
                               />
-                              <p key={row.ctid} className="pl-1 group-hover:hidden text-muted-foreground">{sortStr ? row.row_index : offset + idx + 1}</p>
+                              <p key={row.ctid} className="pl-1 group-hover:hidden text-muted-foreground">{offset + idx + 1}</p>
                             </>
                           )}
                           <Maximize2Icon 
@@ -922,6 +967,29 @@ export default function DataViewer<T>({
         disabled={JSON.stringify(editRowVals) === JSON.stringify(data[editRowId!])}
         bodyClassname="overflow-y-scroll! overflow-x-hide!"
         isDirty={() => JSON.stringify(editRowVals) !== JSON.stringify(data[editRowId!])}
+      >
+        <>
+          {columns.map((c, idx) => (
+            <RowSheetOption 
+              column={c}
+              idx={idx}
+              valSetter={setEditRowVals}
+              val={editRowVals[c.name]}
+            />
+          ))}
+        </>
+      </SheetWrapper>
+
+      <SheetWrapper
+        open={addSheetOpen}
+        onOpenChange={setAddSheetOpen}
+        title="Add row"
+        onDiscard={() => setAddRowVals(initialDup)}
+        submitButtonText="Add Row"
+        onSubmit={() => addR()}
+        disabled={JSON.stringify(addRowVals) === JSON.stringify(initialDup)}
+        bodyClassname="overflow-y-scroll! overflow-x-hide!"
+        isDirty={() => JSON.stringify(addRowVals) !== JSON.stringify(initialDup)}
       >
         <>
           {columns.map((c, idx) => (
@@ -1318,5 +1386,159 @@ const RowSheetOption = ({
       </div>
 
     </div>
+  )
+}
+
+const SortComponent = ({
+  activeSorts,
+  setActiveSorts,
+  columns,
+}: {
+  activeSorts: ColumnSortType[];
+  setActiveSorts: Dispatch<SetStateAction<ColumnSortType[]>>;
+  columns: ColumnType[];
+}) => {
+
+  console.log("@ACTIVE SORTS: ", activeSorts)
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [sorts, setSorts] = useState<ColumnSortType[]>(activeSorts);
+
+  useEffect(() => {
+    setSorts(activeSorts)
+  }, [activeSorts])
+
+  const activeSortsCols = useMemo(() => {
+    return new Set(sorts.map(s => s.column))
+  }, [sorts])
+
+  const availableCols = useMemo(() => {
+    return columns.filter(c => !activeSortsCols.has(c.name))
+  }, [sorts])
+
+  // Clean functional updates - use index correctly
+  const updateSort = (index: number, updates: Partial<ColumnSortType>) => {
+    setSorts(prev => prev.map((filter, i) => 
+      i === index ? { ...filter, ...updates } : filter
+    ));
+  };
+
+  const removeSort = (index: number) => {
+    setSorts(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addSort = () => {
+    setSorts(prev => [...prev, { 
+      column: columns[0]?.name || '', 
+      dir: "ASC"
+    }]);
+  };
+
+  const applySort = () => {
+    setActiveSorts(sorts);
+  };
+
+
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild className="relative">
+        <Button className="relative flex items-center gap-2" variant="outline">
+          <ListOrderedIcon className="w-4 h-4"/>
+          <h1>Sorting</h1>
+          <div className={`${
+            activeSorts.length === 0 && "hidden"
+          } absolute -top-1 -right-1 w-5 h-5 bg-white text-black text-xs rounded-full flex items-center justify-center shadow-lg border-2 border-background`}> 
+            {activeSorts.length} 
+          </div> 
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-md p-0 max-h-96 overflow-y-auto">
+        <DropdownMenuGroup>
+          {sorts.length === 0 && (
+            <div className="flex flex-col p-4">
+              <h1 className="text-sm">No Sorting Rules</h1>
+            </div>
+          )}
+          {sorts.map((f, index) => (
+            <div key={index} className="flex items-center justify-between p-2 border-b last:border-b-0">
+              <div className="flex items-center gap-4">
+                <Select
+                  value={f.column}
+                  onValueChange={(v) => {
+                    console.log("@NEWCOL: ", v)
+                    updateSort(index, { column: v })}
+                  }
+                >
+                  <SelectTrigger className="w-39! min-w-39! max-w-39!">
+                    <p>{f.column}</p>
+                  </SelectTrigger>
+                  <SelectContent className="z-150">
+                    <SelectGroup>
+                      <SelectLabel>Columns</SelectLabel>
+                      {availableCols.map(c => (
+                        <SelectItem key={c.name} value={c.name}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="asc" className="text-sm text-muted-foreground">
+                      ascending:
+                  </Label>
+                  <Switch 
+                    id="asc"
+                    checked={sorts[index].dir === "ASC"}
+                    onCheckedChange={checked => {
+                      if (checked) {
+                        updateSort(index, { dir: "ASC" })
+                      } else {
+                        updateSort(index, { dir: "DESC" })
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+
+                  
+
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => removeSort(index)}
+              >
+                <XIcon className="w-4 h-4"/>
+              </Button>
+            </div>
+          ))}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup className="flex items-center justify-between p-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={addSort}
+            className="flex items-center gap-2"
+          >
+            <PlusIcon className="w-4 h-4"/>
+            Add Rule
+          </Button>
+
+          <Button
+            variant="default"
+            size="sm"
+            onClick={applySort}
+            
+            disabled={JSON.stringify(sorts) === JSON.stringify(activeSorts)}
+          >
+            Apply
+          </Button>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

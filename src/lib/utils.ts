@@ -372,17 +372,14 @@ export const glassCard = "block";
 
 
 export function buildWhereClause(
-  filters: FilterConfig[], // Changed parameter type
+  filters: FilterConfig[],
   columnTypes: Map<string, DATA_TYPES>
 ): {
   whereClause: string;
-  whereParams: any[];
   errors: Record<string, string>;
 } {
   const whereClauses: string[] = [];
-  const whereParams: any[] = [];
   const errors: Record<string, string> = {};
-  let paramCount = 1;
 
   for (const filter of filters) {
     const { column, operator: op, value: raw } = filter;
@@ -394,15 +391,19 @@ export function buildWhereClause(
     const col = `"${column}"`;
     const cast = getPostgresCast(dataType);
 
+    // Helper to format values for raw SQL (escaping single quotes)
+    const formatValue = (v: any) => {
+      if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
+      return v;
+    };
+
     switch (op) {
       case FilterOperator.LIKE: {
         if (!TEXT_LIKE.has(dataType) && dataType !== DATA_TYPES.JSONB) {
           errors[column] = `LIKE operator not supported for ${dataType}`;
           continue;
         }
-        whereClauses.push(`${col}::text ILIKE $${paramCount}`);
-        whereParams.push(`%${value}%`);
-        paramCount++;
+        whereClauses.push(`${col}::text ILIKE '%${value.replace(/'/g, "''")}%'`);
         break;
       }
 
@@ -410,27 +411,23 @@ export function buildWhereClause(
         const items = value.split(",").map((s) => s.trim()).filter(Boolean);
         if (!items.length) break;
 
-        const validItems: any[] = [];
+        const validItems: string[] = [];
         for (const item of items) {
           const validation = castFilterValue(item, dataType, FilterOperator.EQUALS);
           if (!validation.isValid) {
             errors[column] = validation.error || "Invalid value in IN list";
             break;
           }
-          validItems.push(validation.castedValue ?? item);
+          validItems.push(formatValue(validation.castedValue ?? item));
         }
         if (errors[column]) continue;
 
-        const arrayType = getPostgresArrayCast(dataType);
-        whereClauses.push(`${col} = ANY($${paramCount}::${arrayType})`);
-        whereParams.push(validItems);
-        paramCount++;
+        whereClauses.push(`${col} IN (${validItems.join(", ")})`);
         break;
       }
 
       case FilterOperator.IS: {
         const upper = value.toUpperCase();
-
         if (upper === "NULL") {
           whereClauses.push(`${col} IS NULL`);
         } else if (upper === "NOT NULL") {
@@ -443,7 +440,6 @@ export function buildWhereClause(
           whereClauses.push(`${col} IS ${upper}`);
         } else {
           errors[column] = "IS operator requires NULL, NOT NULL, TRUE, or FALSE";
-          continue;
         }
         break;
       }
@@ -460,9 +456,8 @@ export function buildWhereClause(
           continue;
         }
 
-        whereClauses.push(`${col} ${op} $${paramCount}${cast}`);
-        whereParams.push(validation.castedValue ?? value);
-        paramCount++;
+        const literal = formatValue(validation.castedValue ?? value);
+        whereClauses.push(`${col} ${op} ${literal}${cast}`);
         break;
       }
 
@@ -474,8 +469,9 @@ export function buildWhereClause(
   }
 
   const whereClause = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
-  return { whereClause, whereParams, errors };
+  return { whereClause, errors };
 }
+
 
 
 /** ---------------------------

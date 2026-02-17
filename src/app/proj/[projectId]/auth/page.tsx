@@ -1,6 +1,6 @@
 import { parseFiltersParam } from "@/lib/utils";
 import DataViewer from "@/components/DataViewer";
-import { AuthUserType } from "@/lib/types";
+import { AuthUserType, ColumnSortType } from "@/lib/types";
 import { getTableData } from "@/lib/actions/database/tables/cache-actions";
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/auth">) => {
@@ -26,15 +26,10 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/auth"
   const filterFromUrl = sp['filter'] as string ?? ""
 
   const sortStr = sp["sort"] as string || "";
-  let sortColumn: string | undefined;
-  let sortDir: "ASC" | "DESC" | undefined;
-  if (sortStr) {
-    const [col, dir] = sortStr.split(":");
-    sortColumn = col;
-    sortDir = dir as "ASC" | "DESC";
-  }
-
-  const sortObj = sortColumn && sortDir ? { column: sortColumn, direction: sortDir } : undefined
+  
+  const sortObj: ColumnSortType[] = sortStr.split(";").map(s => {
+    return { column: s.split(":")[0], dir: s.split(":")[1] as "ASC" | "DESC" }
+  })
 
   const filters = parseFiltersParam(filterFromUrl)
 
