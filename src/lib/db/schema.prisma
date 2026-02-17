@@ -16,41 +16,40 @@ model User {
 }
 
 model Project {
-  id        String   @id @default(uuid())
-  name      String
-  ownerId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  db_name String @unique
-  db_user String @unique
-  db_pwd  String
-
-  owner         User     @relation(fields: [ownerId], references: [id])
-  collaborators User[]   @relation("Invited To")
-
-  sqlfolders SqlFolder[]
-  sqlqueries sql[]
+  id            String      @id @default(uuid())
+  name          String
+  ownerId       String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  db_name       String      @unique
+  db_pwd        String
+  db_user       String      @unique
+  owner         User        @relation(fields: [ownerId], references: [id])
+  sqlfolders    SqlFolder[]
+  sqlqueries    sql[]
+  collaborators User[]      @relation("Invited To")
 }
 
 model SqlFolder {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   projectId String
   name      String
-
-  queries sql[]
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  queries   sql[]
 }
 
 model sql {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   projectId String
   folderId  String?
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
   name      String
   query     String
+  folder    SqlFolder? @relation(fields: [folderId], references: [id])
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
 
-  folder  SqlFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+model sso_providers {
+  name     String  @id
+  img_path String? @unique
 }

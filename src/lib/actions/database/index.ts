@@ -242,12 +242,10 @@ export async function createTenantDatabase(opts: {
     );
 
 CREATE TABLE "auth"."sso_providers" (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT PRIMARY KEY,
   project_id uuid, -- Assuming this refers to a project table not shown
-  callback_url TEXT,
   client_id TEXT,
   client_secret TEXT,
-  enabled BOOLEAN DEFAULT true,
   allow_no_email BOOLEAN DEFAULT true
 );
 

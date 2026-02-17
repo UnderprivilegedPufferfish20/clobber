@@ -127,6 +127,16 @@ export interface PlansRecord {
   yearly: Plan;
 }
 
+export interface OauthSSOProvider {
+  name: string,
+  project_id: string,
+  img_path: string,
+  client_id: string | null,
+  client_secret: string | null,
+  enabled: boolean,
+  allow_no_email: boolean | null
+}
+
 export enum DATA_TYPES {
   BIGINT = "bigint", // int8
   BIGSERIAL = "bigserial", // serial8
