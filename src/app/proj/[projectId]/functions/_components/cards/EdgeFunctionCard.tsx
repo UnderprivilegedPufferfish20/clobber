@@ -1,21 +1,25 @@
+'use client';
 import { EdgeFunctionType } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { FunctionSquare, EllipsisVerticalIcon, EditIcon, Trash2Icon } from 'lucide-react'
-import React from 'react'
-import { Button } from '@/components/ui/button'
+import { FunctionSquare } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation';
 
 const EdgeFunctionCard = ({
-    createdAt,
-    deploymentCount,
+    created_at,
+    deployment_count,
     files,
     slug,
-    updatedAt,
+    updated_at,
     url
 }: EdgeFunctionType) => {
+  const router = useRouter()
+  const pathname = usePathname()
+
   return (
     <>
-        <div 
+        <Link
+            href={`${pathname}/${slug}`} 
             className={cn(
                       "group rounded-xl border bg-background p-4",
                       "transition-all duration-150",
@@ -60,7 +64,7 @@ const EdgeFunctionCard = ({
             
           </div>
         </div>
-        </div>
+        </Link>
     </>
   )
 }

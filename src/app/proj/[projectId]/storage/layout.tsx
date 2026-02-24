@@ -10,7 +10,7 @@ export default function StorageLayout(
 
 
   return (
-    <div className="fullscreen flex flex-col overflow-hidden">
+    <div className="fullscreen flex flex-col">
       <header className="w-full h-20 min-h-20 max-h-20 flex gap-2 items-center-safe p-2 px-4">
         <span className="font-semibold text-3xl mr-8">Storage</span>
         <StorageNavbar />
@@ -18,7 +18,7 @@ export default function StorageLayout(
 
       <Separator />
 
-      <div className="flex-1 flex overflow-hidden fullscreen">
+      <div className="flex-1 flex fullscreen">
         {children}
       </div>
     </div>

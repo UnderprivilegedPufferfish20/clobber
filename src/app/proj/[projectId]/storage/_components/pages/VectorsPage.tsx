@@ -53,7 +53,7 @@ const VectorsPage = (props: Props) => {
 
   return (
     <>
-      <div className="fullscreen flex flex-col p-8 overflow-y-auto">
+      <div className="fullscreen flex flex-col p-8">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="font-bold text-3xl">Vector Indexes</h1>
@@ -125,10 +125,7 @@ const VectorsPage = (props: Props) => {
           </div>
         ) : (
           <div
-            className={cn(
-              "grid gap-4",
-              "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            )}
+            className="flex flex-col fullscreen flex-1 overflow-y-auto"
           >
             {filteredBuckets.map(f => (
               <IndexCard
