@@ -107,7 +107,7 @@ const Sidebar = () => {
   return (
     <TooltipProvider>
       <div 
-        className={`bg-gray-50 dark:bg-black/5 dark:text-white hidden mt-[65px] md:flex flex-col justify-between overflow-y-clip text-muted-foreground border-r-2 border-separate transition-all duration-300 sticky top-0 p-0!
+        className={`bg-secondary dark:text-white hidden mt-[65px] md:flex flex-col justify-between overflow-y-clip text-muted-foreground border-r-2 border-separate transition-all duration-300 sticky top-0 p-0!
         ${isExpanded ? 'w-48' : 'w-[70px]'}`}
       >
 

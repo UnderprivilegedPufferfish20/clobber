@@ -80,7 +80,7 @@ const OAuthProviderCard = (props: OauthSSOProvider) => {
     <>
       <div
         onClick={() => setSheetOpen(true)} 
-        className='flex p-4 items-center justify-between dark:bg-neutral-900 rounded-md w-ms min-w-sm max-w-sm cursor-pointer shadow-md hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform duration-300'
+        className='flex p-4 items-center justify-between bg-secondary rounded-md w-ms min-w-sm max-w-sm cursor-pointer shadow-md hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform duration-300'
       >
         <div className='flex items-center gap-3'>
           <Image 

@@ -14,7 +14,7 @@ function layout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex flex-col flex-1 fullheight">
-          <header className="fixed top-0 left-0 right-0 z-100 bg-gray-50 border-b dark:bg-black/5 dark:text-white">
+          <header className="fixed top-0 left-0 right-0 z-100 bg-secondary">
             <div className="flex items-center justify-between py-3 px-5 h-[65px]">
               <BreadcrumbHeader
                 projects={[]}
@@ -28,7 +28,7 @@ function layout({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* push content below header */}
-          <div className="pt-[65px] text-accent-foreground w-full h-full overflow-hidden">
+          <div className="pt-[65px] text-accent-foreground w-full h-full overflow-hidden bg-background">
             {children}
           </div>
         </div>
