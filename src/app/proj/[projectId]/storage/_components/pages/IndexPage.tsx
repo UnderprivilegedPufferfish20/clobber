@@ -270,7 +270,7 @@ const IndexPage = ({
 
         <div className='flex flex-col gap-2'>
           <h1 className='font-semibold text-2xl'>Search</h1>
-          <div className='dark:bg-neutral-900 rounded-md flex items-center gap-6 p-4'>
+          <div className='bg-secondary/75 rounded-md flex items-center gap-6 p-4'>
 
             <div className='flex flex-col gap-2 w-fit min-w-fit max-w-fit'>
               <p className='text-lg font-semibold'>Namespace</p>
@@ -374,7 +374,7 @@ const IndexPage = ({
               <div className='flex flex-col gap-2 mt-6'>
                 {resultLabel}
                 {method === INDEX_SEARCH_METHOD.LIST_IDS && (
-                  <div className='fullwidth bg-neutral-900 flex gap-4 items-center p-4 -mb-2'>
+                  <div className='fullwidth flex gap-4 items-center p-4 -mb-2'>
                     <Checkbox
                       className='w-5 h-5' 
                       checked={Boolean(searchResults && searchResults.length === selectedIds.length)}
@@ -390,25 +390,24 @@ const IndexPage = ({
                   </div>
                 )}
                 {searchResults.map((sr, idx) => (
-                  <div key={sr.id}>
-                    <SearchResultCard 
-                      {...sr}
-                      id={sr.id}
-                      indexName={index.name}
-                      namespace={sr.namespace}
-                      project_id={project_id}
-                      // @ts-ignore
-                      score={sr.score ? sr.score : ""}
-                      index={idx}
-                      method={method}
-                      selectedIds={selectedIds}
-                      setSelectedIds={setSelectedIds}
-                    />
-              </div>
+                  <SearchResultCard 
+                    {...sr}
+                    key={sr.id}
+                    id={sr.id}
+                    indexName={index.name}
+                    namespace={sr.namespace}
+                    project_id={project_id}
+                    // @ts-ignore
+                    score={sr.score ? sr.score : ""}
+                    index={idx}
+                    method={method}
+                    selectedIds={selectedIds}
+                    setSelectedIds={setSelectedIds}
+                  />
             ))}
           </div>
             ) : (
-              <div className='fullscreen flex items-center justify-center dark:bg-neutral-900 mt-8 rounded-md'>
+              <div className='fullscreen flex items-center justify-center mt-8 rounded-md'>
                 <div className='flex flex-col items-center gap-2'>
                   <InboxIcon size={106}/>
                   <p className='text-2xl'>No Results</p>
@@ -658,7 +657,7 @@ function SearchResultCard({
   return (
     <>
       {method === INDEX_SEARCH_METHOD.LIST_IDS ? (
-        <div className='flex items-center gap-4 p-4 dark:bg-neutral-900'>
+        <div className='flex items-center gap-4 p-4 bg-secondary/75'>
           <Checkbox 
             className='w-5 h-5'
             checked={selectedSet.has(id)}
@@ -674,7 +673,7 @@ function SearchResultCard({
           <h1 className='text-sm'>{id}</h1>
         </div>
       ) : method === INDEX_SEARCH_METHOD.ID ? (
-        <div className='fullwidth rounded-lg justify-between flex items-center gap-12 dark:bg-neutral-900 p-2'>
+        <div className='fullwidth rounded-lg justify-between flex items-center gap-12 bg-secondary/75 p-2'>
           <div className='flex items-center gap-8'>
             <span className='w-8 rounded-md h-8 flex items-center justify-center font-semibold bg-indigo-500 text-white'>
               {index + 1}
@@ -691,7 +690,7 @@ function SearchResultCard({
           
         </div>  
       ) : (
-        <div className='fullwidth rounded-lg flex items-center justify-between gap-12 dark:bg-neutral-900 p-2'>
+        <div className='fullwidth rounded-lg flex items-center justify-between gap-12 bg-secondary/75 p-2'>
           <div className='flex items-center gap-8'>
             <div className='flex items-center gap-4'>
               <span className='w-8 rounded-md h-8 flex items-center justify-center font-semibold bg-indigo-500 text-white'>

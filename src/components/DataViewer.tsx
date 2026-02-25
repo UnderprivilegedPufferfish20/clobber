@@ -592,7 +592,7 @@ export default function DataViewer<T>({
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-auto hide-scrollbar text-sm relative">
+        <div className="flex-1 min-h-0 text-sm relative">
           {activeCols.length > 0 ? (
             data.length === 0 ? (
               <div className="fullscreen flex flex-1 items-center justify-center text-muted-foreground text-2xl">
@@ -606,37 +606,25 @@ export default function DataViewer<T>({
                 </div>
               </div>
             ) : (
-              <div
-                className="min-w-full min-h-full pb-20 overflow-x-auto"
-                style={{
-                  display: "grid",
-                  /* 1. Use 1fr to divide remaining space evenly after the 36px offsets */
-                  gridTemplateColumns: `56px repeat(${activeCols.length}, 1fr) 40px`,
-                  /* 2. Forces rows to the top; the 'empty' space will sit below them */
-                  alignContent: "start",
-                }}
-              >
-                {/* Sticky header row */}
-                <div className="contents">
-                  <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-                    <div className="h-9 w-14 flex items-center border-r bg-neutral-900 pl-2">
-                      <Checkbox
-                        className="w-4 h-4"
-                        onCheckedChange={(checked) => {
-                          if (pkeyCols.size === 0) return;
-                          setSelectedRows((prev) => {
-                            const next = new Map(prev);
-                            data.forEach((row) => {
-                              const id = computeRowId(row);
-                              if (checked) next.set(id, row);
-                              else next.delete(id);
-                            });
-                            return next;
+              <div className="fullscreen relative flex-1">
+                <div className="sticky fullwidth flex flex-1">
+                  <div className="left-0 right-0 top-0 z-10 border-b backdrop-blur h-9 w-14 flex items-center border-r bg-secondary/40 pl-2">
+                    <Checkbox
+                      className="w-4 h-4"
+                      onCheckedChange={(checked) => {
+                        if (pkeyCols.size === 0) return;
+                        setSelectedRows((prev) => {
+                          const next = new Map(prev);
+                          data.forEach((row) => {
+                            const id = computeRowId(row);
+                            if (checked) next.set(id, row);
+                            else next.delete(id);
                           });
-                        }}
-                        checked={data.length > 0 && selectedRows.size > 0}
-                      />
-                    </div>
+                          return next;
+                        });
+                      }}
+                      checked={data.length > 0 && selectedRows.size > 0}
+                    />
                   </div>
 
                   {activeCols.map((col: ColumnType, i: number) => {
@@ -648,11 +636,11 @@ export default function DataViewer<T>({
                         className={[
                           "sticky top-0 z-10",
                           "border-b",
-                          "dark:bg-neutral-900",
+                          "bg-secondary/40",
                           i === 0 ? "border-l-0" : "border-l",
-                          "p-2 h-9",
-                          "cursor-pointer hover:bg-muted/40",
-                          "flex items-center justify-between gap-2",
+                          "p-2 h-9 min-w-8",
+                          "cursor-pointer",
+                          "flex flex-1 items-center justify-between",
                         ].join(" ")}
                         onClick={() => {
                           if (activeSort.map(c => c.column).includes(col.name)) {
@@ -673,7 +661,7 @@ export default function DataViewer<T>({
                         }}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="truncate">{col.name}</span>
+                          <span className="truncate text-white opacity-80">{col.name}</span>
                           {activeSort.map(s => s.column).includes(col.name) ? (
                             activeSort.find(s => s.column === col.name)!.dir === "ASC" ? (
                               <ArrowUp size={14} />
@@ -690,156 +678,164 @@ export default function DataViewer<T>({
                   })}
 
                   <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-                    <div className="h-9 w-10 flex items-center justify-center border-l bg-neutral-900 hover:bg-neutral-800 cursor-pointer">
+                    <div className="h-9 w-10 flex items-center justify-center border-l bg-secondary/40 hover:bg-secondary cursor-pointer">
                       <PlusIcon className="w-5 h-5" />
                     </div>
                   </div>
                 </div>
 
-                {/* Body rows */}
-                {data.map((row: any, idx: number) => {
-                  const id = computeRowId(row);
-                  const isSelected = selectedRows.has(id);
 
-                  return (
-                    <TooltipProvider key={row.ctid} delayDuration={5000}>
-                      <div key={row.ctid} className="contents group">
-                        {/* left "row number / checkbox" cell */}
-                        <div className="pl-2 border-b border-r h-10 w-14 flex items-center gap-2 group group-hover:bg-neutral-800">
-                          {isSelected ? (
-                            <Checkbox
-                              key={row.ctid}
-                              className="w-4 h-4"
-                              checked
-                              onCheckedChange={(checked) => {
-                                if (pkeyCols.size === 0) return;
-                                setSelectedRows((prev) => {
-                                  const next = new Map(prev);
-                                  if (checked) next.set(id, row);
-                                  else next.delete(id);
-                                  return next;
-                                });
-                              }}
-                            />
-                          ) : (
-                            <>
+                <div
+                  className="fullscreen flex flex-col justify-start flex-1 pb-39 overflow-x-hidden overflow-y-scroll hide-scrollbar"
+                >
+                  
+
+                  {/* Body rows */}
+                  {data.map((row: any, idx: number) => {
+                    const id = computeRowId(row);
+                    const isSelected = selectedRows.has(id);
+
+                    return (
+                      <TooltipProvider key={row.ctid} delayDuration={5000}>
+                        <div key={row.ctid} className="flex flex-1 group justify max-h-10 last:border-b-2">
+                          {/* left "row number / checkbox" cell */}
+                          <div className="pl-2 border-b border-r h-10 w-14 flex items-center gap-2 group group-hover:bg-neutral-800">
+                            {isSelected ? (
                               <Checkbox
                                 key={row.ctid}
-                                className="hidden group-hover:block w-4 h-4"
-                                checked={false}
+                                className="w-4 h-4"
+                                checked
                                 onCheckedChange={(checked) => {
                                   if (pkeyCols.size === 0) return;
                                   setSelectedRows((prev) => {
                                     const next = new Map(prev);
                                     if (checked) next.set(id, row);
+                                    else next.delete(id);
                                     return next;
                                   });
                                 }}
                               />
-                              <p key={row.ctid} className="pl-1 group-hover:hidden text-muted-foreground">{offset + idx + 1}</p>
-                            </>
-                          )}
-                          <Maximize2Icon 
-                            onClick={() => setEditRowId(idx)}
-                            className="stroke-muted-foreground hover:stroke-white cursor-pointer w-3 h-3 hidden group-hover:block"
-                          />
+                            ) : (
+                              <>
+                                <Checkbox
+                                  key={row.ctid}
+                                  className="hidden group-hover:block w-4 h-4"
+                                  checked={false}
+                                  onCheckedChange={(checked) => {
+                                    if (pkeyCols.size === 0) return;
+                                    setSelectedRows((prev) => {
+                                      const next = new Map(prev);
+                                      if (checked) next.set(id, row);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <p key={row.ctid} className="pl-1 group-hover:hidden text-muted-foreground">{offset + idx + 1}</p>
+                              </>
+                            )}
+                            <Maximize2Icon 
+                              onClick={() => setEditRowId(idx)}
+                              className="stroke-muted-foreground hover:stroke-white cursor-pointer w-3 h-3 hidden group-hover:block"
+                            />
+                          </div>
+
+                          {/* data cells */}
+                          {activeCols.map((col: any, i: number) => {
+                            const colName = col.name;
+                            const raw = row[colName];
+                            const isNull = raw === null;
+
+                            const value = isNull ? (
+                              <span className="text-white opacity-80 italic">NULL</span>
+                            ) : raw instanceof Date ? (
+                              <span>{raw.toLocaleDateString()}</span>
+                            ) : (
+                              <span>{String(raw)}</span>
+                            );
+
+                            return (
+                              <div
+                                className={[
+                                  "border-b",
+                                  i === 0 ? "border-l-0" : "border-l",
+                                  "p-2 h-10 text-white opacity-80",
+                                  "group-hover:bg-neutral-800",
+                                  "truncate flex-1",
+                                  "cursor-pointer",
+                                ].join(" ")}
+                              >
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    {value}
+                                  </TooltipTrigger>
+                                  <TooltipContent align="start" carat={false}>
+                                    {value}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                            );
+                          })}
+
+                          {/* right ellipses cell */}
+                          <div className="group-hover:bg-neutral-800 border-b border-l h-10 w-10 flex items-center justify-center cursor-pointer">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger>
+                                <EllipsisIcon className="w-6 h-6 text-muted-foreground font-bold cursor-pointer"  />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="flex items-center gap-2"
+                                  onClick={() => setEditRowId(idx)}
+                                >
+                                  <EditIcon className="w-4 h-4"/>
+                                  Update
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="flex items-center gap-2"
+                                  onClick={() => setDeplicateRowId(idx)}
+                                >
+                                  <CopyIcon className="w-4 h-4"/>
+                                  Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="flex items-center gap-2"
+                                  onClick={async () => {
+                                    const result: Record<string, string> = {}
+                                    for (let c of activeCols) {
+                                      
+                                      result[c.name] = row[c.name]
+                                    }
+
+                                    try {
+                                      await navigator.clipboard.writeText(JSON.stringify(result))
+                                      toast.success("Row copied", { id: "copy-row-json" })
+                                    } catch (e) {
+                                      toast.error(`Failed to copy row: ${e}`, { id: "copy-row-json" })
+                                    }
+
+                                  }}
+                                >
+                                  <CurlyBracesIcon className="w-4 h-4"/>
+                                  Copy as JSON
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="flex items-center gap-2"
+                                  onClick={() => setDeleteRowId(idx)}
+                                >
+                                  <Trash2Icon className="w-4 h-4"/>
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
+                      </TooltipProvider>
+                    );
+                  })}
+                </div>
 
-                        {/* data cells */}
-                        {activeCols.map((col: any, i: number) => {
-                          const colName = col.name;
-                          const raw = row[colName];
-                          const isNull = raw === null;
-
-                          const value = isNull ? (
-                            <span className="text-muted-foreground italic">NULL</span>
-                          ) : raw instanceof Date ? (
-                            <span>{raw.toLocaleDateString()}</span>
-                          ) : (
-                            <span>{String(raw)}</span>
-                          );
-
-                          return (
-                            <div
-                              className={[
-                                "border-b",
-                                i === 0 ? "border-l-0" : "border-l",
-                                "p-2 h-10",
-                                "group-hover:bg-neutral-800",
-                                "truncate",
-                                "cursor-pointer",
-                              ].join(" ")}
-                            >
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  {value}
-                                </TooltipTrigger>
-                                <TooltipContent align="start" carat={false}>
-                                  {value}
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                          );
-                        })}
-
-                        {/* right ellipses cell */}
-                        <div className="group-hover:bg-neutral-800 border-b border-l h-10 w-10 flex items-center justify-center cursor-pointer">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger>
-                              <EllipsisIcon className="w-6 h-6 text-muted-foreground font-bold cursor-pointer"  />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="flex items-center gap-2"
-                                onClick={() => setEditRowId(idx)}
-                              >
-                                <EditIcon className="w-4 h-4"/>
-                                Update
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="flex items-center gap-2"
-                                onClick={() => setDeplicateRowId(idx)}
-                              >
-                                <CopyIcon className="w-4 h-4"/>
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="flex items-center gap-2"
-                                onClick={async () => {
-                                  const result: Record<string, string> = {}
-                                  for (let c of activeCols) {
-                                    
-                                    result[c.name] = row[c.name]
-                                  }
-
-                                  try {
-                                    await navigator.clipboard.writeText(JSON.stringify(result))
-                                    toast.success("Row copied", { id: "copy-row-json" })
-                                  } catch (e) {
-                                    toast.error(`Failed to copy row: ${e}`, { id: "copy-row-json" })
-                                  }
-
-                                }}
-                              >
-                                <CurlyBracesIcon className="w-4 h-4"/>
-                                Copy as JSON
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="flex items-center gap-2"
-                                onClick={() => setDeleteRowId(idx)}
-                              >
-                                <Trash2Icon className="w-4 h-4"/>
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </TooltipProvider>
-                  );
-                })}
               </div>
             )
           ) : (

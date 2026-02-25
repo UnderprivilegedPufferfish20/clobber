@@ -14,7 +14,7 @@ function layout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex flex-col flex-1 fullheight">
-          <header className="fixed top-0 left-0 right-0 z-100 bg-secondary">
+          <header className="fixed top-0 left-0 right-0 z-100 bg-secondary border-b-2">
             <div className="flex items-center justify-between py-3 px-5 h-[65px]">
               <BreadcrumbHeader
                 projects={[]}

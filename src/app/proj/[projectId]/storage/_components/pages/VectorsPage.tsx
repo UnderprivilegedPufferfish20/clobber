@@ -125,7 +125,7 @@ const VectorsPage = (props: Props) => {
           </div>
         ) : (
           <div
-            className="flex flex-col fullscreen flex-1 overflow-y-auto"
+            className="flex flex-col fullscreen flex-1 overflow-y-auto gap-4"
           >
             {filteredBuckets.map(f => (
               <IndexCard

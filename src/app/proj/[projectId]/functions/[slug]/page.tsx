@@ -1,18 +1,14 @@
-"use client";
+'use client'; // Mark the component as a Client Component
 
 import { usePathname, useRouter } from 'next/navigation';
-import React from 'react'
-import Sidebar from './_components/Sidebar';
-import Loader from '@/components/Loader';
+import { useEffect } from 'react';
 
-const page = () => {
+export default function SomeClientPage() {
+  const router = useRouter();
+  const pathname = usePathname()
 
-    const pathname = usePathname()
-    const router = useRouter()
+  useEffect(() => {
+    router.push(`${pathname}/overview`); // Redirect
+  }, [router]);
 
-    router.push(`${pathname.split("/").slice(0,5).join("/")}/overview`)
-
-  
 }
-
-export default page

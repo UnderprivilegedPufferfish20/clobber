@@ -1,4 +1,4 @@
-import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon, Binary, Braces, Calendar, Camera, Circle, Clock, Cpu, Crosshair, DollarSign, Fingerprint, Hash, Hexagon, Minus, Network, Route, ScrollText, Search, Sigma, Square, TextCursorInput, ToggleRight, ListOrderedIcon, ListIcon, TextSearchIcon, ListCollapseIcon, BracketsIcon } from "lucide-react";
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon, Binary, Braces, Calendar, Camera, Circle, Clock, Cpu, Crosshair, DollarSign, Fingerprint, Hash, Hexagon, Minus, Network, Route, ScrollText, Search, Sigma, Square, TextCursorInput, ToggleRight, ListOrderedIcon, ListIcon, TextSearchIcon, ListCollapseIcon, BracketsIcon, UserLockIcon, MousePointerClickIcon } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
 import { DATA_TYPES, DataTypeType, INDEX_SEARCH_METHOD } from "../types";
 
@@ -24,7 +24,7 @@ export const SidebarRoutes = [
     {
     href: "/auth",
     label: "Authentication",
-    icon: FingerprintIcon,
+    icon: UserLockIcon,
   },
   {
     href: "/functions",
@@ -34,7 +34,7 @@ export const SidebarRoutes = [
   {
     href: "/realtime",
     label: "Realtime",
-    icon: RadioIcon,
+    icon: MousePointerClickIcon,
   },
 
 
