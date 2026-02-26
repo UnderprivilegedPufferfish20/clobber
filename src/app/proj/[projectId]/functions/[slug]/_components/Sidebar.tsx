@@ -23,7 +23,8 @@ const Sidebar = () => {
         </header>
         <div className='flex flex-col gap-2 p-2'>
             {routes.map(r => (
-                <Link 
+                <Link
+                    key={r} 
                     href={`${pathname.split("/").slice(0,5).join("/")}/${r.toLowerCase()}`}
                     className={`${pathname.includes(r.toLowerCase()) && "text-foreground!"} cursor-pointer text-muted-foreground hover:text-foreground transition-all duration-300`}
                 >
