@@ -38,6 +38,14 @@ model SqlFolder {
   queries   sql[]
 }
 
+model SchemaEditorPosition {
+  node_id   String  @id
+  projectId String
+  schema String
+  x Int
+  y Int
+}
+
 model sql {
   id        String     @id @default(uuid())
   projectId String
@@ -51,5 +59,5 @@ model sql {
 
 model sso_providers {
   name     String  @id
-  img_path String? @unique
+  img_path String @unique
 }

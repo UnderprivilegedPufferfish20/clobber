@@ -48,8 +48,8 @@ export async function getSchemas(projectId: string) {
 export async function getSchema(
   projectId: string,
   schema: string
-): Promise<TableType[]> {
-  cacheTag(t("schema", projectId, schema))
+): Promise<(TableType & { x?: number; y?: number })[]> {
+  cacheTag(t("schema", projectId, schema));
 
   const project = await getProjectById(projectId);
   if (!project) throw new Error("No project found");
@@ -58,191 +58,215 @@ export async function getSchema(
     connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
     user: project.db_user,
     password: project.db_pwd,
-    database: project.db_name
+    database: project.db_name,
   });
 
   const result = await pool.query(`
-WITH
-  params AS (
-    SELECT '${schema}'::text AS target_schema
-  ),
-  tables AS (
-    SELECT
-      n.nspname AS schema,
-      c.relname AS name,
-      c.oid AS table_oid
-    FROM pg_catalog.pg_class c
-    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE
-      c.relkind = 'r'
-      AND n.nspname = (SELECT target_schema FROM params)
-      AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-  ),
-  columns_base AS (
-    SELECT
-      t.schema,
-      t.name AS table_name,
-      a.attname AS name,
-
-      -- same as "remove trailing [] if present"
-      CASE
-        WHEN right(format_type(a.atttypid, NULL)::text, 2) = '[]'
-          THEN left(format_type(a.atttypid, NULL)::text, length(format_type(a.atttypid, NULL)::text) - 2)
-        ELSE format_type(a.atttypid, NULL)::text
-      END AS dtype,
-
-      -- same boolean as "~ \[\]$"
-      (right(format_type(a.atttypid, NULL)::text, 2) = '[]') AS is_array,
-
-      a.attnotnull AS is_nullable, -- Note: inverted later (kept exactly as your query)
-
-      COALESCE(CASE WHEN d.adbin IS NOT NULL THEN pg_catalog.pg_get_expr(d.adbin, d.adrelid) END, '') AS default_value,
-
-      EXISTS (
-        SELECT 1
-        FROM pg_catalog.pg_constraint con
+    -- your big WITH query unchanged
+    WITH
+      params AS (
+        SELECT '${schema}'::text AS target_schema
+      ),
+      tables AS (
+        SELECT
+          n.nspname AS schema,
+          c.relname AS name,
+          c.oid AS table_oid
+        FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
         WHERE
-          con.conrelid = t.table_oid
-          AND con.contype = 'p'
-          AND a.attnum = ANY(con.conkey)
-      ) AS is_primary_key,
-
-      EXISTS (
-        SELECT 1
+          c.relkind = 'r'
+          AND n.nspname = (SELECT target_schema FROM params)
+          AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+      ),
+      columns_base AS (
+        SELECT
+          t.schema,
+          t.name AS table_name,
+          a.attname AS name,
+          CASE
+            WHEN right(format_type(a.atttypid, NULL)::text, 2) = '[]'
+              THEN left(format_type(a.atttypid, NULL)::text, length(format_type(a.atttypid, NULL)::text) - 2)
+            ELSE format_type(a.atttypid, NULL)::text
+          END AS dtype,
+          (right(format_type(a.atttypid, NULL)::text, 2) = '[]') AS is_array,
+          a.attnotnull AS is_nullable,
+          COALESCE(CASE WHEN d.adbin IS NOT NULL THEN pg_catalog.pg_get_expr(d.adbin, d.adrelid) END, '') AS default_value,
+          EXISTS (
+            SELECT 1
+            FROM pg_catalog.pg_constraint con
+            WHERE
+              con.conrelid = t.table_oid
+              AND con.contype = 'p'
+              AND a.attnum = ANY(con.conkey)
+          ) AS is_primary_key,
+          EXISTS (
+            SELECT 1
+            FROM pg_catalog.pg_constraint con
+            WHERE
+              con.conrelid = t.table_oid
+              AND con.contype = 'u'
+              AND con.conkey = ARRAY[a.attnum]::smallint[]
+          ) AS is_unique,
+          t.table_oid,
+          a.attnum
+        FROM tables t
+        JOIN pg_catalog.pg_attribute a
+          ON a.attrelid = t.table_oid
+         AND a.attnum > 0
+         AND NOT a.attisdropped
+        LEFT JOIN pg_catalog.pg_attrdef d
+          ON d.adrelid = t.table_oid
+         AND d.adnum = a.attnum
+      ),
+      foreign_keys AS (
+        SELECT
+          con.conname AS name,
+          n.nspname AS schema,
+          cl.relname AS tab,
+          local_cols.attname AS from_column,
+          ref_n.nspname AS to_schema,
+          ref_cl.relname AS to_table,
+          ref_cols.attname AS to_column,
+          CASE con.confupdtype
+            WHEN 'a' THEN 'NO ACTION'
+            WHEN 'r' THEN 'RESTRICT'
+            WHEN 'c' THEN 'CASCADE'
+            WHEN 'n' THEN 'SET NULL'
+            WHEN 'd' THEN 'SET DEFAULT'
+          END AS on_update,
+          CASE con.confdeltype
+            WHEN 'a' THEN 'NO ACTION'
+            WHEN 'r' THEN 'RESTRICT'
+            WHEN 'c' THEN 'CASCADE'
+            WHEN 'n' THEN 'SET NULL'
+            WHEN 'd' THEN 'SET DEFAULT'
+          END AS on_delete,
+          k.ord
         FROM pg_catalog.pg_constraint con
+        JOIN pg_catalog.pg_namespace n ON con.connamespace = n.oid
+        JOIN pg_catalog.pg_class cl ON con.conrelid = cl.oid
+        JOIN pg_catalog.pg_class ref_cl ON con.confrelid = ref_cl.oid
+        JOIN pg_catalog.pg_namespace ref_n ON ref_cl.relnamespace = ref_n.oid
+        CROSS JOIN unnest(con.conkey, con.confkey) WITH ORDINALITY AS k(local_attnum, ref_attnum, ord)
+        JOIN pg_catalog.pg_attribute local_cols
+          ON local_cols.attrelid = con.conrelid
+         AND local_cols.attnum = k.local_attnum
+        JOIN pg_catalog.pg_attribute ref_cols
+          ON ref_cols.attrelid = con.confrelid
+         AND ref_cols.attnum = k.ref_attnum
         WHERE
-          con.conrelid = t.table_oid
-          AND con.contype = 'u'
-          AND con.conkey = ARRAY[a.attnum]::smallint[]
-      ) AS is_unique,
-
-      t.table_oid,
-      a.attnum
-    FROM tables t
-    JOIN pg_catalog.pg_attribute a
-      ON a.attrelid = t.table_oid
-     AND a.attnum > 0
-     AND NOT a.attisdropped
-    LEFT JOIN pg_catalog.pg_attrdef d
-      ON d.adrelid = t.table_oid
-     AND d.adnum = a.attnum
-  ),
-  foreign_keys AS (
+          con.contype = 'f'
+          AND n.nspname = (SELECT target_schema FROM params)
+      ),
+      grouped_fkeys AS (
+        SELECT
+          schema,
+          tab,
+          json_agg(
+            json_build_object(
+              'cols', cols,
+              'update_action', on_update,
+              'delete_action', on_delete
+            )
+          ) AS fkeys
+        FROM (
+          SELECT
+            schema,
+            tab,
+            name,
+            on_update,
+            on_delete,
+            json_agg(
+              json_build_object(
+                'referencor_schema', schema,
+                'referencor_table', tab,
+                'referencor_column', from_column,
+                'referencee_schema', to_schema,
+                'referencee_table', to_table,
+                'referencee_column', to_column
+              ) ORDER BY ord
+            ) AS cols
+          FROM foreign_keys
+          GROUP BY
+            schema, tab, name, on_update, on_delete
+        ) sub
+        GROUP BY schema, tab
+      )
     SELECT
-      con.conname AS name,
-      n.nspname AS schema,
-      cl.relname AS tab,
-      local_cols.attname AS from_column,
-      ref_n.nspname AS to_schema,
-      ref_cl.relname AS to_table,
-      ref_cols.attname AS to_column,
-      CASE con.confupdtype
-        WHEN 'a' THEN 'NO ACTION'
-        WHEN 'r' THEN 'RESTRICT'
-        WHEN 'c' THEN 'CASCADE'
-        WHEN 'n' THEN 'SET NULL'
-        WHEN 'd' THEN 'SET DEFAULT'
-      END AS on_update,
-      CASE con.confdeltype
-        WHEN 'a' THEN 'NO ACTION'
-        WHEN 'r' THEN 'RESTRICT'
-        WHEN 'c' THEN 'CASCADE'
-        WHEN 'n' THEN 'SET NULL'
-        WHEN 'd' THEN 'SET DEFAULT'
-      END AS on_delete,
-      k.ord
-    FROM pg_catalog.pg_constraint con
-    JOIN pg_catalog.pg_namespace n ON con.connamespace = n.oid
-    JOIN pg_catalog.pg_class cl ON con.conrelid = cl.oid
-    JOIN pg_catalog.pg_class ref_cl ON con.confrelid = ref_cl.oid
-    JOIN pg_catalog.pg_namespace ref_n ON ref_cl.relnamespace = ref_n.oid
-    CROSS JOIN unnest(con.conkey, con.confkey) WITH ORDINALITY AS k(local_attnum, ref_attnum, ord)
-    JOIN pg_catalog.pg_attribute local_cols
-      ON local_cols.attrelid = con.conrelid
-     AND local_cols.attnum = k.local_attnum
-    JOIN pg_catalog.pg_attribute ref_cols
-      ON ref_cols.attrelid = con.confrelid
-     AND ref_cols.attnum = k.ref_attnum
-    WHERE
-      con.contype = 'f'
-      AND n.nspname = (SELECT target_schema FROM params)
-  ),
-  grouped_fkeys AS (
-    SELECT
-      schema,
-      tab,
       json_agg(
         json_build_object(
-          'cols', cols,
-          'update_action', on_update,
-          'delete_action', on_delete
-        )
-      ) AS fkeys
-    FROM (
-      SELECT
-        schema,
-        tab,
-        name,
-        on_update,
-        on_delete,
-        json_agg(
-          json_build_object(
-            'referencor_schema', schema,
-            'referencor_table', tab,
-            'referencor_column', from_column,
-            'referencee_schema', to_schema,
-            'referencee_table', to_table,
-            'referencee_column', to_column
-          ) ORDER BY ord
-        ) AS cols
-      FROM foreign_keys
-      GROUP BY
-        schema, tab, name, on_update, on_delete
-    ) sub
-    GROUP BY schema, tab
-  )
-SELECT
-  json_agg(
-    json_build_object(
-      'name', t.name,
-      'columns',
-      (
-        SELECT json_agg(
-          json_build_object(
-            'name', cf.name,
-            'dtype', cf.dtype,
-            'is_array', cf.is_array,
-            'default', cf.default_value,
-            'is_pkey', cf.is_primary_key,
-            'is_unique', cf.is_unique,
-            'is_nullable', NOT cf.is_nullable
+          'name', t.name,
+          'columns',
+          (
+            SELECT json_agg(
+              json_build_object(
+                'name', cf.name,
+                'dtype', cf.dtype,
+                'is_array', cf.is_array,
+                'default', cf.default_value,
+                'is_pkey', cf.is_primary_key,
+                'is_unique', cf.is_unique,
+                'is_nullable', NOT cf.is_nullable
+              )
+              ORDER BY cf.attnum
+            )
+            FROM columns_base cf
+            WHERE
+              cf.schema = t.schema
+              AND cf.table_name = t.name
+          ),
+          'fkeys',
+          COALESCE(
+            (
+              SELECT fkeys
+              FROM grouped_fkeys gf
+              WHERE
+                gf.schema = t.schema
+                AND gf.tab = t.name
+            ),
+            '[]'::json
           )
-          ORDER BY cf.attnum
         )
-        FROM columns_base cf
-        WHERE
-          cf.schema = t.schema
-          AND cf.table_name = t.name
-      ),
-      'fkeys',
-      COALESCE(
-        (
-          SELECT fkeys
-          FROM grouped_fkeys gf
-          WHERE
-            gf.schema = t.schema
-            AND gf.tab = t.name
-        ),
-        '[]'::json
-      )
-    )
-  )
-FROM tables t;
+      ) AS json_agg
+    FROM tables t;
+  `);
 
-  `)
+  const tables = (result.rows[0]?.json_agg ?? []) as TableType[];
 
-  return result.rows[0].json_agg as TableType[]
+  // Get positions keyed by table name (and schema, if you store it)
+  const positions = await prisma.schemaEditorPosition.findMany({
+    select: {
+      node_id: true, // assuming you use table name as node_id; adjust if needed
+      x: true,
+      y: true,
+    },
+    where: {
+      schema,
+      projectId, // if you have this column; otherwise drop it
+    },
+  });
+
+  const positionMap = new Map<string, { x: number; y: number }>();
+  for (const pos of positions) {
+    positionMap.set(pos.node_id, { x: pos.x, y: pos.y });
+  }
+
+
+  // Merge positions into tables by name (or another key)
+  const tablesWithPositions = tables.map((tbl) => {
+    const pos = positionMap.get(`${schema}.${tbl.name}`);
+
+    return {
+      ...tbl,
+      x: pos?.x,
+      y: pos?.y,
+    };
+  });
+
+  return tablesWithPositions;
 }
+
 
 
 

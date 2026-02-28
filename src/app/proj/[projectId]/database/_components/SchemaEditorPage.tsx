@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
 import { ColumnType, DATA_EXPORT_FORMATS, JsonNodeData, TableType as SchemaEditorTable } from "@/lib/types";
 import {
@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import '@xyflow/react/dist/style.css';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { createFkeyName, gridPosition } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { useMutation } from "@tanstack/react-query";
@@ -39,7 +38,6 @@ import EditTableSheet from "./sheets/EditTableSheet";
 import { getTableSchema } from "@/lib/actions/database/tables/cache-actions";
 import { deleteTable, duplicateTable, exportTableData } from "@/lib/actions/database/tables";
 import TextInputDialog from "@/components/TextInputDialog";
-import DataViewer from "@/components/DataViewer";
 
 
 
@@ -51,7 +49,7 @@ const SchemaEditorPage = ({
 }: {
   projectId: string,
   schemas: string[],
-  current_schema: SchemaEditorTable[]
+  current_schema: (SchemaEditorTable & {x?: number, y?: number})[]
 }) => {
 
   const router = useRouter();
@@ -66,21 +64,29 @@ const SchemaEditorPage = ({
 
   // Build nodes from props.schema (one node per table)
   const initialNodes = useMemo(() => {
-    return current_schema ? current_schema.map((table, i) => {
-      const pos = gridPosition(i);
+    if (!current_schema) return [];
+
+    return current_schema.map((table, i) => {
+      console.log("@@TABLE_CREATION: ", Object.keys(table))
+
+      const position =
+        typeof table.x === "number" && typeof table.y === "number"
+          ? { x: table.x, y: table.y }
+          : gridPosition(i);
 
       return {
-        id: `${schema}.${table.name}`, // must be unique
+        id: `${schema}.${table.name}`,
         type: "json",
-        position: pos,
-        dragHandle: '.drag-handle',
+        position,                 // ✅ React Flow expects this
+        dragHandle: ".drag-handle",
         data: {
           title: `${schema}.${table.name}`,
-          table, // Pass the table object directly instead of JSON string
+          table,                  // you now have x/y available inside `table` too
         },
       };
-    }) : [];
+    });
   }, [current_schema, schema]);
+
 
 
   const initialEdges = useMemo((): Edge[] => {
@@ -146,6 +152,25 @@ const SchemaEditorPage = ({
 
   const [isAddTableSheetOpen, setIsAddTableSheetOpen] = useState(false)
 
+  const nodesRef = useRef(nodes);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    return () => {
+      fetch("/api/save-node-positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nodes: nodesRef.current, projectId, schema }),
+      }).catch((err) => {
+        console.error("Failed to save node positions on unmount", err);
+      });
+    };
+  }, [projectId, schema]);  // No dep on nodes here
+
+
   return (
     <div className="flex-1 min-h-0 w-full flex flex-col">
       <div className="h-full min-h-0 flex flex-col">
@@ -174,10 +199,9 @@ const SchemaEditorPage = ({
             <div className="h-full w-full">
               
               <ReactFlow
-                defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                 nodes={nodes}
                 edges={edges}
-                
+                fitView
                 nodeTypes={nodeTypes}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
@@ -217,7 +241,6 @@ function TableColumn({
   tableName: string,
   column: ColumnType
 }) {
-  console.log("@DISPLAY COL: ", column)
 
   const { mutate: delCol } = useMutation({
     mutationFn: async (name: string) => {

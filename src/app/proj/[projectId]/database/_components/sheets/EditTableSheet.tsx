@@ -236,8 +236,6 @@ function EditTableSheet({
                   updateColumn(idx, { default: value });
                 };
 
-                console.log("@COL: ", col)
-
                 return (
                     <div
                       key={`col:${idx}`}
