@@ -1,29 +1,13 @@
 "use client";
 
-import { Dispatch, SetStateAction, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Dispatch, SetStateAction, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import {
-  DatabaseObjectAddSheetProps,
-  TRIGGER_EVENTS,
-  TRIGGER_ORIENTATION,
-  TRIGGER_TYPE,
   TriggerType,
 } from "@/lib/types";
-import { getFunctions } from "@/lib/actions/database/functions/cache-actions";
-import { getTables } from "@/lib/actions/database/tables/cache-actions";
-import { createTrigger, editTrigger } from "@/lib/actions/database/triggers";
+import { editTrigger } from "@/lib/actions/database/triggers";
 import SheetWrapper from "@/components/SheetWrapper";
 
 function EditTriggerSheet({

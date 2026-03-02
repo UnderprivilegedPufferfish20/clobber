@@ -68,7 +68,7 @@ const IndexCard = ({
               <DropdownMenuTrigger asChild>
                 <Button variant={"ghost"}><EllipsisVerticalIcon /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => setIsDeleteOpen(true)}
                 >

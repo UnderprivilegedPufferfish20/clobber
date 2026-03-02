@@ -75,7 +75,7 @@ export async function createFunction(
 
   await pool.query(`
     CREATE OR REPLACE FUNCTION ${data.schema}.${data.name}(${argument_string})
-    RETURNS ${data.returnType} AS $$
+    RETURNS ${data.return_type} AS $$
     BEGIN
       ${data.definition}
     END;

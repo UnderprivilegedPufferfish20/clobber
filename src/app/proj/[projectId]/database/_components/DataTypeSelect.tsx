@@ -23,10 +23,12 @@ export default function DataTypeSelect({
   value,
   onValueChange,
   triggerClassname,
+  disabled = false
 }: {
   value: string,
   onValueChange: (value: string) => void;
   triggerClassname: string,
+  disabled?: boolean
 }) {
 
   const [open, setOpen] = useState(false)
@@ -35,7 +37,7 @@ export default function DataTypeSelect({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <PopoverTrigger asChild disabled={disabled}>
         <Button
           variant="outline"
           role="combobox"

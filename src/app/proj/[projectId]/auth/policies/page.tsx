@@ -5,6 +5,7 @@ import { PolicyType, TableCardProps, TablePolicy } from '@/lib/types'
 import PolicyCard from './_components/cards/PolicyCard'
 import AddPolicySheet from './_components/sheets/AddPolicySheet'
 import { getRoles } from '@/lib/actions/database/roles/cache-actions'
+import { getTables } from '@/lib/actions/database/tables/cache-actions'
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/auth/policies">) => {
   
@@ -14,8 +15,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/auth/
   const schema = sp['schema'] as string ?? "public"
 
   type TAddProps = {
-    projectId: string
-    schemas: string[]
+    tables: Record<string, string[]>
     roles: string[]
   }
 
@@ -23,6 +23,16 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/auth/
   const schemas = await getSchemas(projectId)
   const policies = await get_policies(projectId, schema)
   const roles = await getRoles(projectId)
+
+  const tableEntries = await Promise.all(
+    schemas.map(async (s) => {
+      const t = await getTables(s, projectId);
+      return [s, t];
+    })
+  );
+  
+  
+  const tables = Object.fromEntries(tableEntries);
 
 
 
@@ -40,8 +50,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/auth/
       DisplayCard={PolicyCard}
       AddSheet={AddPolicySheet}
       addSheetProps={{
-        projectId,
-        schemas,
+        tables,
         roles: roles.map(r => r.name)
       }}
     />

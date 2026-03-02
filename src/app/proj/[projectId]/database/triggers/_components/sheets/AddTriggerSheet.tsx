@@ -1,7 +1,7 @@
 "use client";
 
-import { Dispatch, SetStateAction, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Dispatch, SetStateAction, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,15 +19,10 @@ import {
   TRIGGER_ORIENTATION,
   TRIGGER_TYPE,
 } from "@/lib/types";
-import { getFunctions } from "@/lib/actions/database/functions/cache-actions";
-import { getTables } from "@/lib/actions/database/tables/cache-actions";
 import { createTrigger } from "@/lib/actions/database/triggers";
 import SheetWrapper from "@/components/SheetWrapper";
-import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect";
-import SheetTableSelector from "../../../_components/selectors/SheetTableSelector";
-import { BetweenHorizonalStartIcon, BetweenVerticalStart, FunctionSquareIcon, HistoryIcon, TableColumnsSplitIcon } from "lucide-react";
+import { BetweenHorizonalStartIcon, BetweenVerticalStart, HistoryIcon } from "lucide-react";
 import FunctionSelectSheet from "./FunctionSelectSheet";
-import { Button } from "@/components/ui/button";
 import TableSelectSheet from "@/components/TableSelectSheet";
 
 
@@ -40,12 +35,15 @@ function AddTriggerSheet({
   projectId,
   open,
   onOpenChange,
-  schemas
+  functions,
+  tables
 }: {
   projectId: string,
   open: boolean, 
   onOpenChange: Dispatch<SetStateAction<boolean>>,
-  schemas: string[]
+  schemas: string[],
+  tables: Record<string, string[]>,
+  functions: Record<string, string[]>
 }) {
   const queryClient = useQueryClient();
 
@@ -58,9 +56,6 @@ function AddTriggerSheet({
   const [selectedFnSchema, setSelectedFnSchema] = useState("")
   const [selectedFnName, setSelectedFnName] = useState("")
 
-
-  const [isFuncOpen, setIsFuncOpen] = useState(false)
-  const [isTableSelectOpen, setIsTableSelectOpen] = useState(false)
 
   const { mutate, isPending } = useMutation({
     mutationFn: () => createTrigger({
@@ -136,8 +131,7 @@ function AddTriggerSheet({
         <TableSelectSheet 
           table={selectedTable}
           schema={selectedSchema}
-          projectId={projectId}
-          schemas={schemas}
+          tables={tables}
           setSchema={setSelectedSchema}
           setTable={setSelectedTable}
         />
@@ -229,13 +223,11 @@ function AddTriggerSheet({
         <h1>Function</h1>
         
         <FunctionSelectSheet
-          schemas={schemas}
+          functions={functions}
           name={selectedFnName}
           schema={selectedFnSchema}
           setFunctionSchema={setSelectedFnSchema}
           setFunction={setSelectedFnName}
-          projectId={projectId} 
-          makeTriggerPageOpen={onOpenChange}
         />
       </div>
     </SheetWrapper> 

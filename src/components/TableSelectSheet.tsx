@@ -3,41 +3,29 @@
 import { Table2Icon } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
-import { Dispatch, SetStateAction, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
-import { getTables } from "@/lib/actions/database/tables/cache-actions";
+import { Dispatch, Fragment, SetStateAction, useState } from "react";
 import { Button } from "./ui/button";
 
 const TableSelectSheet = ({
   setTable,
   setSchema,
   table,
+  tables,
   schema,
-  schemas,
-  projectId,
 }: {
   setSchema: Dispatch<SetStateAction<string>>;
   setTable: Dispatch<SetStateAction<string>>;
-  schemas: string[];
-  projectId: string;
+  tables: Record<string, string[]>;
   table: string;
-  schema:string;
+  schema: string;
 }) => {
+
+  console.log("@TABLES: ", tables)
 
   const [open, setOpen] = useState(false)
 
-  const tables = useQueries({
-    queries: schemas?.map((schema) => ({
-      queryKey: ['functions', projectId, schema],
-      queryFn: async () => await getTables(schema, projectId),
-    })) ?? []
-  });
+  const noTables = Object.values(tables).every(l => l.length === 0)
 
-
-  const allLoaded = tables.every(q => !q.isPending);
-  const hasAnyFunctions = tables.some(q => (q.data?.length ?? 0) > 0);
-
-  const showNoFunctionsMessage = allLoaded && !hasAnyFunctions;
 
   return (
     <Sheet
@@ -76,7 +64,7 @@ const TableSelectSheet = ({
           <SheetTitle>Select a table</SheetTitle>
         </SheetHeader>
         <Separator />
-        {showNoFunctionsMessage ? (
+        {noTables ? (
           <div className='fullwidth flex items-center flex-1 justify-center'>
             <div className='flex flex-col gap-2'>
               <h1>No available Tables</h1>
@@ -84,32 +72,22 @@ const TableSelectSheet = ({
           </div>
         ) : (
           <>
-            {tables.map((tableQuery, idx) => {
-              const schemaName = schemas[idx];
-              const tables = tableQuery.data ?? [];
+            {Object.entries(tables).map(([schemaName, tableList]) => {
 
-              if (tableQuery.isPending) {
-                return (
-                  <div key={schemaName} className="flex flex-col gap-2">
-                    <p className="text-muted-foreground">{schemaName}</p>
-                    <div>Loading tables...</div>
-                  </div>
-                );
-              }
 
-              if (tables.length === 0) {
+              if (tableList.length === 0) {
                 return null;
               }
 
               return (
-                <>
+                <Fragment key={schemaName}>
                 
                 
-                  <div key={schemaName} className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2">
                     <p className="font-semibold text-lg ml-3 text-muted-foreground">{schemaName}</p>
                     
                     <div className="w-full">
-                      {tables.map((f: string) => (
+                      {tableList.map((f: string) => (
                         <div 
                           key={f}
                           onClick={(e) => {
@@ -133,7 +111,7 @@ const TableSelectSheet = ({
                     </div>
                   </div>
                   <Separator />
-                </>
+                </Fragment>
               );
             })}
           </>

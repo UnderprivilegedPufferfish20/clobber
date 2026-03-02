@@ -157,7 +157,8 @@ export default function SqlEditorPage({
                     sqlLang({ dialect: PostgreSQL }),
                     EditorView.lineWrapping,
                   ]}
-                  theme={theme === "dark" ? githubDark : githubLight}
+                  theme={"none"}
+                  className="text-sm [&_.cm-editor]:bg-background! [&_.cm-gutters]:bg-background! [&_.cm-gutters]:border-r-none!"
                   onCreateEditor={handleEditorDidMount}
                 />
             </div>

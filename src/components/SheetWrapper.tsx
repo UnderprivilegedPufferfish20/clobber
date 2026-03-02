@@ -74,7 +74,7 @@ const SheetWrapper = ({
             {children}
           </div>
 
-          <div className="bg-black w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
+          <div className="bg-secondary w-full overflow-hidden flex items-center justify-end sticky bottom-0 border-t gap-2 p-3 pr-6 h-18 min-h-18 max-h-18">
             <SheetClose asChild>
               <Button variant={"secondary"}>
                 Cancel

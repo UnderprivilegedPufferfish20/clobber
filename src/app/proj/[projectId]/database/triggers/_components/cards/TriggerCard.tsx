@@ -68,7 +68,7 @@ const TriggerCard = ({
               <DropdownMenuTrigger asChild>
                 <Button variant={"ghost"}><EllipsisVerticalIcon /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem
                     className="flex items-center gap-2"
                     onClick={() => setIsEditOpen(true)}

@@ -7,15 +7,6 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
 
-// ─── MultiSelectCombobox ────────────────────────────────────────────────────
-// Props:
-//   options   : string[]           – full list of available options
-//   value     : string[]           – controlled selected values
-//   onChange  : (vals: string[]) => void
-//   placeholder?: string
-//   searchPlaceholder?: string
-//   className?: string
-// ────────────────────────────────────────────────────────────────────────────
 export function MultiSelectCombobox({
   options = [],
   value = [],
@@ -54,6 +45,7 @@ export function MultiSelectCombobox({
   }, [filtered]);
 
   useEffect(() => {
+    //@ts-ignore
     if (open) inputRef.current?.focus();
   }, [open]);
 

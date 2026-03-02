@@ -1,54 +1,29 @@
 "use client";
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { getFunctions } from '@/lib/actions/database/functions/cache-actions';
-import { extractBody } from '@/lib/utils';
-import { useQueries, useQuery } from '@tanstack/react-query';
 import { FunctionSquareIcon } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
-import { Dispatch, SetStateAction, useState } from 'react';
-
-interface FunctionData {
-  function_name: string;
-  schema_name: string;
-  definition: string;
-}
+import { Dispatch, Fragment, SetStateAction, useState } from 'react';
 
 const FunctionSelectSheet = ({
   setFunction,
   setFunctionSchema,
-  makeTriggerPageOpen,
-  projectId,
   name,
   schema,
-  schemas
+  functions
 }: {
   setFunctionSchema: Dispatch<SetStateAction<string>>;
   setFunction: Dispatch<SetStateAction<string>>;
-  projectId: string;
-  makeTriggerPageOpen: Dispatch<SetStateAction<boolean>>,
   name: string,
   schema: string,
-  schemas: string[]
+  functions: Record<string, string[]>
 }) => {
-
-  const funcs = useQueries({
-    queries: schemas?.map((schema) => ({
-      queryKey: ['functions', projectId, schema],
-      queryFn: async () => (await getFunctions(projectId, schema)).filter(f => f.return_type.toLowerCase() === "trigger"),
-    })) ?? []
-  });
 
 
   const [open, onOpenChange] = useState(false)
 
-  const allLoaded = funcs.every(q => !q.isPending);
-  const hasAnyFunctions = funcs.some(q => (q.data?.length ?? 0) > 0);
-
-  const showNoFunctionsMessage = allLoaded && !hasAnyFunctions;
+  const hasAnyFunctions = Object.values(functions).some(q => q.length > 0);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -87,7 +62,7 @@ const FunctionSelectSheet = ({
           </SheetDescription>
         </SheetHeader>
         <Separator />
-        {showNoFunctionsMessage ? (
+        {!hasAnyFunctions ? (
           <div className='fullwidth flex items-center flex-1 justify-center'>
             <div className='flex flex-col gap-2'>
               <h1>No available functions</h1>
@@ -95,53 +70,45 @@ const FunctionSelectSheet = ({
           </div>
         ) : (
           <>
-            {funcs.map((funcQuery, idx) => {
-              const schemaName = schemas[idx];
-              const functions = funcQuery.data ?? [];
-
-              if (funcQuery.isPending) {
-                return (
-                  <div key={schemaName} className="flex flex-col gap-2">
-                    <p className="text-muted-foreground">{schemaName}</p>
-                    <div>Loading functions...</div>
-                  </div>
-                );
-              }
-
+            {Object.entries(functions).map(([schemaName, functions]) => {
+              
               if (functions.length === 0) {
                 return null; // Skip rendering for empty schemas
               }
 
               return (
-                <div key={schemaName} className="flex flex-col gap-2">
-                  <p className="text-muted-foreground ml-3">{schemaName}</p>
-                  
-                  <Accordion type="single" collapsible className="w-full last:border-b">
-                    {functions.map((f: FunctionData, funcIdx: number) => (
-                      <AccordionItem key={f.function_name} value={`func-${schemaName}-${funcIdx}`} className='first:border-t'>
-                        <AccordionTrigger className="flex items-center gap-2 font-semibold text-xl px-6">
-                          <div className='flex items-center gap-2'>
-                            <FunctionSquareIcon className="w-6 h-6" />
-                            <h1
-                              className="cursor-pointer hover:underline"
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent accordion toggle
-                                setFunction(f.function_name);
-                                setFunctionSchema(f.schema_name);
-                                onOpenChange(false);
-                              }}
-                            >
-                              {f.function_name}
-                            </h1>
+                <Fragment key={schemaName}>
+                
+                
+                  <div className="flex flex-col gap-2">
+                    <p className="font-semibold text-lg ml-3 text-muted-foreground">{schemaName}</p>
+                    
+                    <div className="w-full">
+                      {functions.map((f: string) => (
+                        <div 
+                          key={f}
+                          onClick={(e) => {
+                            setFunction(f);
+                            setFunctionSchema(schemaName);
+                            onOpenChange(false);
+                          }} 
+                          className='flex items-center gap-2 font-semibold text-xl px-6 hover:bg-secondary/50 p-1 cursor-pointer'
+                        >
+                          
+                            <div className='flex items-center gap-2'>
+                              <FunctionSquareIcon className="w-5 h-5" />
+                              <h1
+                                className="font-normal text-lg"
+                              >
+                                {f}
+                              </h1>
+                            </div>
                           </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="flex flex-col gap-4 text-balance px-6">
-                          <p>{f.definition ? extractBody(f.definition) : ""}</p>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Separator />
+                </Fragment>
               );
             })}
           </>

@@ -100,7 +100,6 @@ export async function createIndex(
   project_id: string,
   name: string,
   type: VECTOR_INDEX_TYPE,
-  dims: number,
   metric: VECTOR_INDEX_METRIC,
 ) {
   const project = await getProjectById(project_id);
@@ -118,7 +117,7 @@ export async function createIndex(
       '${project_id}',
       ${`ARRAY['_default_']`},
       '${name}',
-      '${dims}',
+      '1536',
       '${type}',
       '${metric}'
     );

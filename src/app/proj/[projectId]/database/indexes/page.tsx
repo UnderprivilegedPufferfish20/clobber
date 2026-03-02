@@ -4,6 +4,7 @@ import { IndexType } from "@/lib/types"
 import AddIndexSheet from "./_components/sheets/AddIndexSheet"
 import CardPage from "@/components/CardPage"
 import IndexCard from "./_components/cards/IndexCard"
+import { getTables } from "@/lib/actions/database/tables/cache-actions"
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database">) => {
   const p = await params
@@ -13,8 +14,19 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const schemas = await getSchemas(p.projectId)
   const indexes = await getIndexes(p.projectId, schema)
 
+  const tableEntries = await Promise.all(
+    schemas.map(async (s) => {
+      const t = await getTables(s, p.projectId);
+      return [s, t];
+    })
+  );
+
+
+  const tables = Object.fromEntries(tableEntries);
+
   type TAddProps = {
-    projectId: string
+    projectId: string,
+    tables: Record<string, string[]>
   }
 
   return (
@@ -27,7 +39,8 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
       schemas={schemas}
       title="Indexes"
       addSheetProps={{
-        projectId: p.projectId
+        projectId: p.projectId,
+        tables
       }}
     />
   )

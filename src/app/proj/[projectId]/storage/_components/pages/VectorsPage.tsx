@@ -16,7 +16,7 @@ import { getIndexes } from "@/lib/actions/storage/vectors/cache-actions";
 import { StorageIndex, VECTOR_INDEX_METRIC, VECTOR_INDEX_TYPE } from "@/lib/types";
 import { cn, formatGCSFileSize } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
-import { BoxIcon, FlagIcon, FunctionSquare, FunctionSquareIcon, GlobeIcon, InboxIcon, LibraryBigIcon, Loader2, PackageOpenIcon, Search, SplinePointerIcon, TriangleAlertIcon } from "lucide-react"
+import { BoxIcon, CrosshairIcon, FlagIcon, FunctionSquare, FunctionSquareIcon, GlobeIcon, InboxIcon, LibraryBigIcon, Loader2, LucideIcon, Maximize2Icon, Minimize2Icon, PackageOpenIcon, Search, SplinePointerIcon, SquareDashedIcon, TriangleAlertIcon, TriangleRightIcon, TypeIcon } from "lucide-react"
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import path from "path";
@@ -200,26 +200,7 @@ function CreateIndexDialog({
     return new Set(existingBuckets)
   }, [existingBuckets])
 
-  const [dimensions, setDimensions] = useState(500)
   const [isNameError, setIsNameError] = useState(false)
-  const [isDimsError, setIsDimsError] = useState(false)
-  const [isDimsWarning, setIsDimsWarning] = useState(false)
-
-  useEffect(() => {
-    if (dimensions < 256) {
-      setIsDimsWarning(true)
-      return
-    } else {
-      if (dimensions > 20_000) {
-        setIsDimsWarning(false)
-        setIsDimsError(true)
-        return
-      }
-      setIsDimsError(false)
-      setIsDimsWarning(false)
-      return
-    };
-  }, [dimensions])
 
   useEffect(() => {
     if (existingBucketsSet.has(name)) {
@@ -230,7 +211,7 @@ function CreateIndexDialog({
   }, [name])
 
   const { mutate, isPending } = useMutation({
-    mutationFn: () => createIndex(projectId, name, type, dimensions, metric),
+    mutationFn: () => createIndex(projectId, name, type, metric),
     onSuccess: () => {
       toast.success("Index Created", { id:"create-storage-index" });
       onOpenChange(false);
@@ -246,6 +227,66 @@ function CreateIndexDialog({
       toast.error("Failed to create index", { id:"create-storage-index" })
     }
   })
+
+  const typeToIcon = (t: VECTOR_INDEX_TYPE): LucideIcon => {
+    switch (t) {
+      case VECTOR_INDEX_TYPE.DENSE:
+        return Minimize2Icon
+      case VECTOR_INDEX_TYPE.SPARSE:
+        return Maximize2Icon
+      default:
+        return TypeIcon
+    }
+  }
+
+  const typeToDescription = (t: VECTOR_INDEX_TYPE): string => {
+    switch (t) {
+      case VECTOR_INDEX_TYPE.DENSE:
+        return "Better for finding things by context, intent, or mood, even if the exact words don't match"
+      case VECTOR_INDEX_TYPE.SPARSE:
+        return "Better for finding exact matches, specific codes (like product IDs), or rare technical terms."
+      default:
+        return ""
+    }
+  }
+
+  const metricToIcon = (m: VECTOR_INDEX_METRIC): LucideIcon => {
+    switch (m) {
+      case VECTOR_INDEX_METRIC.COSINE:
+        // Focuses on the angle between vectors
+        return TriangleRightIcon; 
+      case VECTOR_INDEX_METRIC.EUCLIDEAN:
+        // Focuses on the direct "straight-line" distance
+        return SquareDashedIcon; 
+      case VECTOR_INDEX_METRIC.DOTPRODUCT:
+        // Focuses on both angle and magnitude (alignment)
+        return CrosshairIcon;
+      default:
+        return TypeIcon;
+    }
+  };
+
+  const metricToDescription = (m: VECTOR_INDEX_METRIC): string => {
+    switch (m) {
+      case VECTOR_INDEX_METRIC.COSINE:
+        return "Measures the angle between vectors. Best for comparing text or documents where the length of the content doesn't matter.";
+      case VECTOR_INDEX_METRIC.EUCLIDEAN:
+        return "Measures the straight-line distance between points. Ideal for image recognition or data where the actual magnitude is critical.";
+      case VECTOR_INDEX_METRIC.DOTPRODUCT:
+        return "Measures both the angle and the size of vectors. Commonly used in recommendation systems to determine how well two items align.";
+      default:
+        return "Mathematical method used to calculate similarity between high-dimensional data points.";
+    }
+  };
+
+
+  const MetricIcon = useMemo(() => {
+    return metricToIcon(metric)
+  }, [metric])
+
+  const TypeIcon = useMemo(() => {
+    return typeToIcon(type)
+  }, [type])
 
 
   
@@ -307,14 +348,28 @@ function CreateIndexDialog({
                 onValueChange={v => setType(v as VECTOR_INDEX_TYPE)}
               >
                 <SelectTrigger className="fullwidth">
-                  <SelectValue className="text-xl font-bold"/>
+                  <div className="flex items-center gap-2">
+                    <TypeIcon className="w-5 h-5"/>
+                    <p>{type}</p>
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.values(VECTOR_INDEX_TYPE).map(o => (
-                    <SelectItem key={o} value={o} className="font-bold text-xl">
-                      {o.toLowerCase()}
-                    </SelectItem>
-                  ))}
+                  {Object.values(VECTOR_INDEX_TYPE).map(o => {
+                    const I = typeToIcon(o)
+                    const d = typeToDescription(o)
+                    return (
+                      <SelectItem key={o} value={o}>
+
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <I className="w-5 h-5"/>
+                            <p>{o}</p>
+                          </div>
+                          <p className="text-muted-foreground text-sm">{d}</p>
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
 
@@ -328,48 +383,30 @@ function CreateIndexDialog({
                 onValueChange={v => setMetric(v as VECTOR_INDEX_METRIC)}
               >
                 <SelectTrigger className="fullwidth">
-                  <SelectValue className="text-xl font-bold"/>
+                  <div className="flex items-center gap-2">
+                    <MetricIcon className="w-5 h-5"/>
+                    <p>{metric}</p>
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.values(VECTOR_INDEX_METRIC).map(o => (
-                    <SelectItem key={o} value={o} className="font-bold text-xl">
-                      {o.toLowerCase()}
-                    </SelectItem>
-                  ))}
+                  {Object.values(VECTOR_INDEX_METRIC).map(o => {
+                    const I = metricToIcon(o)
+                    const d = metricToDescription(o)
+                    return (
+                      <SelectItem key={o} value={o}>
+
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <I className="w-5 h-5"/>
+                            <p>{o}</p>
+                          </div>
+                          <p className="text-muted-foreground text-sm">{d}</p>
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
-
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <h1>Dimensions</h1>
-              
-              <div className="flex flex-col gap-0.5">
-                <Input 
-                  
-                  value={dimensions}
-                  onChange={e => {
-                    const v = e.target.value
-                    if (!isNaN(Number(v))) {
-                      setDimensions(Number(v))
-                    }
-                  }}
-                  className={`fullwidth text-xl font-bold ${isDimsError && 'border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500'} ${isDimsWarning && 'border-yellow-500 focus-visible:border-yellow-500 focus-visible:ring-yellow-500'}`}
-                />
-                {isDimsWarning && (
-                  <div className="flex items-center gap-2 text-sm text-yellow-500">
-                    <TriangleAlertIcon className="w-8 h-8 stroke-yellow-500" />
-                    <p>For a vector embedding to be useful, it's reccomended that there be <span className="font-extrabold">at least 256 dimensions</span></p>
-                    
-                  </div>
-                )}
-                {isDimsError && (
-                  <div className="flex items-center gap-2 text-sm text-red-500">
-                    <FlagIcon className="w-4 h-4 stroke-red-500" />
-                    <p>Cannot excede <span className="font-semibold">20,000 dimensions</span></p>
-                  </div>
-                )}
-              </div>
 
             </div>
 
@@ -383,7 +420,7 @@ function CreateIndexDialog({
                 </Button>
               </DialogClose>
 
-              <Button onClick={() => mutate()} disabled={isPending || isNameError || name.length === 0 || isDimsError}>
+              <Button onClick={() => mutate()} disabled={isPending || isNameError || name.length === 0}>
                 {!isPending && "Proceed"}
                 {isPending && <Loader2 className='animate-spin' />}
               </Button>

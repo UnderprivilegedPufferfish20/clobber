@@ -40,6 +40,9 @@ const FoldersPage = (props: Props) => {
   const searchParams = useSearchParams()
   const router = useRouter()
 
+  console.log("@TYPES RESTRICTION: ", props.allowedTypes)
+  console.log("@SIZE RESTRICTION: ", props.maxSize)
+
   
   type MediaTypes = "image" | "audio" | "video" | "text" | "application"
 
@@ -170,21 +173,19 @@ const FoldersPage = (props: Props) => {
     const f = e.target.files?.[0] ?? null
     if (!f) return;
 
-    if (!props.allowedTypes.has(f.type)) {
+    if (props.allowedTypes.size > 0 && !props.allowedTypes.has(f.type)) {
       toast.error(`File type not allowed for this bucket`);
       return
-    } else if (f.size > props.maxSize) {
+    } 
+    
+    if (props.maxSize !== null && f.size > props.maxSize) {
       toast.error(`File size exceeds the limit of ${formatGCSFileSize(props.maxSize)} for this bucket`);
       return
     }
 
     setFile(f);
     setFileName(f.name);
-
-    // optional: auto-upload immediately after selection
     upload(f);
-
-    // allow re-selecting the SAME file later (important UX detail)
     e.currentTarget.value = "";
   }
 

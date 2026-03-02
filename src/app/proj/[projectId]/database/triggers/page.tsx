@@ -4,6 +4,8 @@ import { TriggerType } from "@/lib/types"
 import AddTriggerSheet from "./_components/sheets/AddTriggerSheet"
 import CardPage from "@/components/CardPage"
 import TriggerCard from "./_components/cards/TriggerCard"
+import { getTables } from "@/lib/actions/database/tables/cache-actions"
+import { getFunctions } from "@/lib/actions/database/functions/cache-actions"
 
 const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/database">) => {
   const p = await params
@@ -13,9 +15,32 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const schemas = await getSchemas(p.projectId)
   const triggers = await getTriggers(p.projectId, schema)
 
+  const tableEntries = await Promise.all(
+    schemas.map(async s => {
+      const t = await getTables(s, p.projectId);
+      return [s, t];
+    })
+  );
+
+  const functionEntries = await Promise.all(
+    schemas.map(async s => {
+      const f = await getFunctions(p.projectId, s);
+      console.log("@F: ", f)
+      return [s, f.filter(s => s.return_type === "trigger").map(func => func.function_name)]
+    })
+  )
+
+  const functions = Object.fromEntries(functionEntries)
+
+
+  const tables = Object.fromEntries(tableEntries);
+
+
   type TAddProps = {
     projectId: string;
-    schemas: string[]
+    schemas: string[];
+    tables: Record<string, string[]>;
+    functions:  Record<string, string[]>
   }
 
   return (
@@ -29,7 +54,9 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
       title="Triggers"
       addSheetProps={{
         projectId: p.projectId,
-        schemas
+        schemas,
+        tables,
+        functions
       }}
     />
   )

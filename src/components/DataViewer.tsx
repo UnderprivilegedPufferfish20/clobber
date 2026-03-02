@@ -325,8 +325,8 @@ export default function DataViewer<T>({
       editRow(
         projectId,
         schema,
-        "auth-users",
-        "users",
+        `${schema}-${name}`,
+        name,
         pkeyColsNames,
         //@ts-ignore
         pkeyColsNames.map(n => data[idx][n.name]),
@@ -348,8 +348,8 @@ export default function DataViewer<T>({
       await addRow(
         projectId,
         schema,
-        "users",
-        "auth-users",
+        name,
+        `${schema}-${name}`,
         duplicateRowVals
       )
     },

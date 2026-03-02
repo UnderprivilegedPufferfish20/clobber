@@ -14,21 +14,19 @@ import { Dispatch, SetStateAction, useRef, useState } from 'react'
 import CodeMirror from "@uiw/react-codemirror";
 
 const AddPolicySheet = ({
-  projectId,
   open,
   onOpenChange,
-  schemas,
   roles,
   originalSchema,
-  originalTable
+  originalTable,
+  tables
 }: {
-  projectId: string,
   open: boolean, 
   onOpenChange: Dispatch<SetStateAction<boolean>>,
-  schemas: string[],
   roles: string[],
   originalSchema?: string,
-  originalTable?: string
+  originalTable?: string,
+  tables: Record<string, string[]>
 }) => {
   const [name, setName] = useState("")
   const [schema, setSchema] = useState(originalSchema ? originalSchema : "")
@@ -46,6 +44,7 @@ const AddPolicySheet = ({
       title='Create Policy'
       description='Ensure data security'
       disabled={false}
+      
     >
       <div className='flex flex-col gap-2'>
         <Label className='text-lg font-semibold' htmlFor='name'>Name</Label>
@@ -64,8 +63,7 @@ const AddPolicySheet = ({
           <TableSelectSheet 
             schema={schema}
             table={table}
-            projectId={projectId}
-            schemas={schemas}
+            tables={tables}
             setSchema={setSchema}
             setTable={setTable}
           />
