@@ -4,7 +4,7 @@ import { cacheTag } from "next/cache";
 import { getProjectById } from "../database/cache-actions";
 import { getTenantPool } from "../database/tennantPool";
 import { t } from "@/lib/utils";
-import { OauthSSOProvider } from "@/lib/types";
+import { OauthSSOProvider, PolicyType, TablePolicy } from "@/lib/types";
 import prisma from "@/lib/db";
 
 export async function get_sso_providers(
@@ -62,4 +62,48 @@ export async function get_sso_providers(
   console.log("@PROVIDERS: ", result)
 
   return result
+}
+
+export async function get_policies(
+  project_id: string,
+  schema: string
+): Promise<TablePolicy[]> {
+  cacheTag(t("policies", project_id, schema))
+
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const result = await pool.query(`
+    SELECT
+      t.schemaname                              AS schema,
+      t.tablename                               AS name,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'name',         p.policyname,
+            'behavior',     p.permissive,
+            'comand',       p.cmd,
+            'target_roles', p.roles,
+            'check_command', p.with_check
+          )
+        ) FILTER (WHERE p.policyname IS NOT NULL),
+        '[]'::json
+      )                                          AS policies
+    FROM pg_tables t
+    LEFT JOIN pg_policies p
+      ON  p.schemaname = t.schemaname
+      AND p.tablename  = t.tablename
+    WHERE t.schemaname = $1
+    GROUP BY t.schemaname, t.tablename
+    ORDER BY t.tablename
+  `, [schema])
+
+  return result.rows as TablePolicy[]
 }

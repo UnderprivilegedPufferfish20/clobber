@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Columns, Plus, Trash2 } from "lucide-react";
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DATA_TYPES, DatabaseObjectAddSheetProps, FUNCTION_RETURN_TYPES } from "@/lib/types";
+import { DATA_TYPES, FUNCTION_RETURN_TYPES } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -30,10 +30,13 @@ import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect"
 
 function AddFunctionSheet({
   projectId,
-  schemas,
   open,
   onOpenChange
-}: DatabaseObjectAddSheetProps) {
+}: {
+  projectId: string,
+  open: boolean, 
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+}) {
   const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
@@ -49,7 +52,7 @@ function AddFunctionSheet({
           args,
           name,
           definition,
-          returnType,
+          return_type: returnType,
           schema,
         },
         projectId
@@ -245,7 +248,7 @@ function AddFunctionSheet({
         <h1>Definition (Omit "BEGIN" and "END")</h1>
         <Textarea
           placeholder={`-- example\nRETURN 1;`}
-          className="min-h-[180px] font-mono"
+          className="min-h-45 font-mono"
           value={definition}
           onChange={(e) => setDefinition(e.target.value)}
         />

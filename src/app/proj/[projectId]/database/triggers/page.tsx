@@ -13,8 +13,13 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const schemas = await getSchemas(p.projectId)
   const triggers = await getTriggers(p.projectId, schema)
 
+  type TAddProps = {
+    projectId: string;
+    schemas: string[]
+  }
+
   return (
-    <CardPage<TriggerType> 
+    <CardPage<TriggerType, TAddProps> 
       projectId={p.projectId}
       AddSheet={AddTriggerSheet}
       DisplayCard={TriggerCard}
@@ -22,6 +27,10 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
       description="Run a function on a database action"
       schemas={schemas}
       title="Triggers"
+      addSheetProps={{
+        projectId: p.projectId,
+        schemas
+      }}
     />
   )
 }

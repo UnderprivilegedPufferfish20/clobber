@@ -3,14 +3,13 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { getSchemas } from '@/lib/actions/database/cache-actions';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { getFunctions } from '@/lib/actions/database/functions/cache-actions';
 import { extractBody } from '@/lib/utils';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { FunctionSquareIcon } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 
 interface FunctionData {
   function_name: string;
@@ -23,46 +22,28 @@ const FunctionSelectSheet = ({
   setFunctionSchema,
   makeTriggerPageOpen,
   projectId,
-  open,
-  onOpenChange
+  name,
+  schema,
+  schemas
 }: {
   setFunctionSchema: Dispatch<SetStateAction<string>>;
   setFunction: Dispatch<SetStateAction<string>>;
-  open: boolean;
   projectId: string;
-  onOpenChange: Dispatch<SetStateAction<boolean>>;
-  makeTriggerPageOpen: Dispatch<SetStateAction<boolean>>
+  makeTriggerPageOpen: Dispatch<SetStateAction<boolean>>,
+  name: string,
+  schema: string,
+  schemas: string[]
 }) => {
-
-  const pathname = usePathname()
-  const router = useRouter()
-
-  const { data: schemas, isPending: isSchemasPending } = useQuery({
-    queryKey: ['schemas', projectId],
-    queryFn: () => getSchemas(projectId)
-  });
 
   const funcs = useQueries({
     queries: schemas?.map((schema) => ({
       queryKey: ['functions', projectId, schema],
       queryFn: async () => (await getFunctions(projectId, schema)).filter(f => f.return_type.toLowerCase() === "trigger"),
-      enabled: !!schemas
     })) ?? []
   });
 
-  if (isSchemasPending) {
-    return <div>Loading...</div>;
-  }
 
-  if (!schemas?.length) {
-    return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="z-500 md:max-w-md overflow-x-hidden overflow-y-scroll flex flex-col gap-2">
-          <p className="text-muted-foreground">No schemas found</p>
-        </SheetContent>
-      </Sheet>
-    );
-  }
+  const [open, onOpenChange] = useState(false)
 
   const allLoaded = funcs.every(q => !q.isPending);
   const hasAnyFunctions = funcs.some(q => (q.data?.length ?? 0) > 0);
@@ -71,6 +52,33 @@ const FunctionSelectSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetTrigger asChild>
+        {!name || !schema ? (
+            <div
+                className={`flex items-center justify-center fullwidth relative rounded-md border-dashed border border-border py-2 mt-2`}
+              >
+              <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => onOpenChange(true)}>
+                Select Function
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-muted-foreground fullwidth relative rounded-md border-dashed border border-border p-2">
+              <div className="flex items-center gap-2">
+                <FunctionSquareIcon className="w-6 h-6"/>
+                <div className="flex items-center">
+                  {schema}.<span className="text-white">{name}</span>
+                </div>
+              </div>
+
+              <Button
+                variant={"secondary"}
+                onClick={() => onOpenChange(true)}
+              >
+                Change
+              </Button>
+            </div>
+          )}
+      </SheetTrigger>
       <SheetContent className="z-500 md:max-w-md overflow-x-hidden overflow-y-scroll flex flex-col gap-8">
         <SheetHeader className='mb-0!'>
           <SheetTitle>Select a function</SheetTitle>
@@ -83,20 +91,6 @@ const FunctionSelectSheet = ({
           <div className='fullwidth flex items-center flex-1 justify-center'>
             <div className='flex flex-col gap-2'>
               <h1>No available functions</h1>
-              <Button
-                variant={"secondary"}
-                onClick={() => {
-                  onOpenChange(false)
-                  makeTriggerPageOpen(false)
-
-                  const parts = pathname.split('/');
-                  parts.pop(); // Remove the last segment
-                  parts.push('functions'); // Add 'functions'
-                  router.push(parts.join('/'));
-                }}
-              > 
-                Go to functions
-              </Button>
             </div>
           </div>
         ) : (
@@ -142,7 +136,7 @@ const FunctionSelectSheet = ({
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="flex flex-col gap-4 text-balance px-6">
-                          <p>{extractBody(f.definition)}</p>
+                          <p>{f.definition ? extractBody(f.definition) : ""}</p>
                         </AccordionContent>
                       </AccordionItem>
                     ))}

@@ -13,8 +13,12 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const schemas = await getSchemas(p.projectId)
   const enums = await getEnums(p.projectId, schema)
 
+  type TAddProps = {
+    projectId: string
+  }
+
   return (
-    <CardPage<EnumType>
+    <CardPage<EnumType, TAddProps>
       projectId={p.projectId}
       AddSheet={AddEnumSheet}
       DisplayCard={EnumCard}
@@ -22,6 +26,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
       description="Data type with a list of possible values"
       schemas={schemas}
       title="Enums"
+      addSheetProps={{ projectId: p.projectId }}
     />
   )
 }

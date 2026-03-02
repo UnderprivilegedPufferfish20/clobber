@@ -209,9 +209,39 @@ export enum DATA_TYPES {
   XML = "xml",
 }
 
-export interface DatabaseObjectAddSheetProps {
-  projectId: string,
-  schemas: string[],
+export interface TableCardProps extends TablePolicy {
+  schemas: string[]
+  roles: string[]
+}
+
+export interface TablePolicy {
+  schema: string,
+  name: string,
+  policies: PolicyType[]
+}
+
+export interface PolicyType {
+  name: string,
+  behavior: PolicyBehavior,
+  comand: PolicyCommand,
+  target_roles: string[],
+  check_command: string
+}
+
+export enum PolicyCommand {
+  SELECT = "SELECT",
+  INSERT = "INSERT",
+  UPDATE = "UPDATE",
+  DELETE = "DELETE",
+  ALL = "ALL"
+}
+
+export enum PolicyBehavior {
+  PERMISSIVE = "PERMISSIVE",
+  RESTRICTIVE = "RESTRICTIVE",
+}
+
+export interface CardPageAddSheetProps {
   open: boolean,
   onOpenChange: Dispatch<SetStateAction<boolean>>;
 }

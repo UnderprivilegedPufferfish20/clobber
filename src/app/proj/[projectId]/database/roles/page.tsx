@@ -11,8 +11,12 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const schemas = await getSchemas(p.projectId)
   const roles = await getRoles(p.projectId)
 
+  type TAddProps = {
+    projectId: string
+  }
+
   return (
-    <CardPage<RoleType> 
+    <CardPage<RoleType, TAddProps> 
       AddSheet={AddRoleSheet}
       DisplayCard={RoleCard}
       title='Roles'
@@ -21,6 +25,9 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
       projectId={p.projectId}
       data={roles}
       schemafilter={false}
+      addSheetProps={{
+        projectId: p.projectId
+      }}
     />
   )
 }

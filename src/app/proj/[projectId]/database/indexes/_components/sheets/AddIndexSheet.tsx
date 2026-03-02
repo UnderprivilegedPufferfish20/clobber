@@ -1,12 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useForm, useFieldArray, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Trash2, ListTreeIcon } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,24 +13,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { createIndexSchema } from "@/lib/types/schemas";
-import { DatabaseObjectAddSheetProps, INDEX_TYPES } from "@/lib/types";
+import { INDEX_TYPES } from "@/lib/types";
 import { getTables } from "@/lib/actions/database/tables/cache-actions";
 import { getCols } from "@/lib/actions/database/columns/cache-actions";
 import { createIndex } from "@/lib/actions/database/indexes";
 import SheetWrapper from "@/components/SheetWrapper";
 import SheetTableSelector from "../../../_components/selectors/SheetTableSelector";
 import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect";
+import TableSelectSheet from "@/components/TableSelectSheet";
 
 
 function AddIndexSheet({
   projectId,
-  schemas,
   open,
   onOpenChange
-}: DatabaseObjectAddSheetProps) {
+}: {
+  projectId: string,
+  open: boolean, 
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+}) {
   const queryClient = useQueryClient();
 
 
@@ -144,22 +143,13 @@ function AddIndexSheet({
     >
 
       <div className="flex flex-col gap-2">
-        <h1>Schema</h1>
-        <SheetSchemaSelect 
-          projectId={projectId}
-          onValueChange={setSchema}
-          value={schema}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h1>Table</h1>
-        <SheetTableSelector 
-          value={table}
-          onValueChange={setTable}
+        <TableSelectSheet 
           projectId={projectId}
           schema={schema}
-          disabled={!schema}
+          schemas={schemas}
+          setSchema={setSchema}
+          table={table}
+          setTable={setTable}
         />
       </div>
 

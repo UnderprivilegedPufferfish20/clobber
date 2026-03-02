@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import CodeMirror from "@uiw/react-codemirror";
-import { sql as sqlLang } from "@codemirror/lang-sql";
+import { PostgreSQL, sql as sqlLang } from "@codemirror/lang-sql";
 import { EditorView } from "@codemirror/view";
 import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -154,7 +154,7 @@ export default function SqlEditorPage({
                   onChange={(value) => setQuery(value)}
                   height="100%"
                   extensions={[
-                    sqlLang(),
+                    sqlLang({ dialect: PostgreSQL }),
                     EditorView.lineWrapping,
                   ]}
                   theme={theme === "dark" ? githubDark : githubLight}

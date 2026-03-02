@@ -4,21 +4,21 @@ import SheetWrapper from '@/components/SheetWrapper';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
-import { Toggle } from '@/components/ui/toggle';
 import { createRole } from '@/lib/actions/database/roles';
-import { DatabaseObjectAddSheetProps } from '@/lib/types';
 import { useMutation } from '@tanstack/react-query';
-import React, { useState } from 'react'
+import React, { Dispatch, SetStateAction, useState } from 'react'
 import { toast } from 'sonner';
 
 const AddRoleSheet = ({
   onOpenChange,
   open,
   projectId,
-  schemas
-}: DatabaseObjectAddSheetProps) => {
+}: {
+  projectId: string,
+  open: boolean, 
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+}) => {
   const [name, setName] = useState("")
 
   const [canLogin, setCanLogin] = useState(true)

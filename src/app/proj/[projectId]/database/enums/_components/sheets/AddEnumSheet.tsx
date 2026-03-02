@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Dispatch, SetStateAction } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/select";
 
 import { createEnum } from "@/lib/actions/database/enums";
-import { DatabaseObjectAddSheetProps } from "@/lib/types";
 import SheetWrapper from "@/components/SheetWrapper";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -24,10 +23,13 @@ import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect"
 
 function AddEnumSheet({
   projectId,
-  schemas,
   open,
   onOpenChange,
-}: DatabaseObjectAddSheetProps) {
+}: {
+  projectId: string,
+  open: boolean, 
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+}) {
   const queryClient = useQueryClient();
 
   const [name, setName] = useState("");

@@ -13,8 +13,12 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const schemas = await getSchemas(p.projectId)
   const indexes = await getIndexes(p.projectId, schema)
 
+  type TAddProps = {
+    projectId: string
+  }
+
   return (
-    <CardPage<IndexType>
+    <CardPage<IndexType, TAddProps>
       projectId={p.projectId}
       AddSheet={AddIndexSheet}
       DisplayCard={IndexCard}
@@ -22,6 +26,9 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
       description="Make queries run faster"
       schemas={schemas}
       title="Indexes"
+      addSheetProps={{
+        projectId: p.projectId
+      }}
     />
   )
 }

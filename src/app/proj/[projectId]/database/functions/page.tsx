@@ -13,8 +13,12 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const schemas = await getSchemas(p.projectId)
   const functions = await getFunctions(p.projectId, schema)
 
+  type TAddProps = {
+    projectId: string
+  }
+
   return (
-    <CardPage<DatabaseFunctionType>
+    <CardPage<DatabaseFunctionType, TAddProps>
       projectId={p.projectId}
       AddSheet={AddFunctionSheet}
       DisplayCard={FunctionCard}
@@ -22,6 +26,7 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
       description="Resuable block of code"
       schemas={schemas}
       title="Functions"
+      addSheetProps={{ projectId: p.projectId }}
     />
   )
 }

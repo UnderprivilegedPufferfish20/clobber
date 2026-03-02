@@ -2,39 +2,36 @@
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 import { InboxIcon, Search } from "lucide-react";
-import { ComponentType, ReactNode, useEffect, useMemo, useState } from "react";
+import { ComponentType, useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { DatabaseObjectAddSheetProps } from "@/lib/types";
+import { CardPageAddSheetProps } from "@/lib/types";
 import SchemaPicker from "@/app/proj/[projectId]/database/_components/selectors/SchemaPicker";
 
-export default function CardPage<DataType>({
+export default function CardPage<DataType, TAddProps>({
   projectId,
   schemas,
   data,
   title,
   description,
-
   DisplayCard,
   AddSheet,
+  addSheetProps,
   schemafilter = true
 }: {
-  projectId: string,
-  schemas: string[],
-  data: DataType[],
-  title: string,
-  description: string,
-
-  DisplayCard: ComponentType<DataType>,
-  AddSheet: ComponentType<DatabaseObjectAddSheetProps>,
-
-  schemafilter?: boolean
+  projectId: string;
+  schemas: string[];
+  data: DataType[];
+  title: string;
+  description: string;
+  DisplayCard: ComponentType<DataType>;
+  AddSheet: ComponentType<CardPageAddSheetProps & TAddProps>;
+  addSheetProps: TAddProps;
+  schemafilter?: boolean;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
-
 
   const { schema, setSchema } = useSelectedSchema({
     projectId,
@@ -63,7 +60,6 @@ export default function CardPage<DataType>({
 
   return (
     <>
-    
       <div className="fullscreen flex flex-col p-8">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -150,12 +146,11 @@ export default function CardPage<DataType>({
         )}
       </div>
 
-      <AddSheet
+      <AddSheet 
+        {...addSheetProps}
         open={open}
         onOpenChange={setOpen}
-        projectId={projectId}
-        schemas={schemas ?? []}
       />
     </>
   );
-} 
+}
