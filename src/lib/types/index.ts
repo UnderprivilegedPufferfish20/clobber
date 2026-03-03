@@ -210,8 +210,9 @@ export enum DATA_TYPES {
 }
 
 export interface TableCardProps extends TablePolicy {
-  schemas: string[]
-  roles: string[]
+  roles: string[],
+  rls: boolean,
+  tables: Record<string, string[]>
 }
 
 export interface TablePolicy {

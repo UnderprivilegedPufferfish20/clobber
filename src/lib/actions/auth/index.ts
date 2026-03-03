@@ -1,13 +1,16 @@
 'use server'
 
 import prisma from "@/lib/db";
-import { OauthSSOProvider, UserCookie } from "@/lib/types";
+import { OauthSSOProvider, PolicyType } from "@/lib/types";
 import { t } from "@/lib/utils";
 import { User } from "@prisma/client";
 import { revalidateTag } from "next/cache";
 import { cookies } from "next/headers"
 import { getProjectById } from "../database/cache-actions";
 import { getTenantPool } from "../database/tennantPool";
+import {z} from 'zod'
+import { createPolicySchema } from "@/lib/types/schemas";
+import { getRoles } from "../database/roles/cache-actions";
 
 export async function getUser(): Promise<User | null> {
   try {
@@ -127,4 +130,93 @@ export async function update_sso_providor(
   } finally {
     revalidateTag(t("oauth", project_id), "max")
   }
+}
+
+export async function create_policy(
+  project_id: string,
+  form: z.infer<typeof createPolicySchema>
+) {
+  const { data, error } = createPolicySchema.safeParse(form)
+
+  if (error) throw new Error("Invalid form data");
+
+  const project = await getProjectById(project_id)
+  if (!project) throw new Error("Project not found")
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  })
+  const roles = await getRoles(project_id)
+
+  const role_string = data.roles.length === 0 ?
+    roles.map(r => r.name).join(", ") :
+    data.roles.join(", ")
+
+
+
+  const q = `
+    create policy "${data.name}"
+    on "${data.schema}"."${data.table}"
+    as ${data.behavior}
+    for ${data.command}
+    to ${role_string}
+    ${data.using_clause.length > 0 ? (
+      `using (
+        ${data.using_clause}
+      );`
+    ) : ""}
+  `
+
+  console.log("@CREATE POLICY QUERY: ", q)
+
+  await pool.query(q)
+
+  revalidateTag(t("policies", project_id, data.schema), 'max')
+}
+
+export async function delete_policy(
+  project_id: string,
+  name: string,
+  schema: string,
+  table: string,
+) {
+  const project = await getProjectById(project_id)
+  if (!project) throw new Error("Project not found")
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  })
+
+  await pool.query(`
+    DROP POLICY ${name} ON "${schema}"."${table}";
+  `)
+
+  revalidateTag(t("policies", project_id, schema), "max")
+}
+
+export async function update_policy(
+  project_id: string,
+  name: string,
+  schema: string,
+  table: string,
+  oldPolicy: PolicyType,
+  newPolicy: PolicyType
+) {
+  const project = await getProjectById(project_id)
+  if (!project) throw new Error("Project not found")
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  })
+
+  revalidateTag(t("policies", project_id, schema), "max")
 }

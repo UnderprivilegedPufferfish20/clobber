@@ -12,6 +12,9 @@ import { PostgreSQL, sql } from '@codemirror/lang-sql';
 import { AmpersandIcon, MinusIcon } from 'lucide-react';
 import { Dispatch, SetStateAction, useRef, useState } from 'react'
 import CodeMirror from "@uiw/react-codemirror";
+import { useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { create_policy } from '@/lib/actions/auth';
 
 const AddPolicySheet = ({
   open,
@@ -19,14 +22,16 @@ const AddPolicySheet = ({
   roles,
   originalSchema,
   originalTable,
-  tables
+  tables,
+  project_id
 }: {
   open: boolean, 
   onOpenChange: Dispatch<SetStateAction<boolean>>,
   roles: string[],
   originalSchema?: string,
   originalTable?: string,
-  tables: Record<string, string[]>
+  tables: Record<string, string[]>,
+  project_id: string
 }) => {
   const [name, setName] = useState("")
   const [schema, setSchema] = useState(originalSchema ? originalSchema : "")
@@ -36,6 +41,26 @@ const AddPolicySheet = ({
   const [targetedRoles, setTargetedRoles] = useState<string[]>([])
   const [usingQuery, setUsingQuery] = useState<string>('')
 
+  const { mutate, isPending } = useMutation({
+    mutationFn: async () => {
+      await create_policy(
+        project_id,
+        {
+          name,
+          schema,
+          table,
+          behavior,
+          command,
+          roles: targetedRoles,
+          using_clause: usingQuery
+        }
+      )
+    },
+    onMutate: () => toast.loading("Creating...", {id:"make-p"}),
+    onError: (e) => toast.error(`Failed to create policy: ${e}`, {id:"make-p"}),
+    onSuccess: () => toast.success("Policy added", {id:"make-p"})
+  }) 
+
 
   return (
     <SheetWrapper
@@ -44,7 +69,27 @@ const AddPolicySheet = ({
       title='Create Policy'
       description='Ensure data security'
       disabled={false}
-      
+      submitButtonText='Create Policy'
+      onSubmit={mutate}
+      isPending={isPending}
+      onDiscard={() => {
+        setName("")
+        setSchema("")
+        setTable("")
+        setBehavior(PolicyBehavior.PERMISSIVE)
+        setCommand(PolicyCommand.INSERT)
+        setTargetedRoles([])
+        setUsingQuery("")
+      }}
+      isDirty={() => {
+        return schema !== originalSchema ||
+              table !== originalTable ||
+              name !== "" ||
+              behavior !== PolicyBehavior.PERMISSIVE || 
+              command !== PolicyCommand.SELECT ||
+              targetedRoles.length !== 0 ||
+              usingQuery !== ""
+      }}
     >
       <div className='flex flex-col gap-2'>
         <Label className='text-lg font-semibold' htmlFor='name'>Name</Label>

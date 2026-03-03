@@ -185,7 +185,12 @@ export async function addTable(
   }
 
   const allDefs = [...columnDefs, ...constraints];
-  const sql = `CREATE TABLE ${tableName} (\n  ${allDefs.join(',\n  ')}\n);`;
+  const sql = `
+    CREATE TABLE "${schema}"."${tableName}" (\n  ${allDefs.join(',\n  ')}\n);
+
+    ALTER TABLE "${schema}"."${tableName}" ENABLE ROW LEVEL SECURITY;
+    
+  `;
 
   console.log("@@ MAKE TABLE QUERY: ",sql)
 
@@ -318,6 +323,7 @@ export async function updateTable(
     )
   
     if (oldTable.name !== newTable.name) await renameTable(projectId, schema, oldTable.name, newTable.name);
+    await toggle_rls(projectId, schema, newTable.name, oldTable.rls, newTable.rls)
 
   } catch (e) {
     throw e
@@ -521,4 +527,42 @@ export async function editRow(
   `)
 
   revalidateTag(t(cache, project_id, schema, table), "max")
+}
+
+export async function toggle_rls(
+  project_id: string,
+  schema: string,
+  table: string,
+  oldRls: boolean,
+  newRls: boolean
+) {
+  if (oldRls === newRls) return;
+
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name,
+  });
+
+  if (newRls === false) {
+    await pool.query(`
+      ALTER TABLE "${schema}"."${table}" DISABLE ROW LEVEL SECURITY;
+    `)
+  } else {
+    await pool.query(`
+      ALTER TABLE "${schema}"."${table}" ENABLE ROW LEVEL SECURITY;
+    `)
+  }
+
+
+  revalidateTag(t("table-schema", project_id, schema, table), "max")
+  revalidateTag(t("schema", project_id, schema), "max")
+  revalidateTag(t("columns", project_id, schema, table), "max")
+  revalidateTag(t("tables", project_id, schema), 'max')
+  revalidateTag(t("table-data", project_id, schema, table), "max")
+
 }

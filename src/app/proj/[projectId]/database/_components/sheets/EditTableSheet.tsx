@@ -33,6 +33,8 @@ import DefaultValueSelector from "../selectors/DefaultValueSelector";
 import SheetWrapper from "@/components/SheetWrapper";
 import AddFkeySheet from "./AddFkeySheet";
 import EditFkeySheet from "./EditFkeySheet";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 
 
 function EditTableSheet({
@@ -68,6 +70,8 @@ function EditTableSheet({
   const [columns, setColumns] = useState<ColumnType[]>(table.columns);
 
   const [name, setName] = useState(table.name);
+  const [rls, setRls] = useState(table.rls)
+  const [realtime, setRealtime] = useState(false)
 
   const [fkeys, setFkeys] = useState<FkeyType[]>(table.fkeys ?? []);
 
@@ -84,7 +88,8 @@ function EditTableSheet({
         {
           name,
           columns,
-          fkeys
+          fkeys,
+          rls
         },
         updatedColumns,
         deletedCols,
@@ -217,6 +222,52 @@ function EditTableSheet({
             id='table-name'
           />
         </div>
+
+        <Separator />
+        <div className='fullwidth flex flex-col gap-2'>
+          <div className='flex items-center gap-2'>
+            <Switch 
+              checked={rls}
+              onCheckedChange={checked => {
+                if (checked) {
+                  setRls(true)
+                } else {
+                  setRls(false)
+                }
+              }}
+              id='rls'
+            />
+            <Label htmlFor='rls'>
+              Enable Row Level Security (RLS)
+            </Label>
+          </div>
+          <p className='text-muted-foreground text-xs'>
+            A powerful security feature that enables database administrators to control access to individual rows in a table based on the user's role or other attributes, enforced directly by the database engine.
+          </p>
+        </div>
+
+        <div className='fullwidth flex flex-col gap-2'>
+          <div className='flex items-center gap-2'>
+            <Switch 
+              checked={realtime}
+              onCheckedChange={checked => {
+                if (checked) {
+                  setRealtime(true)
+                } else {
+                  setRealtime(false)
+                }
+              }}
+              id='realtime'
+            />
+            <Label htmlFor='realtime'>
+              Enable Realtime
+            </Label>
+          </div>
+          <p className='text-muted-foreground text-xs'>
+            Use websockets for realtime data updates
+          </p>
+        </div>
+        <Separator />
 
         <div className="flex flex-col gap-6">
           <h1>Columns</h1>
@@ -399,7 +450,7 @@ function EditTableSheet({
       <AddFkeySheet 
         projectId={projectId}
         setFkeys={setFkeys}
-        table={{ name, columns }}
+        table={{ name, columns, rls }}
         open={isFkeySheetOpen}
         onOpenChange={setIsFkeySheetOpen}
         schema={schema}

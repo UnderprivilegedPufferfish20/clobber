@@ -19,12 +19,11 @@ import {
   Handle,
   Position,
 } from "@xyflow/react";
-import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, PlusIcon, EditIcon, Trash2Icon, FingerprintIcon, EllipsisVerticalIcon, CopyIcon, DownloadIcon, FileJson, FileSpreadsheetIcon, FileText, FileTextIcon } from "lucide-react";
+import { SquareArrowOutUpRightIcon, Table2Icon, KeyRoundIcon, CircleIcon, PlusIcon, EditIcon, Trash2Icon, FingerprintIcon, EllipsisVerticalIcon, CopyIcon, DownloadIcon, FileJson, FileSpreadsheetIcon, FileText, FileTextIcon, LockIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import '@xyflow/react/dist/style.css';
 import { createFkeyName, gridPosition } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { useMutation } from "@tanstack/react-query";
@@ -38,6 +37,7 @@ import EditTableSheet from "./sheets/EditTableSheet";
 import { getTableSchema } from "@/lib/actions/database/tables/cache-actions";
 import { deleteTable, duplicateTable, exportTableData } from "@/lib/actions/database/tables";
 import TextInputDialog from "@/components/TextInputDialog";
+import '@xyflow/react/dist/style.css';
 
 
 
@@ -434,6 +434,19 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
               </div>
 
               <div className="flex items-center gap-2 px-2">
+                {data.table.rls && (
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                  
+                    <LockIcon className="h-4 w-4" />
+                    
+                  </TooltipTrigger>
+
+                  <TooltipContent>RLS Enabled</TooltipContent>
+                </Tooltip>
+                )}
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -457,6 +470,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
 
                   <TooltipContent>See Data</TooltipContent>
                 </Tooltip>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger className="cursor-pointer">
                     <EllipsisVerticalIcon className="w-4 h-4"/>

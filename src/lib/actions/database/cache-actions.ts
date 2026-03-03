@@ -62,7 +62,6 @@ export async function getSchema(
   });
 
   const result = await pool.query(`
-    -- your big WITH query unchanged
     WITH
       params AS (
         SELECT '${schema}'::text AS target_schema
@@ -71,7 +70,8 @@ export async function getSchema(
         SELECT
           n.nspname AS schema,
           c.relname AS name,
-          c.oid AS table_oid
+          c.oid AS table_oid,
+          c.relrowsecurity AS rls_enabled -- Added this line
         FROM pg_catalog.pg_class c
         JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
         WHERE
@@ -197,6 +197,7 @@ export async function getSchema(
       json_agg(
         json_build_object(
           'name', t.name,
+          'rls', t.rls_enabled, -- Added this line
           'columns',
           (
             SELECT json_agg(

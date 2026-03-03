@@ -1,5 +1,5 @@
 import { array, z } from 'zod'
-import { DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_UPDATED, FUNCTION_RETURN_TYPES, INDEX_TYPES, TRIGGER_EVENTS, TRIGGER_ORIENTATION, TRIGGER_TYPE } from '..'
+import { DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_UPDATED, FUNCTION_RETURN_TYPES, INDEX_TYPES, PolicyBehavior, PolicyCommand, TRIGGER_EVENTS, TRIGGER_ORIENTATION, TRIGGER_TYPE } from '..'
 
 export const createDatabaseSchema = z.object({
   name: z.string().min(5, { message: "Name cannot be less than 5 characters" }).max(30, { message: "Name cannot exceed 30 characters" })
@@ -27,6 +27,16 @@ export const createFileBucketSchema = z.object({
   is_public: z.boolean(),
   file_size_limit: z.int64(),
   allowed_types: z.array(z.string())
+})
+
+export const createPolicySchema = z.object({
+  name: z.string().min(1),
+  schema: z.string(),
+  table: z.string(),
+  behavior: z.enum(PolicyBehavior),
+  command: z.enum(PolicyCommand),
+  roles: z.array(z.string()),
+  using_clause: z.string()
 })
 
 export const inviteUsersSchema = z.object({
@@ -111,6 +121,7 @@ export const createColumnSchema = z.object({
 
 export const createTableSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
+  rls: z.boolean(),
   columns: createColumnSchema.array(),
   fkeys: createForeignKeySchema.array().optional()
 })
