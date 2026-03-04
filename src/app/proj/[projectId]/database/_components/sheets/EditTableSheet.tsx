@@ -499,7 +499,12 @@ function EditTableSheet({
           <div
               className={`flex items-center justify-center fullwidth relative rounded-md border border-dashed border-border py-2 mt-2`}
             >
-            <Button variant="secondary" className="max-w-3xs" type="button" onClick={() => setIsFkeySheetOpen(true)}>
+            <Button 
+              variant="secondary" 
+              className="max-w-3xs" 
+              type="button" 
+              onClick={() => setIsFkeySheetOpen(true)}
+            >
               Add Foreign Key
             </Button>
           </div>
