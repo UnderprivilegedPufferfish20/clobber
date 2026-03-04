@@ -149,7 +149,6 @@ functions.http('yourFunctionName', (req, res) => {
         
         const match = code.match(functionsHttpRegex);
 
-        console.log(`@MATCH: `, match?.groups)
         
         if (match?.groups?.name) {
 
@@ -157,7 +156,6 @@ functions.http('yourFunctionName', (req, res) => {
             
             // Check if there's exactly one such pattern
             const allMatches = code.match(/functions\.http\(/g) || [];
-            console.log("@ALLMATCHES: ", allMatches)
             setIsNoExport(allMatches.length === 0);
             setIsDoubleExport(allMatches.length > 1);
         } else {

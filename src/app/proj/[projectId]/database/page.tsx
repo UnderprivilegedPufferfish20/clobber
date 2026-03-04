@@ -4,6 +4,8 @@ import { parseFiltersParam } from "@/lib/utils"
 import { getTableData } from "@/lib/actions/database/tables/cache-actions"
 import DataViewer from "@/components/DataViewer"
 import BackHeader from "./_components/BackHeader"
+import { getEnums } from "@/lib/actions/database/enums/cache-actions"
+import { EnumType } from "@/lib/types"
 
 export default async function page({ params, searchParams }: PageProps<"/proj/[projectId]/database">) {
   const p = await params
@@ -49,6 +51,15 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
 
   const start = performance.now();
 
+  const enums: EnumType[] = []
+
+  await Promise.all(
+    schemas.map(async s => {
+      const es = await getEnums(p.projectId, s)
+      enums.push(...es)
+    })
+  )
+
   const data = table ? await getTableData<any>(
     p.projectId,
     schema,
@@ -83,6 +94,7 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
           current_schema={currentSchema}
           projectId={p.projectId}
           schemas={schemas}
+          enums={enums}
         />
       )}
     </>

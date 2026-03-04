@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnType, DATA_TYPES } from "@/lib/types";
+import { ColumnType, DATA_TYPES, EnumType } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dispatch, SetStateAction, useState } from "react";
 import { toast } from "sonner";
@@ -18,14 +18,16 @@ export default function EditColumnSheet({
   table,
   column,
   open,
-  onOpenChange
+  onOpenChange,
+  enums
 }: {
   projectId: string,
   schema: string,
   table: string,
   column: ColumnType,
   open: boolean,
-  onOpenChange: Dispatch<SetStateAction<boolean>>
+  onOpenChange: Dispatch<SetStateAction<boolean>>,
+  enums: EnumType[]
 }) {
 
   const queryClient = useQueryClient()
@@ -114,6 +116,7 @@ export default function EditColumnSheet({
           <DataTypeSelect 
             onValueChange={v => setDtype(v as typeof DATA_TYPES[keyof typeof DATA_TYPES])}
             value={dtype}
+            enums={enums}
             triggerClassname=''
           />
         </div>

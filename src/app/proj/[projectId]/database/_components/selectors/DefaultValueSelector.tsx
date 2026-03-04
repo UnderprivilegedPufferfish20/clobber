@@ -1,18 +1,24 @@
 "use client";
 
+import Loader from "@/components/Loader";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { DATA_TYPES } from "@/lib/types";
+import { getSchemas } from "@/lib/actions/database/cache-actions";
+import { getEnums } from "@/lib/actions/database/enums/cache-actions";
+import { DATA_TYPES, EnumType } from "@/lib/types";
+import { EnumTypeSchema } from "@/lib/types/schemas";
 import { defaultSuggestions } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { MenuIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef } from "react";
 
 type Props = {
   defaultValue: string
   setDefaultValue: (value: string) => void
-  dtype: typeof DATA_TYPES[keyof typeof DATA_TYPES]
+  dtype: DATA_TYPES | EnumType
   isArray: boolean,
+  project_id: string,
   className?: string
 }
 
@@ -21,8 +27,14 @@ export default function DefaultValueSelector({
   setDefaultValue,
   dtype,
   isArray,
+  project_id,
   className
 }: Props) {
+
+  const isEnum = useMemo(() => {
+    const { success } = EnumTypeSchema.safeParse(dtype)
+    return success
+  }, [dtype])
 
   const suffix = isArray ? '[]' : '';
   const displayedValue = 
@@ -32,28 +44,51 @@ export default function DefaultValueSelector({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const { data: enumVals, isPending } = useQuery({
+    queryKey: ["enum-vals", project_id, dtype],
+    queryFn: async () => {
+      const schemas = await getSchemas(project_id);
+
+      const enums: EnumType[] = []
+
+      await Promise.all(
+        schemas.map(async s => {
+          const es = await getEnums(project_id, s)
+          enums.push(...es)
+        })
+      )
+
+      return enums.find(e => e.enum_name === (dtype as EnumType).enum_name)!.enum_values.split(", ")
+    },
+    enabled: isEnum
+  })
+
   useEffect(() => {
     if (defaultValue !== "") return;
-    switch (dtype) {
-      case "uuid":
-        if (defaultValue === "") break;
-        setDefaultValue("uuid_generate_v4()");
-        break
-      case "timestamp with time zone":
-        if (defaultValue === "") break;
-        setDefaultValue("now()");
-        break
-      case "boolean":
-        if (defaultValue === "") break;
-        setDefaultValue("")
-        break
-      default:
-        if (defaultValue === "") break;
-        setDefaultValue("")
-    }
+
+    if (!isEnum) {
+      switch (dtype) {
+        case "uuid":
+          if (defaultValue === "") break;
+          setDefaultValue("uuid_generate_v4()" as DATA_TYPES);
+          break
+        case "timestamp with time zone":
+          if (defaultValue === "") break;
+          setDefaultValue("now()" as DATA_TYPES);
+          break
+        case "boolean":
+          if (defaultValue === "") break;
+          setDefaultValue("" as DATA_TYPES)
+          break
+        default:
+          if (defaultValue === "") break;
+          setDefaultValue("" as DATA_TYPES)
+      }
+    } 
+
   }, [dtype])
 
-  const showDefaultMenu = dtype === "timestamp with time zone" || dtype === "uuid" || dtype === "boolean"
+  const showDefaultMenu = dtype === "timestamp with time zone" || dtype === "uuid" || dtype === "boolean" || isEnum
 
   const prClass = showDefaultMenu ? 'pr-10' : '';
 
@@ -142,17 +177,40 @@ export default function DefaultValueSelector({
                 <DropdownMenuLabel className="text-xs text-muted-foreground">
                   Suggested defaults
                 </DropdownMenuLabel>
-
-                {defaultSuggestions(dtype).map((s) => (
-                  <DropdownMenuItem
-                    key={s.value}
-                    className="flex flex-col items-start gap-1"
-                    onClick={() => setDefaultValue(s.value)}
-                  >
-                    <div className="font-mono text-sm">{s.value}</div>
-                    <div className="text-xs text-muted-foreground">{s.desc}</div>
-                  </DropdownMenuItem>
-                ))}
+                {isEnum ? (
+                  <Fragment>
+                    {isPending ? (
+                      <div className="fullscreen flex items-center justify-center">
+                        <Loader sz={24}/>
+                      </div>
+                    ) : (
+                      <Fragment>
+                        {enumVals && enumVals.map(s => (
+                          <DropdownMenuItem
+                            key={s}
+                            className="flex flex-col items-start gap-1"
+                            onClick={() => setDefaultValue(s)}
+                          >
+                            <div className="font-mono text-sm">{s}</div>
+                          </DropdownMenuItem>
+                        ))}
+                      </Fragment>
+                    )}
+                  </Fragment>
+                ) : (
+                  <Fragment>
+                    {defaultSuggestions(dtype as DATA_TYPES).map((s) => (
+                      <DropdownMenuItem
+                        key={s.value}
+                        className="flex flex-col items-start gap-1"
+                        onClick={() => setDefaultValue(s.value)}
+                      >
+                        <div className="font-mono text-sm">{s.value}</div>
+                        <div className="text-xs text-muted-foreground">{s.desc}</div>
+                      </DropdownMenuItem>
+                    ))}
+                  </Fragment>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

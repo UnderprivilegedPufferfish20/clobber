@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DATA_TYPES, FUNCTION_RETURN_TYPES } from "@/lib/types";
+import { DATA_TYPES, EnumType, FUNCTION_RETURN_TYPES } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { createFunction } from "@/lib/actions/database/functions";
@@ -42,11 +42,13 @@ import { linter, lintGutter } from "@codemirror/lint";
 function AddFunctionSheet({
   projectId,
   open,
-  onOpenChange
+  onOpenChange,
+  enums
 }: {
   projectId: string,
   open: boolean, 
-  onOpenChange: Dispatch<SetStateAction<boolean>>
+  onOpenChange: Dispatch<SetStateAction<boolean>>,
+  enums: EnumType[]
 }) {
   const queryClient = useQueryClient();
 
@@ -121,8 +123,6 @@ function AddFunctionSheet({
         return_type: returnType,
         schema,
       };
-
-      console.log("@CREATE FUNCTIONOBJECT: ", obj)
 
       return createFunction(
         obj,
@@ -277,7 +277,8 @@ function AddFunctionSheet({
                     onChange={(e) => handleUpdateArgName(index, e.target.value)}
                   />
 
-                  <DataTypeSelect 
+                  <DataTypeSelect
+                    enums={enums} 
                     onValueChange={(value) => handleUpdateArgType(index, value as DATA_TYPES)}
                     value={arg.dtype}
                     triggerClassname="w-50 min-w-50 max-w-50"

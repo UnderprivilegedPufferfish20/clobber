@@ -11,7 +11,6 @@ export async function uploadEdgeFunction(
   func: EdgeFunctionType,
   projectId: string
 ) {
-  console.log(`@FUNCTION ${func.slug} entry: ${func.entry_point_function_name}`)
 
   const client = await getFunctionClient();
   const parent = `projects/${gcloud_project_id}/locations/us-central1`;

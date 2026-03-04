@@ -16,7 +16,6 @@ export async function deleteTrigger(
   table?: string
 ) {
 
-  console.log("@@DeleteTrigger table provided: ", table)
 
   if (!table) throw new Error("Must provide table to delete trigger");
 
@@ -64,10 +63,8 @@ export async function createTrigger(
     CREATE TRIGGER ${data.name}
     ${data.type} ${data.event.join(" OR ")} ON "${data.schema}"."${data.table}"
     FOR EACH ${data.orientation}
-    EXECUTE FUNCTION ${data.functionSchema}.${data.functionName}();
+    EXECUTE FUNCTION ${data.function_schema}.${data.function_name}();
   `
-
-  console.log("@@QUERY: ", query)
 
   await pool.query(query)
 
@@ -103,7 +100,6 @@ export async function editTrigger(
   try {
     await pool.query("BEGIN");
     for (const q of queries) {
-      console.log("@@QUERY:", q);
       await pool.query(q);
     }
     await pool.query("COMMIT");

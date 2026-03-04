@@ -138,7 +138,9 @@ export async function create_policy(
 ) {
   const { data, error } = createPolicySchema.safeParse(form)
 
-  if (error) throw new Error("Invalid form data");
+  if (error) {
+    throw new Error("Invalid form data")
+  };
 
   const project = await getProjectById(project_id)
   if (!project) throw new Error("Project not found")
@@ -170,7 +172,6 @@ export async function create_policy(
     ) : ""}
   `
 
-  console.log("@CREATE POLICY QUERY: ", q)
 
   await pool.query(q)
 
@@ -202,7 +203,6 @@ export async function delete_policy(
 
 export async function update_policy(
   project_id: string,
-  name: string,
   schema: string,
   table: string,
   oldPolicy: PolicyType,
@@ -218,5 +218,14 @@ export async function update_policy(
     database: project.db_name
   })
 
-  revalidateTag(t("policies", project_id, schema), "max")
+  await delete_policy(project_id, oldPolicy.name, schema, table)
+  await create_policy(project_id, {
+    name: newPolicy.name,
+    schema,
+    using_clause: newPolicy.check_command ?? "",
+    behavior: newPolicy.behavior,
+    command: newPolicy.comand,
+    roles: newPolicy.target_roles,
+    table
+  })
 }

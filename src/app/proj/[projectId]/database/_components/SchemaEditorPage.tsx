@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect, useState, useRef } from "react";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { ColumnType, DATA_EXPORT_FORMATS, JsonNodeData, TableType as SchemaEditorTable } from "@/lib/types";
+import { ColumnType, DATA_EXPORT_FORMATS, EnumType, JsonNodeData, TableType as SchemaEditorTable } from "@/lib/types";
 import {
   Background,
   BackgroundVariant,
@@ -46,10 +46,12 @@ const SchemaEditorPage = ({
   projectId,
   schemas,
   current_schema,
+  enums
 }: {
   projectId: string,
   schemas: string[],
-  current_schema: (SchemaEditorTable & {x?: number, y?: number})[]
+  current_schema: (SchemaEditorTable & {x?: number, y?: number})[];
+  enums: EnumType[]
 }) => {
 
   const router = useRouter();
@@ -67,7 +69,6 @@ const SchemaEditorPage = ({
     if (!current_schema) return [];
 
     return current_schema.map((table, i) => {
-      console.log("@@TABLE_CREATION: ", Object.keys(table))
 
       const position =
         typeof table.x === "number" && typeof table.y === "number"
@@ -95,13 +96,12 @@ const SchemaEditorPage = ({
     const edges: Edge[] = [];
 
     for (const table of current_schema) {
-      console.log("@CURRENT TABLE: ", table)
       if (!table.fkeys || table.fkeys.length === 0) continue;
 
       for (let fkIndex = 0; fkIndex < table.fkeys!.length; fkIndex++) {
         const fk = table.fkeys![fkIndex];
 
-        console.log("@FK: ", fk)
+
 
         if (!fk?.cols?.length) continue;
 
@@ -136,17 +136,19 @@ const SchemaEditorPage = ({
   useEffect(() => {
     setNodes(initialNodes);
 
-    console.log("@@INIT NODES: ", initialNodes)
   }, [initialNodes, setNodes]);
 
   useEffect(() => {
     setEdges(initialEdges);
 
-    console.log("@@INIT EDGES: ", initialEdges)
   }, [initialEdges, setEdges]);
 
   // Inside SchemaEditorPage component, before the return statement
-  const nodeTypes = useMemo(() => ({ json: TableNode }), []);
+  const nodeTypes = useMemo(() => ({
+    json: (props: NodeProps<Node<JsonNodeData>>) => (
+      <TableNode {...props} enums={enums} />   // ← enums comes from wherever you define it
+    ),
+  }), [enums]); // add enums to deps if it can change
 
   const { theme } = useTheme()
 
@@ -216,7 +218,8 @@ const SchemaEditorPage = ({
         </div>
       </div>
 
-      <AddTableSheet 
+      <AddTableSheet
+        enums={enums} 
         open={isAddTableSheetOpen}
         onOpenChange={setIsAddTableSheetOpen}
         projectId={projectId}
@@ -234,12 +237,14 @@ function TableColumn({
   projectId,
   schema,
   tableName,
-  column
+  column,
+  enums
 }: {
   projectId: string,
   schema: string,
   tableName: string,
-  column: ColumnType
+  column: ColumnType,
+  enums: EnumType[]
 }) {
 
   const { mutate: delCol } = useMutation({
@@ -344,6 +349,7 @@ function TableColumn({
       <EditColumnSheet 
         onOpenChange={setIsEditSheetOpen}
         open={isEditSheetOpen}
+        enums={enums}
         projectId={projectId}
         schema={schema}
         column={column}
@@ -353,7 +359,11 @@ function TableColumn({
   )
 }
 
-function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
+type TableNodeProps = NodeProps<Node<JsonNodeData>> & {
+  enums: EnumType[];
+};
+
+function TableNode({ data, enums }: TableNodeProps) {
   const [schema, tableName] = data.title.split(".");
 
   const searchParams = useSearchParams();
@@ -560,6 +570,7 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
           <div className="flex flex-col divide-y divide-gray-600 cursor-default">
             {data.table.columns.map((col, idx) => (
               <TableColumn
+                enums={enums}
                 projectId={projectId}
                 schema={schema}
                 tableName={data.table.name}
@@ -572,7 +583,8 @@ function TableNode({ data }: NodeProps<Node<JsonNodeData>>) {
         </div>
       </TooltipProvider>
       
-      <EditTableSheet 
+      <EditTableSheet
+        enums={enums} 
         onOpenChange={setEditTableSheetOpen}
         open={editTableSheetOpen}
         projectId={projectId}

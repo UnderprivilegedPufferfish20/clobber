@@ -59,7 +59,6 @@ export async function createEnum(
     CREATE TYPE ${schema}.${data.name} AS ENUM (${data.values.map(v => `'${v}'`).join(", ")});
   `
 
-  console.log("@@QUERY: ", query)
 
   await pool.query(query)
 
@@ -109,7 +108,6 @@ export async function editEnum(
   try {
     await pool.query("BEGIN");
     for (const q of queries) {
-      console.log("@@QUERY:", q);
       await pool.query(q);
     }
     await pool.query("COMMIT");

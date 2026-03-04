@@ -18,7 +18,6 @@ const page = ({
     projectId: string
 }) => {
 
-    console.log("@@DATA: ", data)
     const [searchTerm, setSearchTerm] = useState("");
     const [open, setOpen] = useState(false);
   

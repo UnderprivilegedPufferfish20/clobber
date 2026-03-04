@@ -53,7 +53,6 @@ ORDER BY
 
     `);
 
-    console.log("@@GET INDEXES: ", result.rows)
 
   return result.rows as IndexType[]
 }

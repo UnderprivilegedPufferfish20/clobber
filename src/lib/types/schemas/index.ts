@@ -1,4 +1,5 @@
 import { array, z } from 'zod'
+import { EnumType } from '..'
 import { DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_UPDATED, FUNCTION_RETURN_TYPES, INDEX_TYPES, PolicyBehavior, PolicyCommand, TRIGGER_EVENTS, TRIGGER_ORIENTATION, TRIGGER_TYPE } from '..'
 
 export const createDatabaseSchema = z.object({
@@ -109,9 +110,15 @@ export const createForeignKeySchema = z.object({
   delete_action: z.enum(Object.values(FKEY_REFERENCED_ROW_ACTION_DELETED))
 })
 
+export const EnumTypeSchema = z.object({
+  enum_schema: z.string(),
+  enum_name: z.string(),
+  enum_values: z.string(),
+});
+
 export const createColumnSchema = z.object({
   name: z.string().min(1, { message: "Must provide name" }).max(15, { message: "Name cannot excede 15 characters" }),
-  dtype: z.enum(Object.values(DATA_TYPES)),
+  dtype: z.enum(Object.values(DATA_TYPES)).or(EnumTypeSchema),
   is_array: z.boolean(),
   default: z.string(),
   is_pkey: z.boolean(),

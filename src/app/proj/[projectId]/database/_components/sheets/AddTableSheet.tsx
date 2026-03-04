@@ -14,7 +14,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { DATA_TYPES, FkeyType } from '@/lib/types'
+import { DATA_TYPES, EnumType, FkeyType } from '@/lib/types'
 import { Label } from '@/components/ui/label'
 import z from 'zod'
 import { createColumnSchema } from '@/lib/types/schemas'
@@ -31,11 +31,13 @@ function AddTableSheet({
   projectId,
   schema, // Ensure you pass the schema name (e.g., 'public')
   open,
+  enums,
   onOpenChange,
 }: {
   projectId: string;
   schema: string;
   open: boolean;
+  enums: EnumType[];
   onOpenChange: Dispatch<SetStateAction<boolean>>;
 }) {
 
@@ -143,7 +145,7 @@ function AddTableSheet({
   }
 
 
-  const getDefaultForType = (dtype: typeof DATA_TYPES[keyof typeof DATA_TYPES ]) => {
+  const getDefaultForType = (dtype: typeof DATA_TYPES[keyof typeof DATA_TYPES ] | EnumType) => {
     switch (dtype) {
       case "uuid":
         return "uuid_generate_v4()";
@@ -266,7 +268,8 @@ function AddTableSheet({
                       <DataTypeSelect
                         triggerClassname="max-w-48 min-w-48 w-48 truncate" 
                         value={col.dtype}
-                        onValueChange={(v) => updateColumn(idx, { dtype: v as typeof DATA_TYPES[keyof typeof DATA_TYPES ], default: getDefaultForType(v as typeof DATA_TYPES[keyof typeof DATA_TYPES ]) })}
+                        enums={enums}
+                        onValueChange={(v) => updateColumn(idx, { dtype: v, default: getDefaultForType(v) })}
                       />
                       
                       <DefaultValueSelector 
@@ -274,6 +277,7 @@ function AddTableSheet({
                         dtype={col.dtype}
                         isArray={col.is_array}
                         setDefaultValue={updateDefault}
+                        project_id={projectId}
                         className='truncate focus-visible:ring-0 focus-visible:ring-offset-0'
                       />
 

@@ -14,13 +14,11 @@ import { deleteSecret } from '@/lib/actions/functions/secrets';
 import { toast } from 'sonner';
 
 const SecretCard = ({
-    createdAt,
+    created_at,
     name,
-    updatedAt,
+    updated_at,
     value
 }: EdgeFunctionSecretType) => {
-
-    console.log("@NAME", name)
 
     const [isDeleteOpen, setIsDeleteOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
@@ -50,7 +48,7 @@ const SecretCard = ({
                 <h1 className='truncate'>{name}</h1>
 
                 <div className='flex items-center gap-2'>
-                    <p className='text-muted-foreground truncate'>{createdAt}</p>
+                    <p className='text-muted-foreground truncate'>{created_at}</p>
                     <DropdownMenu>
                         <DropdownMenuTrigger>
                             <EllipsisVerticalIcon className='w-4 h-4' />

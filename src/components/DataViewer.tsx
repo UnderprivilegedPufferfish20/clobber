@@ -364,7 +364,6 @@ export default function DataViewer<T>({
   useEffect(() => {
     if (duplicateRowId !== null) {
       const v = data[duplicateRowId!]
-      console.log("@ROW_VALS: ", v)
       setDuplicateRowVals(v as DuplicateRowVals)
     }
   }, [duplicateRowId])
@@ -372,7 +371,6 @@ export default function DataViewer<T>({
     useEffect(() => {
     if (editRowId !== null) {
       const v = data[editRowId!]
-      console.log("@ROW_VALS: ", v)
       setEditRowVals(v as DuplicateRowVals)
     }
   }, [editRowId])
@@ -1395,7 +1393,6 @@ const SortComponent = ({
   columns: ColumnType[];
 }) => {
 
-  console.log("@ACTIVE SORTS: ", activeSorts)
 
   const [isOpen, setIsOpen] = useState(false);
   const [sorts, setSorts] = useState<ColumnSortType[]>(activeSorts);
@@ -1461,7 +1458,6 @@ const SortComponent = ({
                 <Select
                   value={f.column}
                   onValueChange={(v) => {
-                    console.log("@NEWCOL: ", v)
                     updateSort(index, { column: v })}
                   }
                 >

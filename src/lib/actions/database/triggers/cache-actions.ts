@@ -47,7 +47,6 @@ ORDER BY schema_name, table_name, name;
 
     `);
 
-    console.log("@@GET TRIGGERS: ", result.rows)
 
   return result.rows as TriggerType[]
 }

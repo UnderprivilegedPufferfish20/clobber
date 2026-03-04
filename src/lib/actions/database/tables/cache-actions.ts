@@ -53,7 +53,6 @@ export async function getTableData<T>(
     return `"${s.column}" ${s.dir}`
   }) : []
 
-  console.log("@SRT: ", sort)
 
   const q = `
     SELECT 
@@ -63,7 +62,6 @@ export async function getTableData<T>(
     ${sortClauses.length > 0 ? `ORDER BY ${sortClauses.join(", ")}` : ''}
     LIMIT ${limit} OFFSET ${offset};
   `
-  console.log("@Q: ", q)
 
   const result = await pool.query(q)
 

@@ -14,8 +14,6 @@ function storageClient(): Storage {
   if (!g.__storageClient) {
     const keyFilename = path.join(process.cwd(), "ADC-key.json");
 
-    console.log("keyFilename: ", keyFilename)
-
     g.__storageClient = new Storage({
       keyFilename,
       projectId: PROJECTID

@@ -40,8 +40,6 @@ const FoldersPage = (props: Props) => {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  console.log("@TYPES RESTRICTION: ", props.allowedTypes)
-  console.log("@SIZE RESTRICTION: ", props.maxSize)
 
   
   type MediaTypes = "image" | "audio" | "video" | "text" | "application"
@@ -162,9 +160,8 @@ const FoldersPage = (props: Props) => {
   const filteredFiles = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
 
-    console.log("@FILES: ", files)
+ 
     return files.filter(f => {
-      console.log("@@M", f.metadata[0])
       return childName(f, prefix).toLowerCase().includes(q) && selectedTypeFilterSet.has(f.metadata[0]["contentType"].split("/")[0])
     });
   }, [files, searchTerm, selectedTypeFilterSet]);
@@ -481,7 +478,6 @@ const FoldersPage = (props: Props) => {
               <div className='flex items-center gap-2 flex-wrap'>
                 {filteredFiles.map((file) => {
 
-                  console.log("@RENDERED FILE: ", typeof file.created_at)
 
                   if (typeof file.created_at === 'object') {
 
@@ -672,7 +668,6 @@ function FileCard({
   })
 
   useEffect(() => {
-    console.log("@@SELECTEDOBJECTS: ", selectedObjects)
   }, [selectedObjects])
 
 

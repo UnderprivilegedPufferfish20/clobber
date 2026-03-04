@@ -36,7 +36,6 @@ export async function deleteFunction(
     DROP FUNCTION ${schema}.${funcName + argPart} RESTRICT;
   `
 
-  console.log("@@Query: ", query)
 
   await pool.query(query)
 
@@ -135,7 +134,6 @@ export async function editFunction(
   try {
     await pool.query("BEGIN");
     for (const q of queries) {
-      console.log("@@QUERY:", q);
       await pool.query(q);
     }
     await pool.query("COMMIT");

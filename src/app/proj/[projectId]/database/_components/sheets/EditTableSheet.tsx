@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   DATA_TYPES,
+  EnumType,
   FkeyType,
   type ColumnType,
   type TableType,
@@ -35,6 +36,7 @@ import AddFkeySheet from "./AddFkeySheet";
 import EditFkeySheet from "./EditFkeySheet";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { en } from "zod/v4/locales";
 
 
 function EditTableSheet({
@@ -43,12 +45,14 @@ function EditTableSheet({
   table,
   open,
   onOpenChange,
+  enums
 }: {
   projectId: string;
   schema: string;
   table: TableType;
   open: boolean;
   onOpenChange: Dispatch<SetStateAction<boolean>>;
+  enums: EnumType[]
 }) {
   const emptyColumn = {
     name: "",
@@ -130,16 +134,13 @@ function EditTableSheet({
 
       const newUpdatedColum = { ...currentNew, ...patch }
 
-      console.log("@NEW UPDATED COL: ", newUpdatedColum)
 
       updatedColumns[indexOfUpdated].new = JSON.stringify(newUpdatedColum)
       setUpdatedColumns([...updatedColumns])
     }
 
     if (newColsSet.has(JSON.stringify(columns[idx]))) {
-      console.log("@@ NEW COLS: ", newCols.map(nc => JSON.parse(nc)))
       const indexOfUpdated = newCols.indexOf(newCols.find(nc => JSON.stringify(columns[idx]) === nc)!)
-      console.log("@@UPDATE @ IDX: ", newCols[indexOfUpdated])
       newCols[indexOfUpdated] = JSON.stringify({ ...JSON.parse(newCols[indexOfUpdated]), ...patch })
       setNewCols([...newCols])
     }
@@ -304,6 +305,7 @@ function EditTableSheet({
                       <DataTypeSelect
                         triggerClassname="max-w-48 min-w-48 w-48 truncate" 
                         value={col.dtype}
+                        enums={enums}
                         onValueChange={(v) => updateColumn(idx, { dtype: v as DATA_TYPES, default: getDefaultForType(v as DATA_TYPES) })}
                       />
                       

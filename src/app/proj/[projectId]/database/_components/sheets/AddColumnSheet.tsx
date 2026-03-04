@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import DataTypeSelect from '../DataTypeSelect'
 import { Switch } from '@/components/ui/switch'
 import DefaultValueSelector from '../selectors/DefaultValueSelector'
-import { DATA_TYPES } from '@/lib/types'
+import { DATA_TYPES, EnumType } from '@/lib/types'
 import SheetWrapper from '@/components/SheetWrapper'
 import { addColumn } from '@/lib/actions/database/columns'
 import { Separator } from '@/components/ui/separator'
@@ -17,12 +17,14 @@ function AddColumnSheet({
   tableId,
   schema, // Ensure you pass the schema name (e.g., 'public')
   open,
+  enums,
   onOpenChange,
 }: {
   tableId: string;
   projectId: string;
   schema: string;
   open: boolean;
+  enums: EnumType[];
   onOpenChange: Dispatch<SetStateAction<boolean>>;
 }) {
   const queryClient = useQueryClient()
@@ -97,6 +99,7 @@ function AddColumnSheet({
           onValueChange={v => setDtype(v as typeof DATA_TYPES[keyof typeof DATA_TYPES])}
           value={dtype}
           triggerClassname=''
+          enums={enums}
         />
       </div>
 

@@ -33,7 +33,6 @@ export async function deleteColumn(
     ALTER TABLE "${schema}"."${table}" DROP COLUMN "${colName}" CASCADE;
   `
 
-  console.log("@@DELETE COL QUERY: ",query)
 
   await pool.query(query)
   
@@ -78,8 +77,6 @@ export async function addColumn(
   if (!data.is_nullable) constraints.push("NOT NULL");
   const constraintString = constraints.join(" ");
 
-  console.log("@@ DEFAULT: ", data.default)
-  console.log("@@ ISFUNC: ", data.default?.endsWith("()"))
 
   let defaultStatement = "";
   if (data.default && data.default.length > 0) {
@@ -110,7 +107,6 @@ export async function addColumn(
     `.trim();
 
 
-    console.log("@@CREATE-col query: ", q)
 
     // Add the column
     await client.query(q);
@@ -266,13 +262,9 @@ export async function editColumn(
 
   try {
     await pool.query("BEGIN");
-    const callId = crypto.randomUUID();
-    console.log(`[editColumn ${callId}] old default:`, oldCol.default, "new default:", newCol.default);
-    console.log(`[editColumn ${callId}] queries:`, queries);
     for (const query of queries) {
       const q = `ALTER TABLE "${schema}"."${table}" ${query};`
       
-      console.log("@@QUERY:", q);
       await pool.query(q);
     }
     await pool.query("COMMIT");

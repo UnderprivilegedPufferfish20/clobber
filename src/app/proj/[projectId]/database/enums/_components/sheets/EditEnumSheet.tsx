@@ -1,26 +1,17 @@
 "use client";
 
 import React, { Dispatch, SetStateAction } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-import { createEnum, editEnum } from "@/lib/actions/database/enums";
-import { DatabaseObjectAddSheetProps, EnumType } from "@/lib/types";
+import { editEnum } from "@/lib/actions/database/enums";
+import { EnumType } from "@/lib/types";
 import SheetWrapper from "@/components/SheetWrapper";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { getSchemas } from "@/lib/actions/database/cache-actions";
 import SheetSchemaSelect from "../../../_components/selectors/SheetSchemaSelect";
 
 function EditEnumSheet({
@@ -35,8 +26,6 @@ function EditEnumSheet({
   onOpenChange: Dispatch<SetStateAction<boolean>>
 }) {
   const queryClient = useQueryClient();
-
-  console.log("@ EDITING ENUM: ", editingEnum)
 
   const initialValues = editingEnum.enum_values.split(", ");
 

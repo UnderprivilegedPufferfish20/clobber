@@ -34,7 +34,6 @@ export async function addSchema(projectId: string, form: z.infer<typeof createSc
     CREATE SCHEMA ${data.name} AUTHORIZATION ${project.db_user};
   `);
 
-  console.log("@@ CREATE SCHEMA: ", result);
 
   revalidateTag(t("schemas", projectId), "max")
 }

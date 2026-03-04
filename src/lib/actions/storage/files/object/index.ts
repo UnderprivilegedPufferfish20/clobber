@@ -114,8 +114,6 @@ export async function renameObject(
     password: project.db_pwd,
     database: project.db_name
   })
-
-  console.log("@RenameObjectArgs: ", projectId, objectId, path, newName)
   
   const bucket = getBucket();
   if (!bucket) throw new Error("Cannot connect to bucket");
@@ -163,8 +161,6 @@ export async function renameObject(
     dbObjects.map(async (o) => {
       const rel = o.name.slice(oldPrefix.length); // everything after the folder prefix
       const dest = joinPosix(newPrefix, rel);
-      
-      console.log("@@NEW OBJECT DESTINATION: ", dest)
       
       const srcFile = bucket.file(o.name);
       const destFile = bucket.file(dest);

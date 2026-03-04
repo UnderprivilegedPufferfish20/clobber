@@ -25,7 +25,6 @@ const page = async ({ params, searchParams }: PageProps<"/proj/[projectId]/datab
   const functionEntries = await Promise.all(
     schemas.map(async s => {
       const f = await getFunctions(p.projectId, s);
-      console.log("@F: ", f)
       return [s, f.filter(s => s.return_type === "trigger").map(func => func.function_name)]
     })
   )

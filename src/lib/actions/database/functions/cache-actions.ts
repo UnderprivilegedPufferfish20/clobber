@@ -46,7 +46,5 @@ WHERE
 
     `);
 
-    console.log("@@GET FUNCTIONS: ", result.rows)
-
   return result.rows as DatabaseFunctionType[]
 }

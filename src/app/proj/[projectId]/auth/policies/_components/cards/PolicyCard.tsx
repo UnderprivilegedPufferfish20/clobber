@@ -114,7 +114,7 @@ const PolicyCard = ({
                     <h3>Roles</h3>
                   </div>
                   {policies.map((p, idx) => (
-                    <div key={idx} className='flex items-center justify-between bg-secondary text-muted-foreground text-sm p-2'>
+                    <div key={idx} className='flex items-center justify-between bg-secondary text-muted-foreground text-sm p-2 last:rounded-b-xl'>
                       <div className='flex items-center'>
                         <p className='text-primary mr-52'>{p.name}</p>
                         <p className='mr-62'>{p.comand.toUpperCase()}</p>
@@ -231,8 +231,6 @@ const EditPolicySheet = ({
 
 }) => {
 
-  console.log("@P: ", policy)
-
   const [name, setName] = useState(policy.name)
   const [check_command, setCheckCommand] = useState(policy.check_command)
   const [behavior, setBehavior] = useState(policy.behavior)
@@ -241,8 +239,7 @@ const EditPolicySheet = ({
 
   const {mutate, isPending} = useMutation({
     mutationFn: () => update_policy(
-      project_id, 
-      policy.name, 
+      project_id,
       schema, 
       table, 
       policy,

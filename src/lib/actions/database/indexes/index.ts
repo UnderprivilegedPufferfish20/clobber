@@ -57,8 +57,6 @@ export async function createIndex(
     CREATE INDEX "${data.table}_${data.cols.map(c => c.name).join("_")}_idx" ON "${data.schema}"."${data.table}" USING ${data.type.toString().toLowerCase()} (${data.cols.map(c => c.name).join(", ")});
   `
 
-  console.log("@QUERY: ", query)
-
   await pool.query(query)
 
   revalidateTag(t("indexes", projectId, data.schema), 'max')

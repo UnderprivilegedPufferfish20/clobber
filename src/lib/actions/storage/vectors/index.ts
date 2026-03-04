@@ -123,8 +123,6 @@ export async function createIndex(
     );
     `
 
-  console.log("@QQ: ", q)
-
   await pool.query(q)
 
   revalidateTag(t('indexes', project_id), "max")

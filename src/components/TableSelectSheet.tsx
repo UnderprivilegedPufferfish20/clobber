@@ -20,7 +20,6 @@ const TableSelectSheet = ({
   schema: string;
 }) => {
 
-  console.log("@TABLES: ", tables)
 
   const [open, setOpen] = useState(false)
 

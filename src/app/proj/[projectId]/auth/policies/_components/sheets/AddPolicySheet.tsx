@@ -68,7 +68,11 @@ const AddPolicySheet = ({
       onOpenChange={onOpenChange}
       title='Create Policy'
       description='Ensure data security'
-      disabled={false}
+      disabled={
+        schema === "" ||
+              table === "" ||
+              name === ""
+      }
       submitButtonText='Create Policy'
       onSubmit={mutate}
       isPending={isPending}
@@ -77,13 +81,13 @@ const AddPolicySheet = ({
         setSchema("")
         setTable("")
         setBehavior(PolicyBehavior.PERMISSIVE)
-        setCommand(PolicyCommand.INSERT)
+        setCommand(PolicyCommand.SELECT)
         setTargetedRoles([])
         setUsingQuery("")
       }}
       isDirty={() => {
-        return schema !== originalSchema ||
-              table !== originalTable ||
+        return schema !== (originalSchema ?? "") ||
+              table !== (originalTable ?? "") ||
               name !== "" ||
               behavior !== PolicyBehavior.PERMISSIVE || 
               command !== PolicyCommand.SELECT ||

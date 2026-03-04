@@ -53,9 +53,6 @@ function MoveObjectSheet({
     queryFn: () => getFolderData(projectId, updatedPath),
   })
 
-  useEffect(() => {
-    console.log("@@UPDATED PATH: ", updatedPath)
-  }, [updatedPath])
 
   
 
@@ -122,8 +119,6 @@ function MoveObjectSheet({
                       const endIndex = index + folderName.length
 
                       const result = updatedPath.substring(0, endIndex)
-
-                      console.log("@NEWLINK: ", result)
 
                       return result
                     }

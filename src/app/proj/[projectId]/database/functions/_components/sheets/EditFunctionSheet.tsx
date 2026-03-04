@@ -49,7 +49,6 @@ function EditFunctionSheet({
   editingFunction: DatabaseFunctionType
   onOpenChange: Dispatch<SetStateAction<boolean>>
 }) {
-  console.log("@EDITING FUNCTION: ", editingFunction)
 
   const queryClient = useQueryClient();
 
@@ -249,7 +248,8 @@ function EditFunctionSheet({
                     onChange={() => {}}
                   />
 
-                  <DataTypeSelect 
+                  <DataTypeSelect
+                    enums={[]} 
                     disabled
                     onValueChange={() => {}}
                     value={arg.dtype}

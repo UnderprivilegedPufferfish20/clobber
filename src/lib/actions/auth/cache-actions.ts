@@ -59,7 +59,6 @@ export async function get_sso_providers(
   }
 
   
-  console.log("@PROVIDERS: ", result)
 
   return result
 }

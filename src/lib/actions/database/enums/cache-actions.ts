@@ -43,7 +43,6 @@ ORDER BY
     `);
 
 
-    console.log("@@GET ENUMS: ", result.rows)
 
   return result.rows as EnumType[]
 }

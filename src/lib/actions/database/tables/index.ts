@@ -1,13 +1,13 @@
 'use server';
 
-import { createTableSchema } from "@/lib/types/schemas";
+import { createTableSchema, EnumTypeSchema } from "@/lib/types/schemas";
 import { createFkeyName, rowsToCsv, rowsToJson, rowsToSql, t } from "@/lib/utils";
 import { revalidateTag } from "next/cache";
 import z from "zod";
 import { getUser } from "../../auth";
 import { getProjectById } from "../cache-actions";
 import { getTenantPool } from "../tennantPool";
-import { ColumnType, DATA_EXPORT_FORMATS, DATA_TYPES, FkeyType, TableType } from "@/lib/types";
+import { ColumnType, DATA_EXPORT_FORMATS, DATA_TYPES, EnumType, FkeyType, TableType } from "@/lib/types";
 import { addColumn, deleteColumn, editColumn } from "../columns";
 
 export async function deleteTable(
@@ -60,7 +60,6 @@ export async function exportTableData(
 
   const result = await pool.query(`SELECT * FROM "${schema}"."${name}"`)
 
-  console.log("@@esult", result)
 
   switch (format) {
     case DATA_EXPORT_FORMATS.JSON:
@@ -134,9 +133,12 @@ export async function addTable(
 
   if (!project) throw new Error("No project found");
 
-  const { success, data } = createTableSchema.safeParse(form)
+  const { success, data, error } = createTableSchema.safeParse(form)
 
-  if (!success) throw new Error("Invalid form data");
+  if (!success) {
+    console.log("@MAKE TABLE ERROR: ", error)
+    throw new Error("Invalid form data")
+  };
 
   if (!data) throw new Error("No data");
 
@@ -153,12 +155,26 @@ export async function addTable(
   const pkeyCols: string[] = [];
 
   for (const col of data.columns) {
-    let colDef = `"${col.name}" ${col.dtype}${col.is_array ? '[]' : ''}`;
+    console.log("@DTYPE: ", col.dtype)
+
+    let dtype: string;
+
+    const { error, data } = EnumTypeSchema.safeParse(col.dtype)
+
+    
+    if (!error) {
+      console.log("@PARSE DATA: ", data)
+      dtype = `"${data.enum_schema}"."${data.enum_name}"`
+    } else {
+      dtype = `${col.dtype}`
+    }
+
+    let colDef = `"${col.name}" ${dtype}${col.is_array ? '[]' : ''}`;
     if (!col.is_nullable) colDef += ' NOT NULL';
     if (col.is_unique) colDef += ' UNIQUE';
 
     if (col.default !== undefined) {
-      colDef += ` ${col.default ? col.is_array ? `DEFAULT ARRAY[${col.default}]` : `DEFAULT ${col.default}` : ""}`;
+      colDef += ` ${col.default ? col.is_array ? `DEFAULT ARRAY[${col.default}]` : `DEFAULT ${col.default.endsWith("()") ? col.default : `'${col.default}'`}` : ""}`;
     }
 
     if (col.is_pkey) {
@@ -174,7 +190,6 @@ export async function addTable(
 
   if (data.fkeys && data.fkeys.length > 0) {
     data.fkeys.map(fk => {
-      console.log("@SA FKEY: ", fk)
 
       constraints.unshift(`
         CONSTRAINT ${createFkeyName(data.name, fk)}
@@ -186,17 +201,17 @@ export async function addTable(
 
   const allDefs = [...columnDefs, ...constraints];
   const sql = `
-    CREATE TABLE "${schema}"."${tableName}" (\n  ${allDefs.join(',\n  ')}\n);
+    CREATE TABLE ${tableName} (\n  ${allDefs.join(',\n  ')}\n);
 
-    ALTER TABLE "${schema}"."${tableName}" ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE ${tableName} ENABLE ROW LEVEL SECURITY;
     
   `;
 
-  console.log("@@ MAKE TABLE QUERY: ",sql)
+  console.log("@SQL: ",sql)
+
 
   const result = await pool.query(sql);
 
-  console.log("@@ CREATE TABLE: ", result);
 
   revalidateTag(t("tables", projectId, schema), "max")
   revalidateTag(t("schema", projectId, schema), "max")
@@ -361,7 +376,6 @@ export async function addRow(
     }).join(", ")});
   `
 
-  console.log("@ ADD ROW QUERY: ", q)
 
   await pool.query(q)
 
@@ -413,10 +427,8 @@ export async function deleteSelectedRows(
         
         return `${k} = '${v}'`
       })
-      console.log("@CLAUSES: ", clauses)
-      const q = `DELETE FROM "${schema}"."${table}" WHERE ${clauses.join(" AND ")};`
 
-      console.log("@DELSEL QUERY: ", q)
+      const q = `DELETE FROM "${schema}"."${table}" WHERE ${clauses.join(" AND ")};`
 
       await pool.query(q)
     })
@@ -482,8 +494,6 @@ export async function deleteRow(
   const q = `
   DELETE FROM "${schema}"."${table}" WHERE ${pkey_cols.map((c, idx) => `"${c.name}" = '${pkey_vals[idx]}'`).join(" AND ")};  
   `
-
-  console.log("@DEL ROW QUERY: ", q)
 
   await pool.query(q)
 
