@@ -19,8 +19,6 @@ import { DATA_TYPES, EnumType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, ListIcon, LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { DataTypeType } from "@/lib/types";
-import z from "zod";
 
 export default function DataTypeSelect({
   value,
@@ -38,13 +36,6 @@ export default function DataTypeSelect({
 
   const [open, setOpen] = useState(false)
 
-  const { data, success } = z.custom<EnumType>().safeParse(value)
-
-  if (success) {
-    console.log("@PARSE DATA: ", data)
-
-  }
-
   const ValueIcon: LucideIcon = useMemo(() => {
     const pro = DTypes.find(d => d.dtype === value)
 
@@ -61,9 +52,18 @@ export default function DataTypeSelect({
     if (pro) {
       return pro.dtype 
     } else {
-      return (value as EnumType).enum_name
+      if (typeof value === "object") {
+        return (value as EnumType).enum_name
+      } else {
+        return (value as string).split(".")[1].slice(1, -1)
+      }
+
     }
   }, [value])
+
+  useEffect(() => {
+    console.log("@VALUE LABEL: ", valueLabel)
+  }, [valueLabel])
 
 
   return (

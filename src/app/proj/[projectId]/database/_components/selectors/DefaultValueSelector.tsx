@@ -31,9 +31,11 @@ export default function DefaultValueSelector({
   className
 }: Props) {
 
+  console.log("@DTYPE: ", dtype)
+
   const isEnum = useMemo(() => {
     const { success } = EnumTypeSchema.safeParse(dtype)
-    return success
+    return success || (dtype as string).split(".").length > 0
   }, [dtype])
 
   const suffix = isArray ? '[]' : '';
@@ -58,7 +60,12 @@ export default function DefaultValueSelector({
         })
       )
 
-      return enums.find(e => e.enum_name === (dtype as EnumType).enum_name)!.enum_values.split(", ")
+      if (typeof dtype === "object") {
+        return enums.find(e => e.enum_name === (dtype as EnumType).enum_name)!.enum_values.split(", ")
+      } else {
+        return enums.find(e => e.enum_name === (dtype as string).split(".")[1].slice(1, -1))!.enum_values.split(", ")
+      } 
+
     },
     enabled: isEnum
   })

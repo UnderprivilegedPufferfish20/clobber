@@ -273,7 +273,10 @@ export async function updateTable(
   newTable: TableType,
   editedCols: { old: string, new: string }[],
   deletedCols: string[],
-  newCols: string[]
+  newCols: string[],
+  editedFkeys: { old: string, new: string }[],
+  deletedFkeys: string[],
+  newFkeys: string[]
 ) {
 
 

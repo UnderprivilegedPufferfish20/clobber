@@ -36,7 +36,7 @@ import AddFkeySheet from "./AddFkeySheet";
 import EditFkeySheet from "./EditFkeySheet";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { en } from "zod/v4/locales";
+import { EnumTypeSchema } from "@/lib/types/schemas";
 
 
 function EditTableSheet({
@@ -64,12 +64,18 @@ function EditTableSheet({
     is_nullable: true,
   };
   const originalColumnStringsSet = new Set(table.columns.map(c => JSON.stringify(c)))
+  const originalFkeysStringsSet = new Set(table.fkeys?.map(c => JSON.stringify(c)))
 
   
 
   const [updatedColumns, setUpdatedColumns] = useState<{ old: string, new: string }[]>([])
   const [deletedCols, setDeletedCols] = useState<string[]>([])
   const [newCols, setNewCols] = useState<string[]>([])
+
+  const [updatedFkeys, setUpdatedFkeys] = useState<{ old: string, new: string }[]>([])
+  const [deletedFkeys, setDeletedFkeys] = useState<string[]>([])
+  const [newFkeys, setNewFkeys] = useState<string[]>([])
+
 
   const [columns, setColumns] = useState<ColumnType[]>(table.columns);
 
@@ -97,7 +103,10 @@ function EditTableSheet({
         },
         updatedColumns,
         deletedCols,
-        newCols
+        newCols,
+        updatedFkeys,
+        deletedFkeys,
+        newFkeys
       ),
     onSuccess: () => {
       toast.success("Table updated successfully", { id: "edit-table" });
@@ -121,9 +130,17 @@ function EditTableSheet({
     return new Set(updatedColumns.map(uc => uc.new))
   }, [updatedColumns])
 
+  const updatedFkeysNews = useMemo(() => {
+    return new Set(updatedFkeys.map(uc => uc.new))
+  }, [updatedFkeys])
+
   const newColsSet = useMemo(() => {
     return new Set(newCols)
   }, [newCols])
+
+  const newFkeysSet = useMemo(() => {
+    return new Set(newFkeys)
+  }, [newFkeys])
 
   function updateColumn(idx: number, patch: Partial<ColumnType>) {
     if (originalColumnStringsSet.has(JSON.stringify(columns[idx]))) {
@@ -158,6 +175,39 @@ function EditTableSheet({
     }
 
     setColumns((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateFkey(idx: number, patch: Partial<FkeyType>) {
+    if (originalFkeysStringsSet.has(JSON.stringify(fkeys[idx]))) {
+      setUpdatedFkeys(p => [...p, { old: JSON.stringify(fkeys[idx]), new: JSON.stringify({ ...fkeys[idx], ...patch }) }])
+    } else if (updatedFkeysNews.has(JSON.stringify(fkeys[idx]))) {
+      const indexOfUpdated = updatedFkeys.indexOf(updatedFkeys.find(uc => uc.new === JSON.stringify(fkeys[idx]))!)
+      const currentNew = JSON.parse(updatedFkeys[indexOfUpdated].new)
+
+      const newUpdatedColum = { ...currentNew, ...patch }
+
+
+      updatedFkeys[indexOfUpdated].new = JSON.stringify(newUpdatedColum)
+      setUpdatedFkeys([...updatedFkeys])
+    }
+
+    if (newFkeysSet.has(JSON.stringify(fkeys[idx]))) {
+      const indexOfUpdated = newFkeys.indexOf(newFkeys.find(nc => JSON.stringify(fkeys[idx]) === nc)!)
+      newFkeys[indexOfUpdated] = JSON.stringify({ ...JSON.parse(newFkeys[indexOfUpdated]), ...patch })
+      setNewCols([...newFkeys])
+    }
+
+    setFkeys((prev) =>
+      prev.map((c, i) => (i === idx ? { ...c, ...patch } : c))
+    );
+  }
+
+  function deleteFkey(idx: number) {
+    if (originalFkeysStringsSet.has(JSON.stringify(fkeys[idx])) || updatedFkeysNews.has(JSON.stringify(fkeys[idx]))) {
+      setDeletedFkeys(p => Array.from(new Set([...p, JSON.stringify(fkeys[idx])])))
+    } else if (newFkeysSet.has(JSON.stringify(fkeys[idx]))) {
+      setNewFkeys(p => p.filter(nc => nc !== JSON.stringify(fkeys[idx])))
+    }
   }
 
   const getCheckedOptions = (col: ColumnType) => {
@@ -284,9 +334,16 @@ function EditTableSheet({
             <div className='fullwidth flex flex-col gap-1'>
               {columns.map((col, idx) => {
 
+                
+
                 const updateDefault = (value: string) => {
                   updateColumn(idx, { default: value });
                 };
+
+          
+                const default_value: string = col.default.split("::").length > 1 ?
+                  col.default.split("::")[0].slice(1, -1) :
+                  col.default
 
                 return (
                     <div
@@ -310,7 +367,8 @@ function EditTableSheet({
                       />
                       
                       <DefaultValueSelector 
-                        defaultValue={col.default}
+                        defaultValue={default_value}
+                        project_id={projectId}
                         isArray={col.is_array}
                         dtype={col.dtype}
                         setDefaultValue={updateDefault}
