@@ -33,7 +33,7 @@ export default function EditColumnSheet({
   const queryClient = useQueryClient()
 
   const [name, setName] = useState(column.name)
-  const [dtype, setDtype] = useState<typeof DATA_TYPES[keyof typeof DATA_TYPES]>(column.dtype)
+  const [dtype, setDtype] = useState<DATA_TYPES | EnumType>(column.dtype)
 
   const [isArray, setIsArray] = useState(column.is_array)
   const [isPkey, setIsPkey] = useState(column.is_pkey)
@@ -124,6 +124,7 @@ export default function EditColumnSheet({
         <div className='flex flex-col gap-2'>
           <h1>Default Value</h1>
           <DefaultValueSelector 
+            project_id={projectId}
             defaultValue={defaultValue ?? ""}
             setDefaultValue={setDefaultValue}
             dtype={dtype}

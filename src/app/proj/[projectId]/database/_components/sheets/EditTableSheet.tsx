@@ -36,7 +36,6 @@ import AddFkeySheet from "./AddFkeySheet";
 import EditFkeySheet from "./EditFkeySheet";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { EnumTypeSchema } from "@/lib/types/schemas";
 
 
 function EditTableSheet({
@@ -45,14 +44,16 @@ function EditTableSheet({
   table,
   open,
   onOpenChange,
-  enums
+  enums,
+  tables
 }: {
-  projectId: string;
+  projectId: string; 
   schema: string;
   table: TableType;
   open: boolean;
   onOpenChange: Dispatch<SetStateAction<boolean>>;
-  enums: EnumType[]
+  enums: EnumType[],
+  tables: Record<string, string[]>
 }) {
   const emptyColumn = {
     name: "",
@@ -245,6 +246,10 @@ function EditTableSheet({
     }
   }, [open, table]);
 
+  useEffect(() => {
+    console.log("@NEW FKEY: ", newFkeys.at(-1))
+  }, [newFkeys])
+
 
   return (
     <>
@@ -255,7 +260,7 @@ function EditTableSheet({
         sheetContentClassname="w-4xl! min-w-4xl! max-w-4xl"
         onOpenChange={onOpenChange}
         open={open}
-        onSubmit={() => mutate()}
+        onSubmit={mutate}
         isPending={isPending}
         isDirty={() => isDirty}
         disabled={columns.length === 0 || !name}
@@ -454,47 +459,72 @@ function EditTableSheet({
         <div className='flex flex-col gap-1'>
           <h1 className='mb-5'>Foreign Keys</h1>
 
-          {fkeys.map((fkey, idx) => (
-            <div
-              key={idx}
-              className={`flex flex-col fullwidth p-2 relative rounded-md border border-border`}
-            >
-              <div className='flex gap-1 items-center justify-between'>
-                <div className='flex items-center gap-2'>
-                  <Table2Icon className='w-4 h-4' />
-                  <h2 className='text-md text-muted-foreground'>
-                    {fkey.cols[0]!.referencee_schema}.
-                    <span className='text-white'>{fkey.cols[0]!.referencee_table}</span>
-                  </h2>
-                </div>
+          {fkeys.map((fkey, idx) => {
 
-                <div className='flex items-center gap-2'>
-                  <Button
-                    variant={"outline"} 
-                    onClick={() => setFkeys(p => p.filter((_, i) => i !== idx))}
-                  >
-                    Delete
-                  </Button>
-                  <Button
-                    variant={"outline"}
-                    onClick={() => setIsEditFkeySheetOpen({ open: true, index: idx })}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              </div>
+            const isDeleted = new Set(deletedFkeys).has(JSON.stringify(fkey))
 
-              <div className='ml-6 flex w-fit flex-col gap-1 text-sm'>
-                {fkey.cols.map(c => (
-                  <div key={Math.random()} className='flex items-center justify-between p-1'>
-                    <span className='text-muted-foreground'>{c.referencor_column}</span>
-                    <ArrowRightIcon className='w-4 h-4 mx-1' />
-                    <span className='text-white'>{c.referencee_column}</span>
+
+            return (
+              <div
+                key={idx}
+                className="flex flex-col fullwidth p-2 relative rounded-md border border-border" // Remove classes here
+              >
+                <div className='flex gap-1 items-center justify-between'>
+                  <div className={`flex items-center gap-2 ${isDeleted && "line-through opacity-40"}`}> 
+                    {/* Apply only to the header text */}
+                    <Table2Icon className='w-4 h-4' />
+                    <h2 className='text-md text-muted-foreground'>
+                      {fkey.cols[0]!.referencee_schema}.
+                      <span className='text-white'>{fkey.cols[0]!.referencee_table}</span>
+                    </h2>
                   </div>
-                ))}
+
+                  <div className='flex items-center gap-2'>
+                    {isDeleted ? (
+                      <Button
+                        variant={"outline"}
+                        onClick={() => {
+                          setDeletedFkeys(p => p.filter(f => f !== JSON.stringify(fkey)))
+                        }}
+                      >
+                        Undo Delete
+                      </Button>
+                    ) : (
+                      <Button
+                        variant={"outline"} 
+                        onClick={() => {
+                          deleteFkey(idx)
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                    {!isDeleted && (
+                      <Button
+                        variant={"outline"}
+                        onClick={() => setIsEditFkeySheetOpen({ open: true, index: idx })}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className={`ml-6 flex w-fit flex-col gap-1 text-sm ${isDeleted && "line-through opacity-60"}`}>
+                  {/* Apply only to the column list */}
+                  {fkey.cols.map(c => (
+                    <div key={Math.random()} className='flex items-center justify-between p-1'>
+                      <span className='text-muted-foreground'>{c.referencor_column}</span>
+                      <ArrowRightIcon className='w-4 h-4 mx-1' />
+                      <span className='text-white'>{c.referencee_column}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+
+
+            )
+          })}
 
           <div
               className={`flex items-center justify-center fullwidth relative rounded-md border border-dashed border-border py-2 mt-2`}
@@ -513,15 +543,18 @@ function EditTableSheet({
       </SheetWrapper>
 
       <AddFkeySheet 
+        tables={tables}
         projectId={projectId}
         setFkeys={setFkeys}
         table={{ name, columns, rls }}
         open={isFkeySheetOpen}
         onOpenChange={setIsFkeySheetOpen}
+        setNewFkeys={setNewFkeys}
         schema={schema}
       />
 
       <EditFkeySheet 
+        tables={tables}
         editingFkey={
           typeof isEditFkeySheetOpen.index === "number"
             ? fkeys[isEditFkeySheetOpen.index]
@@ -534,6 +567,7 @@ function EditTableSheet({
         schema={schema}
         table={table}
         setFkeys={setFkeys}
+        updateFkey={updateFkey}
       />
     </>
   );

@@ -39,11 +39,11 @@ model SqlFolder {
 }
 
 model SchemaEditorPosition {
-  node_id   String  @id
   projectId String
-  schema String
-  x Int
-  y Int
+  schema    String
+  x         Int
+  y         Int
+  node_id   String @id
 }
 
 model sql {
@@ -58,6 +58,6 @@ model sql {
 }
 
 model sso_providers {
-  name     String  @id
+  name     String @id
   img_path String @unique
 }

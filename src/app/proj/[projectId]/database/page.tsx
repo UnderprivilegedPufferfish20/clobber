@@ -1,7 +1,7 @@
 import { getSchema, getSchemas } from "@/lib/actions/database/cache-actions"
 import SchemaEditorPage from "./_components/SchemaEditorPage"
 import { parseFiltersParam } from "@/lib/utils"
-import { getTableData } from "@/lib/actions/database/tables/cache-actions"
+import { getTableData, getTables } from "@/lib/actions/database/tables/cache-actions"
 import DataViewer from "@/components/DataViewer"
 import BackHeader from "./_components/BackHeader"
 import { getEnums } from "@/lib/actions/database/enums/cache-actions"
@@ -52,6 +52,7 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
   const start = performance.now();
 
   const enums: EnumType[] = []
+  let tables: Record<string, string[]>;
 
   await Promise.all(
     schemas.map(async s => {
@@ -59,6 +60,15 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
       enums.push(...es)
     })
   )
+
+  const tablesEntries = await Promise.all(
+    schemas.map(async s => {
+      const ts = await getTables(s, p.projectId);
+      return [s, ts]
+    })
+  )
+
+  tables = Object.fromEntries(tablesEntries)
 
   const data = table ? await getTableData<any>(
     p.projectId,
@@ -68,6 +78,7 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
     offset,
     filters,
     `${schema}-${table}`,
+    // @ts-ignore
     sortObj
   ) : null
   const queryTimeMs = performance.now() - start;
@@ -91,6 +102,7 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
         </div>
       ) : (
         <SchemaEditorPage 
+          tables={tables}
           current_schema={currentSchema}
           projectId={p.projectId}
           schemas={schemas}

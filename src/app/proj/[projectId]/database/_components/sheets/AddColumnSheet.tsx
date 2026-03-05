@@ -106,6 +106,7 @@ function AddColumnSheet({
       <div className='flex flex-col gap-2'>
         <h1>Default Value</h1>
         <DefaultValueSelector 
+          project_id={projectId}
           defaultValue={defaultValue}
           setDefaultValue={setDefaultValue}
           dtype={dtype}

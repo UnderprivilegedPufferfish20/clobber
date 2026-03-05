@@ -33,12 +33,14 @@ function AddTableSheet({
   open,
   enums,
   onOpenChange,
+  tables
 }: {
   projectId: string;
   schema: string;
   open: boolean;
   enums: EnumType[];
   onOpenChange: Dispatch<SetStateAction<boolean>>;
+  tables: Record<string, string[]>
 }) {
 
   const emptyColumn: ColumnForm = {
@@ -403,7 +405,8 @@ function AddTableSheet({
         
       </SheetWrapper>
 
-      <AddFkeySheet 
+      <AddFkeySheet
+        tables={tables} 
         projectId={projectId}
         setFkeys={setFkeys}
         table={{ name, columns, rls }}

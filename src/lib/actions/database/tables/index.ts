@@ -299,6 +299,15 @@ export async function updateTable(
     );
   }
 
+  function fkeyChanged(a: FkeyType, b: FkeyType) {
+    return (
+      a.delete_action !== b.delete_action ||
+      a.update_action !== b.update_action ||
+
+      JSON.stringify(a.cols) !== JSON.stringify(b.cols)
+    )
+  }
+
 
   const map = new Map<string, { old: ColumnType; new: ColumnType }>();
 
@@ -310,11 +319,25 @@ export async function updateTable(
 
   const deduped = [...map.values()].filter(({ old, new: news }) => colChanged(old, news));
 
+  const fkeyMap = new Map<string, {old: FkeyType, new: FkeyType}>()
+
+  for (const ef of editedFkeys) {
+    const oldK = JSON.parse(ef.old) as FkeyType
+    const newC = JSON.parse(ef.new) as FkeyType
+    fkeyMap.set(createFkeyName(newC.cols[0]!.referencor_table, newC), { old: oldK, new: newC })
+  }
+
+  const fkeyDeduped = [...fkeyMap.values()].filter(({ old, new: news }) => fkeyChanged(old, news));
+
 
 
   try {
     for (const { old, new: neu } of deduped) {
       await editColumn(projectId, schema, oldTable.name, old, neu);
+    }
+
+    for (const { old, new: neu } of fkeyDeduped) {
+      await update_fkey(projectId, old, neu)
     }
 
   
@@ -339,15 +362,198 @@ export async function updateTable(
         )
       })
     )
+
+    await Promise.all(
+      newFkeys.map(async f => {
+        const newKeyObj: FkeyType = JSON.parse(f)
+
+        console.log("@NEW KEY OBJ: ", newKeyObj)
+
+        await create_fkey(projectId, newKeyObj)
+      })
+    )
+
+    await Promise.all(
+      deletedFkeys.map(async d => {
+        const delKeyObj: FkeyType = JSON.parse(d)
+
+        console.log("@DELETE KEY OBJ: ", delKeyObj)
+
+        await delete_fkey(projectId, delKeyObj)
+      })
+    )
   
     if (oldTable.name !== newTable.name) await renameTable(projectId, schema, oldTable.name, newTable.name);
     await toggle_rls(projectId, schema, newTable.name, oldTable.rls, newTable.rls)
+
+
 
   } catch (e) {
     throw e
   }
 
 }
+
+export async function create_fkey(
+  project_id: string,
+  key: FkeyType
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+
+  const table_name = key.cols[0]!.referencor_table
+
+
+
+  const q = `
+    ALTER TABLE "${key.cols[0]!.referencor_schema}"."${table_name}" ADD CONSTRAINT ${createFkeyName(table_name, key)}
+    FOREIGN KEY (${key.cols.map(fkc => `"${fkc.referencor_column}"`).join(", ")}) REFERENCES "${key.cols[0].referencee_schema}"."${key.cols[0].referencee_table}"(${key.cols.map(fkc => `"${fkc.referencee_column}"`).join(", ")})
+    ON UPDATE ${key.update_action}
+    ON DELETE ${key.delete_action}
+  `
+
+  console.log("@CREATE FKEY Q: ", q)
+
+  await pool.query(q)
+
+  const c_obj = key.cols[0]!
+
+  revalidateTag(t("table-schema", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+  revalidateTag(t("schema", project_id, c_obj.referencor_schema), "max")
+  revalidateTag(t("columns", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+  revalidateTag(t("tables", project_id, c_obj.referencor_schema), 'max')
+  revalidateTag(t("table-data", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+
+  revalidateTag(t("table-schema", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+  revalidateTag(t("schema", project_id, c_obj.referencee_schema), "max")
+  revalidateTag(t("columns", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+  revalidateTag(t("tables", project_id, c_obj.referencee_schema), 'max')
+  revalidateTag(t("table-data", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+}
+
+export async function delete_fkey(
+  project_id: string,
+  key: FkeyType
+) {
+const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+
+  const table_name = key.cols[0]!.referencor_table
+
+
+
+  const q = `
+   ALTER TABLE "${key.cols[0]!.referencor_schema}"."${table_name}" DROP CONSTRAINT ${createFkeyName(table_name, key)};
+  `
+
+  console.log("@DELETE FKEY Q: ", q)
+
+  await pool.query(q)
+
+  const c_obj = key.cols[0]!
+
+  revalidateTag(t("table-schema", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+  revalidateTag(t("schema", project_id, c_obj.referencor_schema), "max")
+  revalidateTag(t("columns", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+  revalidateTag(t("tables", project_id, c_obj.referencor_schema), 'max')
+  revalidateTag(t("table-data", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+
+  revalidateTag(t("table-schema", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+  revalidateTag(t("schema", project_id, c_obj.referencee_schema), "max")
+  revalidateTag(t("columns", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+  revalidateTag(t("tables", project_id, c_obj.referencee_schema), 'max')
+  revalidateTag(t("table-data", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+}
+
+export async function update_fkey(
+  project_id: string,
+  oldFkey: FkeyType,
+  newFkey: FkeyType
+) {
+  const user = await getUser();
+  if (!user) throw new Error("No user");
+
+  const project = await getProjectById(project_id);
+  if (!project) throw new Error("No project found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  });
+
+  const table_name = oldFkey.cols[0]!.referencor_table
+
+  const drop_q = `ALTER TABLE "${oldFkey.cols[0]!.referencor_schema}"."${table_name}" DROP CONSTRAINT ${createFkeyName(table_name, oldFkey)};`
+
+  console.log("@@DROP QUERY: ", drop_q)
+
+  const cl = await pool.connect()
+
+  try {
+    await cl.query("BEGIN")
+    await cl.query(drop_q)
+
+    const add_q = `ALTER TABLE "${oldFkey.cols[0]!.referencor_schema}"."${table_name}" ADD CONSTRAINT ${createFkeyName(table_name, newFkey)}
+        FOREIGN KEY (${newFkey.cols.map(fkc => `"${fkc.referencor_column}"`).join(", ")}) REFERENCES "${newFkey.cols[0].referencee_schema}"."${newFkey.cols[0].referencee_table}"(${newFkey.cols.map(fkc => `"${fkc.referencee_column}"`).join(", ")})
+        ON UPDATE ${newFkey.update_action}
+        ON DELETE ${newFkey.delete_action};
+  `
+  
+    console.log("@@ADD QUERY: ", add_q)
+  
+    await cl.query(add_q)
+
+    await cl.query("COMMIT")
+  } catch (e) {
+    await cl.query("ROLLBACK")
+    throw e
+  } finally {
+    cl.release()
+  }
+
+
+  
+  const c_obj = oldFkey.cols[0]!
+
+  revalidateTag(t("table-schema", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+  revalidateTag(t("schema", project_id, c_obj.referencor_schema), "max")
+  revalidateTag(t("columns", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+  revalidateTag(t("tables", project_id, c_obj.referencor_schema), 'max')
+  revalidateTag(t("table-data", project_id, c_obj.referencor_schema, c_obj.referencor_table), "max")
+
+  revalidateTag(t("table-schema", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+  revalidateTag(t("schema", project_id, c_obj.referencee_schema), "max")
+  revalidateTag(t("columns", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+  revalidateTag(t("tables", project_id, c_obj.referencee_schema), 'max')
+  revalidateTag(t("table-data", project_id, c_obj.referencee_schema, c_obj.referencee_table), "max")
+}
+
+
+
 
 export async function addRow(
   project_id: string,

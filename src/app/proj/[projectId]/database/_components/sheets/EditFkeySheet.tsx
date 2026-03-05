@@ -1,6 +1,6 @@
 "use client";
 
-import { DATA_TYPES, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_UPDATED, FkeyColumnType, FkeyType, TableType } from "@/lib/types";
+import { DATA_TYPES, EnumType, FKEY_REFERENCED_ROW_ACTION_DELETED, FKEY_REFERENCED_ROW_ACTION_UPDATED, FkeyColumnType, FkeyType, TableType } from "@/lib/types";
 import { Dispatch, SetStateAction, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTables } from "@/lib/actions/database/tables/cache-actions";
@@ -11,6 +11,8 @@ import { ArrowRightIcon, Table2Icon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SheetWrapper from "@/components/SheetWrapper";
 import SheetSchemaSelect from "../selectors/SheetSchemaSelect";
+import { DTypes } from "@/lib/constants";
+import TableSelectSheet from "@/components/TableSelectSheet";
 
 export default function EditFkeySheet({
   projectId,
@@ -19,19 +21,21 @@ export default function EditFkeySheet({
   schema,
   open,
   onOpenChange,
-
+  tables,
   editingFkey,
-  index
+  index,
+  updateFkey
 }: {
   projectId: string,
   setFkeys: Dispatch<SetStateAction<FkeyType[]>>,
   table: TableType,
   schema: string,
-
+  tables: Record<string, string[]>
   open: boolean,
   onOpenChange: Dispatch<SetStateAction<boolean>>,
   editingFkey?: FkeyType,
-  index?: number
+  index?: number,
+  updateFkey: (idx: number, patch: Partial<FkeyType>) => void;
 }) {
   if (!editingFkey || typeof index !== "number") {
     return null
@@ -47,17 +51,28 @@ export default function EditFkeySheet({
   const [delAction, setDelAction] = useState<FKEY_REFERENCED_ROW_ACTION_DELETED>(editingFkey.delete_action)
   const [updateAction, setUpdateAction] = useState<FKEY_REFERENCED_ROW_ACTION_UPDATED>(editingFkey.update_action)
 
-  const { data: tables } = useQuery({
-    queryKey: ["tables", projectId, selectedSchema],
-    queryFn: () => getTables(selectedSchema, projectId),
-    enabled: Boolean(selectedSchema)
-  })
-
   const { data: columns } = useQuery({
     queryKey: ["columns", projectId, selectedSchema, selectedTable],
     queryFn: () => getCols(selectedSchema, projectId, selectedTable),
     enabled: Boolean(selectedSchema) && Boolean(selectedTable)
   })
+
+  const valueLabel = (inp: DATA_TYPES | EnumType): string => {
+    console.log("@D: ", inp)
+
+    const pro = DTypes.find(d => d.dtype === inp)
+
+    if (pro) {
+      return pro.dtype 
+    } else {
+      if (typeof inp === "object") {
+        return (inp as EnumType).enum_name
+      } else {
+        return (inp as string).split(".")[1].slice(1, -1)
+      }
+
+    }
+  };
 
   function deleteColumn(idx: number) {
     setFkeyCols((prev) => {
@@ -90,7 +105,7 @@ export default function EditFkeySheet({
   }
 
   function getReferenceeMeta(
-    columns: { name: string; dtype: DATA_TYPES; }[] | undefined,
+    columns: { name: string; dtype: DATA_TYPES | EnumType; }[] | undefined,
     referenceeColumn: string
   ) {
     const col = columns?.find((c) => c.name === referenceeColumn);
@@ -105,11 +120,11 @@ export default function EditFkeySheet({
       onOpenChange={onOpenChange}
       disabled={JSON.stringify({ columns, updateAction, delAction }) === JSON.stringify(editingFkey)}
       onSubmit={() => {
-        setFkeys(prev => {
-          const next = [...prev];
-          next.splice(index!, 1, { cols: fkeyCols, update_action: updateAction, delete_action: delAction });
-          return next;
-        });
+        updateFkey(index, {
+          cols: fkeyCols,
+          update_action: updateAction,
+          delete_action: delAction
+        })
 
         onOpenChange(false)
       }
@@ -120,37 +135,15 @@ export default function EditFkeySheet({
       sheetContentClassname="z-250 sm:max-w-md"
     >
       <div className="flex flex-col gap-2">
-        <h1>Select schema</h1>
+        <h1>Select Table</h1>
 
-        <SheetSchemaSelect 
-          onValueChange={setSelectedSchema}
-          value={selectedSchema}
-          projectId={projectId}
+        <TableSelectSheet
+          schema={selectedSchema}
+          table={selectedTable}
+          setSchema={setSelectedSchema}
+          setTable={setSelectedTable}
+          tables={tables}
         />
-      </div>
-
-      <div className={`${!selectedSchema && "hidden"} flex flex-col gap-2`}>
-        <h1>Select table</h1>
-
-
-        <Select value={selectedTable} onValueChange={setSelectedTable}>
-          <SelectTrigger className="fullwidth">
-            <SelectValue placeholder="select a table..."/>
-          </SelectTrigger>
-
-          <SelectContent className="z-500">
-            {tables && tables.map(s => (
-              <SelectItem
-                className="flex items-center gap-2" 
-                key={s} 
-                value={s}
-              >
-                <Table2Icon className="w-6 h-6"/>
-                <h2 className="font-semibold text-lg">{s}</h2>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <div className={`${!selectedTable && "hidden"} flex flex-col gap-1`}>
@@ -200,7 +193,7 @@ export default function EditFkeySheet({
                         value={c.name}
                       >
                         <h2>{c.name}</h2>
-                        <p className="text-muted-foreground">{c.dtype}</p>
+                        <p className="text-muted-foreground">{valueLabel(c.dtype)}</p>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -247,7 +240,7 @@ export default function EditFkeySheet({
                         return matching.map((col) => (
                           <SelectItem className="flex items-center gap-2" key={col.name} value={col.name}>
                             <h2>{col.name}</h2>
-                            <p className="text-muted-foreground">{col.dtype}</p>
+                            <p className="text-muted-foreground">{valueLabel(col.dtype)}</p>
                           </SelectItem>
                         ));
                       })()}

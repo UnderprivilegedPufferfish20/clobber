@@ -2,11 +2,10 @@
 
 import { useMemo, useEffect, useState, useRef } from "react";
 import { useSelectedSchema } from "@/hooks/useSelectedSchema";
-import { ColumnType, DATA_EXPORT_FORMATS, EnumType, JsonNodeData, TableType as SchemaEditorTable } from "@/lib/types";
+import { ColumnType, DATA_EXPORT_FORMATS, DATA_TYPES, EnumType, JsonNodeData, TableType as SchemaEditorTable } from "@/lib/types";
 import {
   Background,
   BackgroundVariant,
-  Controls,
   Edge,
   MiniMap,
   ReactFlow,
@@ -37,6 +36,7 @@ import EditTableSheet from "./sheets/EditTableSheet";
 import { getTableSchema } from "@/lib/actions/database/tables/cache-actions";
 import { deleteTable, duplicateTable, exportTableData } from "@/lib/actions/database/tables";
 import TextInputDialog from "@/components/TextInputDialog";
+import { DTypes } from "@/lib/constants";
 import '@xyflow/react/dist/style.css';
 
 
@@ -46,13 +46,17 @@ const SchemaEditorPage = ({
   projectId,
   schemas,
   current_schema,
-  enums
+  enums,
+  tables
 }: {
   projectId: string,
   schemas: string[],
   current_schema: (SchemaEditorTable & {x?: number, y?: number})[];
-  enums: EnumType[]
+  enums: EnumType[],
+  tables: Record<string, string[]>
 }) => {
+
+
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -146,7 +150,7 @@ const SchemaEditorPage = ({
   // Inside SchemaEditorPage component, before the return statement
   const nodeTypes = useMemo(() => ({
     json: (props: NodeProps<Node<JsonNodeData>>) => (
-      <TableNode {...props} enums={enums} />   // ← enums comes from wherever you define it
+      <TableNode {...props} enums={enums} tables={tables} />   // ← enums comes from wherever you define it
     ),
   }), [enums]); // add enums to deps if it can change
 
@@ -219,6 +223,7 @@ const SchemaEditorPage = ({
       </div>
 
       <AddTableSheet
+        tables={tables}
         enums={enums} 
         open={isAddTableSheetOpen}
         onOpenChange={setIsAddTableSheetOpen}
@@ -257,6 +262,21 @@ function TableColumn({
   })
 
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
+
+  const valueLabel = (inp: DATA_TYPES | EnumType): string => {
+    const pro = DTypes.find(d => d.dtype === inp)
+
+    if (pro) {
+      return pro.dtype 
+    } else {
+      if (typeof inp === "object") {
+        return (inp as EnumType).enum_name
+      } else {
+        return (inp as string).split(".")[1].slice(1, -1)
+      }
+
+    }
+  };
   
 
   return (
@@ -309,7 +329,9 @@ function TableColumn({
             <h2 className={`text-base ${column.is_pkey && "font-extrabold"}`}>{column.name}</h2>
           </div>
 
-          <p className="text-muted-foreground text-sm">{column.is_array ? `${column.dtype}[]` : column.dtype}</p>
+          <p className="text-muted-foreground text-sm">
+            {column.is_array ? `${valueLabel(column.dtype)}[]` : valueLabel(column.dtype)}
+          </p>
 
           <Handle
             type="source"
@@ -361,9 +383,10 @@ function TableColumn({
 
 type TableNodeProps = NodeProps<Node<JsonNodeData>> & {
   enums: EnumType[];
+  tables: Record<string, string[]>
 };
 
-function TableNode({ data, enums }: TableNodeProps) {
+function TableNode({ data, enums, tables }: TableNodeProps) {
   const [schema, tableName] = data.title.split(".");
 
   const searchParams = useSearchParams();
@@ -584,6 +607,7 @@ function TableNode({ data, enums }: TableNodeProps) {
       </TooltipProvider>
       
       <EditTableSheet
+        tables={tables}
         enums={enums} 
         onOpenChange={setEditTableSheetOpen}
         open={editTableSheetOpen}
