@@ -61,3 +61,99 @@ export async function createBucket(
 
   return result.rows[0] as FileStorageBucket
 }
+
+export async function deleteBucket(
+  project_id: string,
+  name: string,
+  id: string
+) {
+  const bucket = getBucket()
+  if (!bucket) throw new Error("Cannot connect to bucket");
+
+  const project = await getProjectById(project_id)
+  if (!project) throw new Error("Project not found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  })
+
+
+
+await bucket.deleteFiles({ prefix: `${project_id}/${name}` })
+
+  await pool.query(`
+    DELETE
+    FROM
+      "storage"."buckets"
+    WHERE
+      "id" = '${id}';  
+  `)
+
+  revalidateTag(t("buckets", project_id), "max")
+}
+
+export async function editBucket(
+  project_id: string,
+  id: string,
+  oldBucket: z.infer<typeof createFileBucketSchema>,
+  newBucket: z.infer<typeof createFileBucketSchema>
+) {
+
+  const project = await getProjectById(project_id)
+  if (!project) throw new Error("Project not found");
+
+  const pool = await getTenantPool({
+    connectionName: process.env.CLOUD_SQL_CONNECTION_NAME!,
+    user: project.db_user,
+    password: project.db_pwd,
+    database: project.db_name
+  })
+
+
+
+  const alterStatement = `UPDATE "storage"."buckets"`
+  const otherStatements = []
+
+
+  otherStatements.push(`
+    "allowed_types" = ${
+      newBucket.allowed_types && newBucket.allowed_types.length > 0   
+      ? `ARRAY[${newBucket.allowed_types.map(t => `'${t}'`).join(", ")}]`
+      : "NULL"
+    }
+  `)
+  
+
+  if (oldBucket.is_public !== newBucket.is_public) {
+    otherStatements.push(`
+      "is_public" = ${newBucket.is_public ? "TRUE" : "FALSE"}
+    `)
+  }
+
+  if (oldBucket.file_size_limit !== newBucket.file_size_limit) {
+    otherStatements.push(`
+      "size_lim_bytes" = ${
+        newBucket.file_size_limit && newBucket.file_size_limit !== BigInt(0)
+          ? newBucket.file_size_limit 
+          : "NULL"
+      }
+    `)
+  }
+
+  const q = `
+    ${alterStatement} \n
+    SET
+      ${otherStatements.join(", \n")}
+    WHERE
+      "id" = '${id}';
+  `
+
+  console.log("@UPDATE BUCKET QUERY: ", q)
+
+  await pool.query(q)
+
+  revalidateTag(t("buckets", project_id), "max")
+}

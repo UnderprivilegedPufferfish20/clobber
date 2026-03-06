@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
   DATA_TYPES,
+  EnumType,
   FileObject,
   FilterConfig,
   FilterOperator,
@@ -108,7 +109,8 @@ const DATETIME_LIKE = new Set<DATA_TYPES>([
 ]);
 
 /** Prefer casts that accept plain literals cleanly. */
-export function getPostgresCast(dataType: DATA_TYPES): string {
+export function getPostgresCast(dataType: DATA_TYPES | EnumType): string {
+
   if (INT_LIKE.has(dataType)) return "::bigint"; // works for all ints/serials
   if (FLOAT_LIKE.has(dataType)) return "::numeric";
   if (BOOL_LIKE.has(dataType)) return "::boolean";
@@ -373,7 +375,7 @@ export const glassCard = "block";
 
 export function buildWhereClause(
   filters: FilterConfig[],
-  columnTypes: Map<string, DATA_TYPES>
+  columnTypes: Map<string, DATA_TYPES | EnumType>
 ): {
   whereClause: string;
   errors: Record<string, string>;

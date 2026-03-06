@@ -2,8 +2,7 @@
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ArrowDown, ArrowLeftIcon, ArrowRightIcon, ArrowUp, ArrowUpDown, Columns3CogIcon, CopyIcon, CurlyBracesIcon, DotIcon, DownloadIcon, EditIcon, EllipsisIcon, EllipsisVerticalIcon, ExpandIcon, FileJson, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, FilterIcon, Grid2x2XIcon, ListOrderedIcon, Maximize2Icon, PlusIcon, RefreshCwIcon, SquareDashedTopSolidIcon, TextIcon, Trash2Icon, XIcon } from "lucide-react";
-import {  ChangeEvent, Dispatch, SetStateAction, use, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from 'react-dom'
+import {  ChangeEvent, Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { ALIAS_TO_ENUM, OP_TO_LABEL, OP_TO_TOKEN, parseFiltersParam, stringifyFilters } from "@/lib/utils";
 import { ColumnSortType, ColumnType, DATA_EXPORT_FORMATS, FilterConfig, FilterOperator } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { addRow, deleteRow, deleteSelectedRows, downloadSelectedRows, editRow } from "@/lib/actions/database/tables";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import SheetWrapper from "./SheetWrapper";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
@@ -694,7 +692,6 @@ export default function DataViewer<T>({
                     const isSelected = selectedRows.has(id);
 
                     return (
-                      <TooltipProvider key={row.ctid} delayDuration={5000}>
                         <div key={row.ctid} className="flex flex-1 group justify max-h-10 last:border-b-2">
                           {/* left "row number / checkbox" cell */}
                           <div className="pl-2 border-b border-r h-10 w-14 flex items-center gap-2 group group-hover:bg-neutral-800">
@@ -753,6 +750,7 @@ export default function DataViewer<T>({
 
                             return (
                               <div
+                                key={i}
                                 className={[
                                   "border-b",
                                   i === 0 ? "border-l-0" : "border-l",
@@ -829,7 +827,6 @@ export default function DataViewer<T>({
                             </DropdownMenu>
                           </div>
                         </div>
-                      </TooltipProvider>
                     );
                   })}
                 </div>

@@ -1,6 +1,6 @@
 "use cache";
 
-import { ColumnSortType, DATA_TYPES, FilterConfig } from "@/lib/types";
+import { ColumnSortType, DATA_TYPES, EnumType, FilterConfig } from "@/lib/types";
 import { t, buildWhereClause } from "@/lib/utils";
 import { cacheTag } from "next/cache";
 import { getProjectById } from "../cache-actions";
@@ -36,7 +36,7 @@ export async function getTableData<T>(
 
 
 
-  const columnTypes = new Map<string, DATA_TYPES>();
+  const columnTypes = new Map<string, DATA_TYPES | EnumType>();
   for (const col of columns) {
     columnTypes.set(col.name, col.dtype);
   }

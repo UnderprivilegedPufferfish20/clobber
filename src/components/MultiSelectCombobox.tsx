@@ -73,31 +73,37 @@ export function MultiSelectCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="min-h-10 h-auto w-full justify-between px-3 py-2 font-normal"
+          className="min-h-10 h-auto w-full justify-between px-3 py-2 font-normal truncate"
         >
-          <div className="flex flex-wrap gap-1 flex-1 min-w-0">
+          <div className="flex flex-wrap gap-1 flex-1 min-w-0 truncate">
             {value.length === 0 ? (
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-foreground truncate">{placeholder}</span>
             ) : (
               value.map((v) => (
                 <Badge
                   key={v}
                   variant="outline"
-                  className="flex items-center gap-1 pr-1 rounded-md!"
+                  className="flex items-center gap-1 pr-1 rounded-md! max-w-sm "
                 >
-                  {v}
+                  <span className="truncate">
+                    {v}
+                  </span>
+                  
                   <span
                     role="button"
                     tabIndex={0}
-                    
+                    onPointerDown={e => {
+                      e.stopPropagation()
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      remove(v, e)
+                    }}
                     onKeyDown={(e) => e.key === "Enter" && remove(v, e)}
                     className="rounded-full hover:bg-muted cursor-pointer p-0.5"
                     aria-label={`Remove ${v}`}
                   >
-                    <X 
-                      className="h-3 w-3"
-                      onClick={(e) => remove(v, e)}
-                    />
+                    <X className="h-3 w-3" />
                   </span>
                 </Badge>
               ))
@@ -109,14 +115,16 @@ export function MultiSelectCombobox({
               <span
                 role="button"
                 tabIndex={0}
-                
+                onPointerDown={e => {
+                  e.stopPropagation()
+                }}
+                onClick={clearAll} 
                 onKeyDown={(e) => e.key === "Enter" && clearAll(e)}
                 className="rounded-full hover:bg-muted p-0.5 cursor-pointer"
                 aria-label="Clear all"
               >
                 <X 
                   className="h-4 w-4 text-muted-foreground"
-                  onClick={clearAll} 
                 />
               </span>
             )}

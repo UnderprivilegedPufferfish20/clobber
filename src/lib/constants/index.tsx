@@ -357,3 +357,80 @@ export const INDEX_SEARCH_METHOD_OPTIONS: { label: string, description: string, 
     icon: ListCollapseIcon
   }
 ]
+
+export const FILE_FORMATS = [
+  // Application & Documents
+  "application/pdf",
+  "application/json",
+  "application/ld+json",
+  "application/xml",
+  "application/zip",
+  "application/x-7z-compressed",
+  "application/x-rar-compressed",
+  "application/x-tar",
+  "application/gzip",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/rtf",
+  "application/epub+zip",
+  "application/vnd.amazon.ebook",
+  "application/octet-stream",
+  "application/x-shockwave-flash",
+  "application/java-archive",
+  "application/vnd.apple.installer+xml",
+  "application/vnd.oasis.opendocument.presentation",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "application/vnd.oasis.opendocument.text",
+
+  // Text & Code
+  "text/plain",
+  "text/html",
+  "text/css",
+  "text/javascript",
+  "text/csv",
+  "text/markdown",
+  "text/calendar",
+  "text/xml",
+  "application/xhtml+xml",
+  "application/manifest+json",
+
+  // Images
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  "image/avif",
+  "image/apng",
+  "image/bmp",
+  "image/tiff",
+  "image/vnd.microsoft.icon",
+
+  // Audio
+  "audio/mpeg",
+  "audio/wav",
+  "audio/ogg",
+  "audio/aac",
+  "audio/midi",
+  "audio/webm",
+  "audio/opus",
+  "audio/flac",
+
+  // Video
+  "video/mp4",
+  "video/webm",
+  "video/ogg",
+  "video/mpeg",
+  "video/x-msvideo",
+  "video/quicktime",
+
+  // Fonts
+  "font/woff",
+  "font/woff2",
+  "font/ttf",
+  "font/otf"
+];

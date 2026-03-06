@@ -5,7 +5,7 @@ import { getTableData, getTables } from "@/lib/actions/database/tables/cache-act
 import DataViewer from "@/components/DataViewer"
 import BackHeader from "./_components/BackHeader"
 import { getEnums } from "@/lib/actions/database/enums/cache-actions"
-import { EnumType } from "@/lib/types"
+import { ColumnSortType, EnumType } from "@/lib/types"
 
 export default async function page({ params, searchParams }: PageProps<"/proj/[projectId]/database">) {
   const p = await params
@@ -34,18 +34,13 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
   };
 
   const filterFromUrl = sp['filter'] as string ?? ""
-
   const sortStr = sp["sort"] as string || "";
-  let sortColumn: string | undefined;
-  let sortDir: "ASC" | "DESC" | undefined;
-  if (sortStr) {
-    const [col, dir] = sortStr.split(":");
-    sortColumn = col;
-    sortDir = dir as "ASC" | "DESC";
-  }
+  
+  const sortObj: ColumnSortType[] = sortStr.split(";").map(s => {
+    return { column: s.split(":")[0], dir: s.split(":")[1] as "ASC" | "DESC" }
+  })
 
-  const sortObj = sortColumn && sortDir ? { column: sortColumn, direction: sortDir } : undefined
-
+ 
   const filters = parseFiltersParam(filterFromUrl)
 
 
@@ -78,7 +73,6 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
     offset,
     filters,
     `${schema}-${table}`,
-    // @ts-ignore
     sortObj
   ) : null
   const queryTimeMs = performance.now() - start;
@@ -97,7 +91,6 @@ export default async function page({ params, searchParams }: PageProps<"/proj/[p
             projectId={p.projectId}
             schema={schema}
             timeMs={queryTimeMs}
-
           />
         </div>
       ) : (
