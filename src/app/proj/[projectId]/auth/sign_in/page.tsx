@@ -1,18 +1,17 @@
-import { get_sso_providers } from '@/lib/actions/auth/cache-actions'
-import OAuthProviderCard from './_components/OAuthProviderCard'
-import AuthSignInPage from './_components/AuthSignInPage'
+"use client";
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
-const page = async ({ params }: PageProps<"/proj/[projectId]/auth/sign_in">) => {
+const page = () => {
 
-  const p = await params
+  
 
-  const providers = await get_sso_providers(p.projectId)
+  const pathname = usePathname()
+  const router = useRouter()
 
-  const enabled_options = providers.filter(p => p.enabled)
-  const disabled_options = providers.filter(p => !p.enabled)
-
-
-  return <AuthSignInPage enabled_options={enabled_options} disabled_options={disabled_options}/>
+  useEffect(() => {
+    router.push(`${pathname}/email`)
+  })
 }
 
 

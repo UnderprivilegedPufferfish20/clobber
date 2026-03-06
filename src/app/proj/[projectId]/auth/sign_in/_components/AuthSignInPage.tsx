@@ -14,7 +14,7 @@ const AuthSignInPage = ({
   return (
     <div className='py-2 px-8 flex flex-col gap-4 fullscreen flex-1'>
       <div className='flex flex-col gap-2'>
-        <h1 className='text-2xl font-semibold'>Enabled</h1>
+        <h1 className='text-xl font-semibold'>Enabled</h1>
         <div className='flex gap-2 items-center flex-wrap'>
           {enabled_options.length > 0 ? (
             <>
@@ -30,7 +30,7 @@ const AuthSignInPage = ({
         </div>
       </div>
       <div className='flex flex-col gap-2'>
-        <h1 className='text-2xl font-semibold'>Disabled</h1>
+        <h1 className='text-xl font-semibold'>Disabled</h1>
         <div className='flex gap-2 items-center flex-wrap'>
           {disabled_options.length > 0 ? (
             <>

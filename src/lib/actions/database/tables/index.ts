@@ -278,7 +278,8 @@ export async function updateTable(
   deletedFkeys: string[],
   newFkeys: string[]
 ) {
-
+  
+  console.log("@NEW FKEYS: ", newFkeys)
 
   const user = await getUser();
   if (!user) throw new Error("No user");
@@ -329,7 +330,7 @@ export async function updateTable(
 
   const fkeyDeduped = [...fkeyMap.values()].filter(({ old, new: news }) => fkeyChanged(old, news));
 
-
+  console.log("@FILTERED FKEYS: ", fkeyDeduped)
 
   try {
     for (const { old, new: neu } of deduped) {

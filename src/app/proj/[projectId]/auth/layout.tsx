@@ -1,6 +1,7 @@
 import { Separator } from "@/components/ui/separator";
 import { ReactNode } from "react";
 import AuthNavbar from "./_components/navbar";
+import Sidebar from "./_components/Sidebar";
 
 export default function AuthPageLayout(
   { children }: PageProps<"/proj/[projectId]/database"> & {

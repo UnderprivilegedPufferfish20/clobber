@@ -115,6 +115,9 @@ function EditTableSheet({
       setUpdatedColumns([]);
       setDeletedCols([]);
       setNewCols([]);
+      setNewFkeys([])
+      setUpdatedFkeys([])
+      setDeletedFkeys([])
     },
     onMutate() {
       toast.loading("Updating Table...", { id: "edit-table" });
@@ -124,6 +127,9 @@ function EditTableSheet({
       setUpdatedColumns([]);
       setDeletedCols([]);
       setNewCols([]);
+      setNewFkeys([])
+      setUpdatedFkeys([])
+      setDeletedFkeys([])
     }
   });
 
@@ -195,7 +201,7 @@ function EditTableSheet({
     if (newFkeysSet.has(JSON.stringify(fkeys[idx]))) {
       const indexOfUpdated = newFkeys.indexOf(newFkeys.find(nc => JSON.stringify(fkeys[idx]) === nc)!)
       newFkeys[indexOfUpdated] = JSON.stringify({ ...JSON.parse(newFkeys[indexOfUpdated]), ...patch })
-      setNewCols([...newFkeys])
+      setNewFkeys([...newFkeys])
     }
 
     setFkeys((prev) =>
@@ -204,9 +210,11 @@ function EditTableSheet({
   }
 
   function deleteFkey(idx: number) {
-    if (originalFkeysStringsSet.has(JSON.stringify(fkeys[idx])) || updatedFkeysNews.has(JSON.stringify(fkeys[idx]))) {
-      setDeletedFkeys(p => Array.from(new Set([...p, JSON.stringify(fkeys[idx])])))
-    } else if (newFkeysSet.has(JSON.stringify(fkeys[idx]))) {
+    
+    setDeletedFkeys(p => Array.from(new Set([...p, JSON.stringify(fkeys[idx])])))
+    
+  
+    if (newFkeysSet.has(JSON.stringify(fkeys[idx]))) {
       setNewFkeys(p => p.filter(nc => nc !== JSON.stringify(fkeys[idx])))
     }
   }
@@ -243,6 +251,9 @@ function EditTableSheet({
       setUpdatedColumns([]);
       setDeletedCols([]);
       setNewCols([]);
+      setNewFkeys([])
+      setUpdatedFkeys([])
+      setDeletedFkeys([])
     }
   }, [open, table]);
 
@@ -484,6 +495,7 @@ function EditTableSheet({
                       <Button
                         variant={"outline"}
                         onClick={() => {
+                          console.log("@DELETED FKEYS: ", deletedFkeys)
                           setDeletedFkeys(p => p.filter(f => f !== JSON.stringify(fkey)))
                         }}
                       >

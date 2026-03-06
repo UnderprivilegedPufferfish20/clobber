@@ -174,7 +174,7 @@ export default function AddFkeySheet({
           {fkeyCols.map((c, idx) => {
 
             return (
-              <div className="flex items-center gap-2 fullwidth justify-between">
+              <div key={idx} className="flex items-center gap-2 fullwidth justify-between">
                 <Select
                   value={c.referencor_column}
                   onValueChange={(v) => {
