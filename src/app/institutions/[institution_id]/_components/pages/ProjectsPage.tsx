@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { get_institution_by_id } from '@/lib/actions/database/cache-actions';
 import { cn } from '@/lib/utils';
 import { Project } from '@prisma/client';
-import { DatabaseZapIcon, InboxIcon, PlusIcon } from 'lucide-react';
+import { DatabaseZapIcon, InboxIcon, PlusIcon, Search } from 'lucide-react';
 import Link from 'next/link';
-import React, { Fragment, useState } from 'react'
+import React, { Fragment, useMemo, useState } from 'react'
 
 const ProjectsPage = ({
   inst
@@ -20,58 +20,92 @@ const ProjectsPage = ({
   const [searchStr, setSearchStr] = useState("")
   const [isCreatProjectOpen, setIsCreateProjectOpen] = useState(false)
 
+  const filteredProjects = useMemo(() => {
+    return inst.projects.filter(p => p.name.toLowerCase().includes(searchStr.toLowerCase()))
+  }, [searchStr])
+
+  const isNoData = filteredProjects.length === 0;
+  const isSearchActive = !!searchStr.trim();
+
   return (
     <>
-      <div className="fullscreen flex flex-col gap-8 overflow-y-scroll hide-scrollbar">
-        <div className="flex flex-col gap-2 p-2">
-
-          <div className='flex flex-col gap-4'>
-            <h1 className='text-2xl font-bold p-2 mb-8'>Projects</h1>
-            <div className='fullwidth flex items-center justify-between p-2 mb-2'>
+      <div className="fullscreen flex flex-col gap-6 overflow-y-scroll hide-scrollbar">
+        <div className='flex flex-col gap-4'>
+          <h1 className='text-2xl font-bold p-2 mb-8'>Projects</h1>
+          <div className='fullwidth flex items-center justify-between p-2'>
+            <div className='relative'>
               <Input 
+                disabled={isNoData}
                 placeholder="Search for project..."
                 value={searchStr}
                 className='w-md min-w-md max-w-md'
                 onChange={e => setSearchStr(e.target.value)}
               />
 
-              <Button
-                className='flex items-center gap-2'
-                variant={"default"}
-                onClick={() => setIsCreateProjectOpen(true)}
-              >
-                <PlusIcon className='w-5 h-5'/>
-                Create Project
-              </Button>
-              
+              {isSearchActive && (
+                <p className='absolute left-0 -bottom-7 pl-1 text-sm text-muted-foreground'>
+                  {filteredProjects.length} results
+                </p>
+              )}
             </div>
+
+            <Button
+              className='flex items-center gap-2'
+              variant={"default"}
+              onClick={() => setIsCreateProjectOpen(true)}
+            >
+              <PlusIcon className='w-5 h-5'/>
+              Create Project
+            </Button>
+            
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 p-2">
-          <div className="flex flex-wrap gap-2 p-2">
-            {inst.projects.length > 0 ? (
-              <Fragment>
-                {inst.projects.map(i => (
-                  <Card
-                    key={i.id}
-                    {...i}
-                  />
-                ))}
-              </Fragment>
-            ) : (
-              <div className='flex items-center justify-center text-muted-foreground mx-auto p-4'>
-                <div className='flex items-center flex-col gap-2'>
-                  <InboxIcon className='w-16 h-16'/>
-
-                  <p>No projects</p>
-
-                </div>
+        
+        
+          {isNoData && isSearchActive ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+              <Search size={72} className="text-muted-foreground" />
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold">No matches</h2>
+                <p className="text-muted-foreground text-sm">
+                  No projects match “{searchStr.trim()}”.
+                </p>
               </div>
-            )}
-          </div>
+              <Button
+                onClick={() => setSearchStr("")}
+              >
+                Clear Search
+              </Button>
+            </div>
+          ) : isNoData ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
+              <InboxIcon size={96} className="text-muted-foreground" />
+              <div className="space-y-1">
+                <h2 className="text-2xl font-semibold">No projects</h2>
+                <p className="text-muted-foreground text-sm">
+                  Create project
+                </p>
+              </div>
+
+              <Button
+                onClick={() => setIsCreateProjectOpen(true)}
+                variant={"default"}
+              >
+                Create project
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 p-2">
+              {filteredProjects.map(p => (
+                <Card 
+                  {...p}
+                  key={p.id}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </div>
 
       <CreateProjectDialog 
         open={isCreatProjectOpen}

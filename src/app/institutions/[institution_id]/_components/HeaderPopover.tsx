@@ -62,7 +62,7 @@ const HeaderPopover = ({
                     view === 'my' ? 'bg-white shadow-sm font-medium dark:text-black' : 'text-muted-foreground'
                   )}
                 >
-                  My Projects
+                  My Institutions
                 </button>
                 <button
                   onClick={() => setView('shared')}

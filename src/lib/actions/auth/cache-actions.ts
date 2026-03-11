@@ -4,7 +4,7 @@ import { cacheTag } from "next/cache";
 import { getProjectById } from "../database/cache-actions";
 import { getTenantPool } from "../database/tennantPool";
 import { t } from "@/lib/utils";
-import { OauthSSOProvider, PolicyType, TablePolicy } from "@/lib/types";
+import { OauthSSOProvider, TablePolicy } from "@/lib/types";
 import prisma from "@/lib/db";
 
 export async function get_sso_providers(
@@ -64,9 +64,8 @@ export async function get_sso_providers(
 }
 
 export async function getUserById(id: string) {
-  cacheTag(t("user", id))
 
-  console.log("@USER ID: ", id)
+  cacheTag(t("user", id))
 
   return await prisma.user.findUnique(
     {
@@ -74,6 +73,7 @@ export async function getUserById(id: string) {
       include: { 
         ownedInstitutions: { 
           include: { 
+            
             _count: {
               select: {projects: true}
             }
@@ -134,3 +134,4 @@ export async function get_policies(
 
   return result.rows as TablePolicy[]
 }
+

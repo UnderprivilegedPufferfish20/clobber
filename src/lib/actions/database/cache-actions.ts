@@ -14,8 +14,8 @@ export async function getProjectById(id: string) {
       id,
     },
     include: {
-      collaborators: true,
-      owner: true,
+      
+      institution: true,
     }
   })
 }

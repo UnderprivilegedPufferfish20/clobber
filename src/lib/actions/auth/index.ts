@@ -6,11 +6,12 @@ import { t } from "@/lib/utils";
 import { User } from "@prisma/client";
 import { cacheTag, revalidateTag } from "next/cache";
 import { cookies } from "next/headers"
-import { getProjectById } from "../database/cache-actions";
+import { get_institution_by_id, getProjectById } from "../database/cache-actions";
 import { getTenantPool } from "../database/tennantPool";
 import {z} from 'zod'
 import { createPolicySchema } from "@/lib/types/schemas";
 import { getRoles } from "../database/roles/cache-actions";
+import { getUserById } from "./cache-actions";
 
 export async function getUser(): Promise<User | null> {
   try {
@@ -226,4 +227,42 @@ export async function update_policy(
     roles: newPolicy.target_roles,
     table
   })
+}
+
+export async function can_user_access_project(
+  user_id: string,
+  project_id: string
+): Promise<boolean> {
+
+
+  const user = await getUserById(user_id);
+
+  if (!user) throw new Error("user doesn't exist");
+
+  await Promise.all(
+    user.ownedInstitutions.map(async i => {
+      const inst = await get_institution_by_id(i.id);
+
+      if (!inst) throw new Error("Institution not found");
+
+      const project_id_set = new Set(inst.projects.map(p => p.id))
+
+      if (project_id_set.has(project_id)) return true;
+    })
+  )
+
+  await Promise.all(
+    user.collaborator.map(async i => {
+      const inst = await get_institution_by_id(i.id);
+
+      if (!inst) throw new Error("Institution not found");
+
+      const project_id_set = new Set(inst.projects.map(p => p.id))
+
+      if (project_id_set.has(project_id)) return true;
+    })
+  )
+
+  return false
+
 }

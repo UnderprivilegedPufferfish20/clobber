@@ -1,4 +1,4 @@
-import { getUser } from '@/lib/actions/auth'
+import { can_user_access_project, getUser } from '@/lib/actions/auth'
 import { redirect } from 'next/navigation'
 import InviteUsersDialog from './_components/InviteDialog'
 import { Separator } from '@/components/ui/separator'
@@ -16,16 +16,16 @@ const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
 
   if (!project) throw new Error("Project not found");
 
-  const user = await getUser()
+  const u = await getUser()
 
-  if (!user) {
+  if (!u) {
     console.log("User not found")
     redirect('/')
   };
 
-  const usersProjects = (await getUserById(user.id))?.projects
+  const user = await getUserById(u.id)
 
-  if (!usersProjects?.some(p => p.id === project.id) && !project.collaborators.some(c => c.id == user.id)) {
+  if (!can_user_access_project(u.id, projectId)) {
     console.log("User did not own project or isn't invited")
     redirect('/')
   }

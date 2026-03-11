@@ -14,7 +14,7 @@ const Logo = ({
 }) => {
   return (
     <Link
-      href='/'
+      href='/institutions'
       className={cn(
         "flex items-center space-x-2",
         fontSize

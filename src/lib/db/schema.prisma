@@ -7,37 +7,37 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  name           String
-  pfpUrl         String
-  ownedInstitutions   Institution[] @relation("owned")
-  collaborator Institution[]
+  id                String        @id @default(uuid())
+  email             String        @unique
+  name              String
+  pfpUrl            String
+  ownedInstitutions Institution[] @relation("owned")
+  collaborator      Institution[] @relation("InstitutionToUser")
 }
 
 model Institution {
-  id String @id @default(uuid())
-  ownerId String
-  name String
-  slug String
-  plan String
+  id       String    @id @default(uuid())
+  ownerId  String
+  name     String
+  slug     String
+  plan     String
+  owner    User      @relation("owned", fields: [ownerId], references: [id])
   projects Project[]
-  owner User @relation(fields: [ownerId], references: [id], "owned")
-  members User[]
+  members  User[]    @relation("InstitutionToUser")
 }
 
 model Project {
   id            String      @id @default(uuid())
   name          String
-  institutionId String
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   db_name       String      @unique
   db_pwd        String
   db_user       String      @unique
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
   sqlfolders    SqlFolder[]
   sqlqueries    sql[]
-  institution   Institution @relation(fields: [institutionId], references: [id])
 }
 
 model SqlFolder {

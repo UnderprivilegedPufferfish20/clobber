@@ -9,6 +9,7 @@ import { t, generateProjectPassword } from "@/lib/utils";
 import prisma from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { getProjectById } from "./cache-actions";
+import { redirect } from "next/navigation";
 
 export async function addSchema(projectId: string, form: z.infer<typeof createSchemaScheam>) {
   const user = await getUser()
@@ -225,8 +226,11 @@ export default async function createProject(
 
 }
 
-export async function create_institution(name: string, user_id: string) {
-  await prisma.institution.create({
+export async function create_institution(
+  name: string, 
+  user_id: string
+) {
+  const res = await prisma.institution.create({
     data: {
       name,
       ownerId: user_id,
@@ -234,10 +238,10 @@ export async function create_institution(name: string, user_id: string) {
       slug: `cbdinst_${user_id}`
     }
   })
-
-  console.log("@USER ID: ", user_id)
-
+  
   revalidateTag(t("user", user_id), "max")
+
+  redirect(`/institutions/${res.id}`)
 }
 
 
