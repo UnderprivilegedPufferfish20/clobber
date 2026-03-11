@@ -41,54 +41,54 @@ const RoleCard = ({
         )}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex gap-12 items-center">
             <div className="flex items-center gap-2">
               <UserIcon className="h-6 w-6 text-muted-foreground" />
               <h3 className="font-semibold text-2xl truncate">{name}</h3>
             </div>
+            <div className='flex items-center justify-center gap-6'>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <ScanFaceIcon
+                      className={`${can_login ? activatedClassname : disabledClassname}`}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Can Login
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger>
+                    <UserRoundPlusIcon className={`${can_create_roles ? activatedClassname : disabledClassname}`} />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Can Create Roles
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger>
+                    <LockOpenIcon className={`${can_bypass_rls ? activatedClassname : disabledClassname}`} />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Can Bypass Row Level Security
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger>
+                    <CrownIcon className={`${is_superuser ? activatedClassname : disabledClassname}`} />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Is Superuser (readonly)
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
 
-          <div className='flex items-center justify-center gap-6'>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <ScanFaceIcon
-                    className={`${can_login ? activatedClassname : disabledClassname}`}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  Can Login
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger>
-                  <UserRoundPlusIcon className={`${can_create_roles ? activatedClassname : disabledClassname}`} />
-                </TooltipTrigger>
-                <TooltipContent>
-                  Can Create Roles
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger>
-                  <LockOpenIcon className={`${can_bypass_rls ? activatedClassname : disabledClassname}`} />
-                </TooltipTrigger>
-                <TooltipContent>
-                  Can Bypass Row Level Security
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger>
-                  <CrownIcon className={`${is_superuser ? activatedClassname : disabledClassname}`} />
-                </TooltipTrigger>
-                <TooltipContent>
-                  Is Superuser (readonly)
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -99,7 +99,7 @@ const RoleCard = ({
                 <EllipsisVerticalIcon className='w-4 h-4'/>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align='start'>
+            <DropdownMenuContent align='end'>
               <DropdownMenuItem
                 className='flex items-center gap-2'
                 onClick={() => setIsEditOpen(true)}

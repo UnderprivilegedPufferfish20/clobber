@@ -63,6 +63,34 @@ export async function get_sso_providers(
   return result
 }
 
+export async function getUserById(id: string) {
+  cacheTag(t("user", id))
+
+  console.log("@USER ID: ", id)
+
+  return await prisma.user.findUnique(
+    {
+      where: {id}, 
+      include: { 
+        ownedInstitutions: { 
+          include: { 
+            _count: {
+              select: {projects: true}
+            }
+          } 
+        }, 
+        collaborator: { 
+          include: { 
+            _count: {
+              select: {projects: true}
+            }
+          } 
+        } 
+      }
+    }
+  )
+}
+
 export async function get_policies(
   project_id: string,
   schema: string

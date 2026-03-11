@@ -1,4 +1,4 @@
-import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon, Binary, Braces, Calendar, Camera, Circle, Clock, Cpu, Crosshair, DollarSign, Fingerprint, Hash, Hexagon, Minus, Network, Route, ScrollText, Search, Sigma, Square, TextCursorInput, ToggleRight, ListOrderedIcon, ListIcon, TextSearchIcon, ListCollapseIcon, BracketsIcon, UserLockIcon, MousePointerClickIcon } from "lucide-react";
+import { HomeIcon, DatabaseIcon, CoinsIcon, GitCompareArrows, ShoppingBasketIcon, BarChart3, Boxes, Database, GitBranch, Globe, Headphones, InfinityIcon, ServerCog, Shield, Sparkles, TestTube, Users, Zap, HashIcon, LucideIcon, TypeIcon, ToggleRightIcon, CurlyBracesIcon, BinaryIcon, FolderSymlinkIcon, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileVideo, Presentation, DecimalsArrowLeft, DecimalsArrowLeftIcon, DecimalsArrowRightIcon, CalendarIcon, FingerprintIcon, SquareFunctionIcon, RadioIcon, ReceiptCentIcon, GlobeLockIcon, SendIcon, DoorClosedLockedIcon, DoorOpenIcon, MessageSquareIcon, UsersIcon, SettingsIcon, Binary, Braces, Calendar, Camera, Circle, Clock, Cpu, Crosshair, DollarSign, Fingerprint, Hash, Hexagon, Minus, Network, Route, ScrollText, Search, Sigma, Square, TextCursorInput, ToggleRight, ListOrderedIcon, ListIcon, TextSearchIcon, ListCollapseIcon, BracketsIcon, UserLockIcon, MousePointerClickIcon, BrainCircuitIcon, ChartAreaIcon, BookMarkedIcon } from "lucide-react";
 import { MapIcon, Key, CableIcon, RefreshCcwDotIcon, GitBranchIcon, CogIcon } from "lucide-react";
 import { DATA_TYPES, DataTypeType, INDEX_SEARCH_METHOD } from "../types";
 
@@ -26,6 +26,11 @@ export const SidebarRoutes = [
     label: "Authentication",
     icon: UserLockIcon,
   },
+    {
+    href: "/messaging",
+    label: "Messaging",
+    icon: MessageSquareIcon
+  },
   {
     href: "/functions",
     label: "Edge Functions",
@@ -39,31 +44,27 @@ export const SidebarRoutes = [
 
 
   {
-    href: "/apis",
-    label: "APIs",
-    icon: SendIcon,
+    href: "/agent_editor",
+    label: "Agent Editor",
+    icon: BrainCircuitIcon,
   },
   {
     href: "/gateway",
     label: "LLM Gateway",
     icon: DoorOpenIcon
   },
-  {
-    href: "/messaging",
-    label: "Messaging",
-    icon: MessageSquareIcon
-  },
+
 
 
   {
-    href: "/billing",
-    label: "Billing",
-    icon: ReceiptCentIcon,
+    href: "/logging",
+    label: "Logging",
+    icon: BookMarkedIcon,
   },
   {
-    href: "/people",
-    label: "People",
-    icon: UsersIcon,
+    href: "/metrics",
+    label: "Metrics",
+    icon: ChartAreaIcon,
   },
   {
     href: "/settings",

@@ -38,7 +38,7 @@ export async function addSchema(projectId: string, form: z.infer<typeof createSc
   revalidateTag(t("schemas", projectId), "max")
 }
 
-export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, projectId: string) {
+export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, iid: string, project_id: string) {
     const user = await getUser()
     
     if (!user) {
@@ -65,33 +65,33 @@ export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, p
     if (invitedUser.id === user.id) throw new Error("You're the owner");
 
 
-    const project = await prisma.project.findUnique({
+    const inst = await prisma.institution.findUnique({
         where: {
-            id: projectId
+            id: iid
         },
         include: {
-            collaborators: {
+            members: {
                 select: { id: true }
             }
         }
     })
 
-    if (!project) {
+    if (!inst) {
         throw new Error("Project not found");
     }
 
-    const isAlreadyCollaborator = project.collaborators.some(c => c.id === invitedUser.id);
+    const isAlreadyCollaborator = inst.members.some(c => c.id === invitedUser.id);
     if (isAlreadyCollaborator) {
         throw new Error("User is already a collaborator");
     }
 
     // --- The finished part ---
-    await prisma.project.update({
+    await prisma.institution.update({
         where: {
-            id: projectId
+            id: iid
         },
         data: {
-            collaborators: {
+            members: {
                 connect: {
                     id: invitedUser.id,
                 }
@@ -100,12 +100,13 @@ export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, p
     });
 
 
-    revalidatePath(`/dashboard/projects/${projectId}`); 
+    revalidatePath(`/dashboard/projects/${project_id}`); 
 }
 
 export default async function createProject(
   form: z.infer<typeof createProjectSchema>,
-  ownerId: string
+  ownerId: string,
+  iid: string
 ) {
   console.log('\n🎯 === CREATE PROJECT STARTED ===');
   console.log('Owner ID:', ownerId);
@@ -155,7 +156,7 @@ export default async function createProject(
   console.log('\n📝 Creating Prisma project record...');
   const project = await prisma.project.create({
     data: {
-      ownerId,
+      institutionId: iid,
       name: parsed.data.name,
       db_name: 'PENDING',
       db_user: 'PENDING',
@@ -218,8 +219,25 @@ export default async function createProject(
     
     console.log('❌ === CREATE PROJECT CLEANUP COMPLETED ===\n');
     throw error;
+  } finally {
+    revalidateTag(t("inst", iid), "max")
   }
+
 }
 
+export async function create_institution(name: string, user_id: string) {
+  await prisma.institution.create({
+    data: {
+      name,
+      ownerId: user_id,
+      plan: "Basic",
+      slug: `cbdinst_${user_id}`
+    }
+  })
+
+  console.log("@USER ID: ", user_id)
+
+  revalidateTag(t("user", user_id), "max")
+}
 
 

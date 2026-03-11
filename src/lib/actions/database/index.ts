@@ -10,6 +10,9 @@ import {
  } from '@google-cloud/sql';
 import { getTenantPool } from "./tennantPool";
 import { Pool } from 'pg';
+import prisma from "@/lib/db";
+import { revalidateTag } from "next/cache";
+import { t } from "@/lib/utils";
 
 const projectId = process.env.GCP_PROJECT_ID!;
 const instanceId = process.env.CLOUD_SQL_INSTANCE_ID!;
@@ -437,3 +440,4 @@ export async function applyTenantGrants(opts: {
     throw error;
   }
 }
+

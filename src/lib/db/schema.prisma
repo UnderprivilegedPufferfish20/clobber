@@ -11,23 +11,33 @@ model User {
   email          String    @unique
   name           String
   pfpUrl         String
-  projects       Project[]
-  SharedProjects Project[] @relation("Invited To")
+  ownedInstitutions   Institution[] @relation("owned")
+  collaborator Institution[]
+}
+
+model Institution {
+  id String @id @default(uuid())
+  ownerId String
+  name String
+  slug String
+  plan String
+  projects Project[]
+  owner User @relation(fields: [ownerId], references: [id], "owned")
+  members User[]
 }
 
 model Project {
   id            String      @id @default(uuid())
   name          String
-  ownerId       String
+  institutionId String
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   db_name       String      @unique
   db_pwd        String
   db_user       String      @unique
-  owner         User        @relation(fields: [ownerId], references: [id])
   sqlfolders    SqlFolder[]
   sqlqueries    sql[]
-  collaborators User[]      @relation("Invited To")
+  institution   Institution @relation(fields: [institutionId], references: [id])
 }
 
 model SqlFolder {

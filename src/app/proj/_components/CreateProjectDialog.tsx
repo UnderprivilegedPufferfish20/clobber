@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2, Plus, ServerIcon } from 'lucide-react';
-import React, { useCallback, useState } from 'react'
+import React, { Dispatch, SetStateAction, useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form';
 import {z} from 'zod'
 import {zodResolver} from '@hookform/resolvers/zod'
@@ -26,12 +26,18 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import createProject from '@/lib/actions/database/actions';
 
-const CreateProjectDialog = ({ triggerText }: {triggerText?: string }) => {
+const CreateProjectDialog = ({ 
+  open, 
+  setOpen,
+  inst_id
+}: {
+  open: boolean, 
+  setOpen: Dispatch<SetStateAction<boolean>>,
+  inst_id: string 
+}) => {
   const r = useRouter()
 
   const { user } = useAuth()
-
-  const [open, setOpen] = useState(false);
 
   const form = useForm<z.infer<typeof createProjectSchema>>({
     resolver: zodResolver(createProjectSchema),
@@ -39,7 +45,7 @@ const CreateProjectDialog = ({ triggerText }: {triggerText?: string }) => {
   })
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (form: z.infer<typeof createProjectSchema>) => createProject(form, user.id),
+    mutationFn: (form: z.infer<typeof createProjectSchema>) => createProject(form, user.id, inst_id),
     onSuccess: ({ id }) => {
       toast.success("Project Created", { id:"create-credential" });
       r.push(`/proj/${id}`)
@@ -67,12 +73,6 @@ const CreateProjectDialog = ({ triggerText }: {triggerText?: string }) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild className='w-full'>
-        <div className='flex items-center justify-start'>
-          <Plus size={12} className="mr-2" />
-          <p>{triggerText}</p>
-        </div>
-      </DialogTrigger>
       <DialogContent className='px-0'>
         <CustomDialogHeader 
           icon={ServerIcon}

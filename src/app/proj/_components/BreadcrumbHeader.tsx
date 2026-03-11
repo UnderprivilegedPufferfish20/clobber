@@ -206,7 +206,7 @@ export default function BreadcrumbHeader({ projects, sharedProjects }: Props) {
   );
 }
 
-function ComboboxButton(
+export function ComboboxButton(
   { expanded }: { expanded: boolean }
 ) {
   return (
@@ -244,7 +244,7 @@ function HeaderRouteName<T extends HasName | null>(
   )
 }
 
-function HeaderSeperator() {
+export function HeaderSeperator() {
   return (
     <div className="hidden md:block h-5 w-0.5 bg-black/10 rotate-12 dark:bg-white/20" />
   )

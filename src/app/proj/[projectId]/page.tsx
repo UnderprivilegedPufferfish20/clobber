@@ -1,10 +1,11 @@
-import { getUser, getUserById } from '@/lib/actions/auth'
+import { getUser } from '@/lib/actions/auth'
 import { redirect } from 'next/navigation'
 import InviteUsersDialog from './_components/InviteDialog'
 import { Separator } from '@/components/ui/separator'
 import { getProjectById } from '@/lib/actions/database/cache-actions'
 import { Suspense } from 'react'
 import Loader from '@/components/Loader'
+import { getUserById } from '@/lib/actions/auth/cache-actions'
 
 const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
 

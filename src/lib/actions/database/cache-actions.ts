@@ -268,6 +268,20 @@ export async function getSchema(
   return tablesWithPositions;
 }
 
+export async function get_institution_by_id(id: string) {
+  cacheTag(t("inst", id))
+
+  return await prisma.institution.findUnique({
+    where: {
+      id
+    },
+    include: {
+      projects: true,
+    }
+  })
+}
+
+
 
 
 

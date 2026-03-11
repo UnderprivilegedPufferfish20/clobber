@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '@/lib/db';
-import { getTenantPool } from '@/lib/actions/database/tennantPool';
-import { Project } from '@/lib/db/generated';
-import createProject from '@/lib/actions/database/actions';
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -11,21 +8,6 @@ const client = new OAuth2Client(
   `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
 );
 
-// Optional: quick connectivity smoke test after provisioning
-async function smokeTestProjectDb(project: Project) {
-  const con = process.env.CLOUD_SQL_CONNECTION_NAME
-
-  if (!con) throw new Error("NO CON NAME IN ENV");
-
-  const pool = await getTenantPool({
-    connectionName: con,
-    user: project.db_user,
-    password: project.db_pwd,
-    database: project.db_name,
-  });
-
-  await pool.query('SELECT 1');
-}
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -56,7 +38,6 @@ export async function GET(request: NextRequest) {
       picture: payload.picture,
     };
 
-    // Upsert user
     const dbUser = await prisma.user.upsert({
       where: { id: user.id },
       update: {
@@ -70,31 +51,23 @@ export async function GET(request: NextRequest) {
         name: user.name,
         pfpUrl: user.picture,
       },
-      include: { projects: true },
+      include: { ownedInstitutions: true, collaborator: true },
     });
 
-    let projectId: string;
+    if (dbUser.ownedInstitutions.length === 0 && dbUser.collaborator.length === 0) {
+      const iName = `${dbUser.name.split(' ')[0]}'s Institution`;
 
-    if (dbUser.projects?.length) {
-      // redirect to most recent project
-      const sorted = [...dbUser.projects].sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-      );
-      projectId = sorted[0].id;
-    } else {
-      // create a default project + provision tenant DB/user in the shared Cloud SQL instance
-      const projectName = `${dbUser.name.split(' ')[0]}'s Project`;
-
-      const newProject = await createProject({ name: projectName }, dbUser.id);
-
-      // OPTIONAL: verify the DB is reachable right now (remove if you want faster login)
-      await smokeTestProjectDb(newProject);
-
-      projectId = newProject.id;
+      await prisma.institution.create({
+        data: {
+          name: iName,
+          ownerId: dbUser.id,
+          plan: "Basic",
+          slug: dbUser.id
+        }
+      })
     }
 
-    const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/proj/${projectId}`;
-    const response = NextResponse.redirect(redirectUrl);
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/institutions`);
 
     response.cookies.set('user', JSON.stringify(user), {
       httpOnly: true,

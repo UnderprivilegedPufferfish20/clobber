@@ -88,8 +88,8 @@ const Sidebar = () => {
   let navContent: React.ReactNode[] = [];
     const groups = [
       SidebarRoutes.slice(0, 2),
-      SidebarRoutes.slice(2, 6),
-      SidebarRoutes.slice(6, 9),
+      SidebarRoutes.slice(2, 7),
+      SidebarRoutes.slice(7, 9),
       SidebarRoutes.slice(9, 12),
     ];
     groups.forEach((group, groupIndex) => {

@@ -4,7 +4,7 @@ import prisma from "@/lib/db";
 import { OauthSSOProvider, PolicyType } from "@/lib/types";
 import { t } from "@/lib/utils";
 import { User } from "@prisma/client";
-import { revalidateTag } from "next/cache";
+import { cacheTag, revalidateTag } from "next/cache";
 import { cookies } from "next/headers"
 import { getProjectById } from "../database/cache-actions";
 import { getTenantPool } from "../database/tennantPool";
@@ -45,9 +45,7 @@ export async function getUser(): Promise<User | null> {
   }
 }
 
-export async function getUserById(id: string) {
-  return await prisma.user.findUnique({where: {id}, include: { projects: true   , SharedProjects: true }})
-}
+
 
 export async function update_sso_providor(
   project_id: string,
