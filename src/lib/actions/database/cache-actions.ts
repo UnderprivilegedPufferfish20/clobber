@@ -14,7 +14,6 @@ export async function getProjectById(id: string) {
       id,
     },
     include: {
-      
       institution: true,
     }
   })
@@ -277,6 +276,8 @@ export async function get_institution_by_id(id: string) {
     },
     include: {
       projects: true,
+      members: true,
+      owner: true
     }
   })
 }

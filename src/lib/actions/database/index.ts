@@ -158,154 +158,142 @@ export async function createTenantDatabase(opts: {
       }
     });
 
-    // Grant privileges to the new user
-    await adminPool.query(`GRANT ALL PRIVILEGES ON DATABASE "${dbName}" TO "${dbUser}";`);
-
-    // Create UUID extension
-    await adminPool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
-
-    // Create schemas
-    await adminPool.query('CREATE SCHEMA auth;');
-    await adminPool.query('CREATE SCHEMA vault;');
-    await adminPool.query('CREATE SCHEMA storage;');
-    await adminPool.query('CREATE SCHEMA realtime;');
-
-    // Create tables in storage schema
     await adminPool.query(`
-      CREATE TABLE storage.buckets (
-        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-        name text UNIQUE NOT NULL,
-        project_id text NOT NULL,
-        created_at timestamp with time zone DEFAULT now() NOT NULL,
-        updated_at timestamp with time zone DEFAULT now() NOT NULL,
-        size_lim_bytes BIGINT,
-        allowed_types VARCHAR[],
-        is_public BOOLEAN DEFAULT false
-      );
-    `);
+  -- 1. Database Privileges
+  GRANT ALL PRIVILEGES ON DATABASE "${dbName}" TO "${dbUser}";
 
-    await adminPool.query(`
-      CREATE TABLE storage.objects (
-        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-        name text NOT NULL,
-        bucket_id uuid NOT NULL,
-        metadata jsonb,
-        created_at timestamp with time zone DEFAULT now() NOT NULL,
-        updated_at timestamp with time zone DEFAULT now() NOT NULL,
-        last_accessed_at timestamp with time zone NOT NULL,
-        CONSTRAINT objects_bucket_fkey FOREIGN KEY ("bucket_id") REFERENCES storage.buckets(id)
-      );
+  -- 2. Extensions and Schemas
+  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+  CREATE SCHEMA IF NOT EXISTS auth;
+  CREATE SCHEMA IF NOT EXISTS vault;
+  CREATE SCHEMA IF NOT EXISTS storage;
+  CREATE SCHEMA IF NOT EXISTS realtime;
 
-      -- Custom enum types (fixed syntax with comma-separated values)
-      CREATE TYPE "storage"."VECTOR_INDEX_TYPE" AS ENUM ('DENSE', 'SPARSE');
-      CREATE TYPE "storage"."VECTOR_INDEX_METRIC" AS ENUM ('DOT_PRODUCT', 'EUCLIDEAN', 'COSINE');
+  -- 3. Storage Schema Objects
+  CREATE TABLE storage.buckets (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name text UNIQUE NOT NULL,
+    project_id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    size_lim_bytes BIGINT,
+    allowed_types VARCHAR[],
+    is_public BOOLEAN DEFAULT false
+  );
 
-      -- Indexes table (added missing comma after metric)
-      CREATE TABLE "storage"."indexes" (
-        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-        project_id uuid NOT NULL,
-        namespaces TEXT[],
-        name TEXT NOT NULL,
-        dimensions INTEGER NOT NULL,
-        vector_type "storage"."VECTOR_INDEX_TYPE" NOT NULL,
-        metric "storage"."VECTOR_INDEX_METRIC" NOT NULL,
-        CONSTRAINT unique_project_index_name UNIQUE (project_id, name)
-      );
+  CREATE TABLE storage.objects (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name text NOT NULL,
+    bucket_id uuid NOT NULL,
+    metadata jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_accessed_at timestamp with time zone NOT NULL,
+    CONSTRAINT objects_bucket_fkey FOREIGN KEY ("bucket_id") REFERENCES storage.buckets(id)
+  );
 
-      -- Vectors table (added embedding column, fixed PRIMARY KEY)
-      CREATE TABLE "storage"."vectors" (
-        id TEXT NOT NULL,
-        "namespace" TEXT NOT NULL,
-        "text" TEXT NOT NULL,
-        PRIMARY KEY (id, "namespace")
-      );
-    `);
+  CREATE TYPE storage.VECTOR_INDEX_TYPE AS ENUM ('DENSE', 'SPARSE');
+  CREATE TYPE storage.VECTOR_INDEX_METRIC AS ENUM ('DOT_PRODUCT', 'EUCLIDEAN', 'COSINE');
 
-    // Create table in vault schema
-    await adminPool.query(`
-      CREATE TABLE vault.secrets (
-        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-        name text UNIQUE NOT NULL,
-        value text NOT NULL,
-        created_at timestamp with time zone DEFAULT now() NOT NULL,
-        updated_at timestamp with time zone DEFAULT now() NOT NULL
-      );
-    `);
+  CREATE TABLE storage.indexes (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id uuid NOT NULL,
+    namespaces TEXT[],
+    name TEXT NOT NULL,
+    dimensions INTEGER NOT NULL,
+    vector_type storage.VECTOR_INDEX_TYPE NOT NULL,
+    metric storage.VECTOR_INDEX_METRIC NOT NULL,
+    CONSTRAINT unique_project_index_name UNIQUE (project_id, name)
+  );
 
-    await adminPool.query(`
-      CREATE TABLE "auth"."users" (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      project_id TEXT NOT NULL,
-      email TEXT,
-      encrypted_password TEXT,
-      last_sign_in_at TIMESTAMP WITH TIME ZONE,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-      updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-      phone TEXT UNIQUE
-    );
+  CREATE TABLE storage.vectors (
+    id TEXT NOT NULL,
+    namespace TEXT NOT NULL,
+    text TEXT NOT NULL,
+    PRIMARY KEY (id, namespace)
+  );
 
-CREATE TABLE "auth"."sso_providers" (
-  name TEXT PRIMARY KEY,
-  project_id uuid, -- Assuming this refers to a project table not shown
-  client_id TEXT,
-  client_secret TEXT,
-  allow_no_email BOOLEAN DEFAULT true
-);
+  -- 4. Vault Schema Objects
+  CREATE TABLE vault.secrets (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name text UNIQUE NOT NULL,
+    value text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+  );
 
-CREATE TABLE "auth"."sessions" (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES "auth"."users"(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+  -- 5. Auth Schema Objects
+  CREATE TABLE auth.users (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id TEXT NOT NULL,
+    email TEXT,
+    encrypted_password TEXT,
+    last_sign_in_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    phone TEXT UNIQUE
+  );
 
-CREATE TABLE "auth"."access_token" (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid REFERENCES "auth"."sessions"(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  user_id uuid REFERENCES "auth"."users"(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  payload TEXT,
-  revoked BOOLEAN DEFAULT false,
-  expires_at TIMESTAMP WITH TIME ZONE,
-  -- Stored generated column for expiration logic
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+  CREATE TABLE auth.sso_providers (
+    name TEXT PRIMARY KEY,
+    project_id uuid,
+    client_id TEXT,
+    client_secret TEXT,
+    allow_no_email BOOLEAN DEFAULT true
+  );
 
-CREATE TABLE "auth"."refresh_token" (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  access_token_id uuid REFERENCES "auth"."access_token"(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  user_id uuid REFERENCES "auth"."users"(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  payload TEXT,
-  revoked BOOLEAN DEFAULT false,
-  expires_at TIMESTAMP WITH TIME ZONE,
-  -- Stored generated column for expiration logic
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+  CREATE TABLE auth.sessions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  );
 
-CREATE VIEW "auth"."active_access_tokens" AS
-SELECT *,
-       (expires_at < now()) AS expired
-FROM "auth"."access_token";
+  CREATE TABLE auth.access_token (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id uuid REFERENCES auth.sessions(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    payload TEXT,
+    revoked BOOLEAN DEFAULT false,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  );
 
-CREATE VIEW "auth"."active_refresh_tokens" AS
-SELECT *,
-       (expires_at < now()) AS expired
-FROM "auth"."refresh_token";
+  CREATE TABLE auth.refresh_token (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    access_token_id uuid REFERENCES auth.access_token(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    payload TEXT,
+    revoked BOOLEAN DEFAULT false,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  );
 
+  CREATE VIEW auth.active_access_tokens AS
+    SELECT *, (expires_at < now()) AS expired FROM auth.access_token;
 
+  CREATE VIEW auth.active_refresh_tokens AS
+    SELECT *, (expires_at < now()) AS expired FROM auth.refresh_token;
 
-      `)
+  -- 6. Transfer Ownership
+  ALTER SCHEMA auth OWNER TO "${dbUser}";
+  ALTER SCHEMA vault OWNER TO "${dbUser}";
+  ALTER SCHEMA storage OWNER TO "${dbUser}";
+  ALTER SCHEMA realtime OWNER TO "${dbUser}";
+  ALTER TABLE vault.secrets OWNER TO "${dbUser}";
+  ALTER TABLE storage.buckets OWNER TO "${dbUser}";
+  ALTER TABLE storage.objects OWNER TO "${dbUser}";
+  ALTER TABLE storage.indexes OWNER TO "${dbUser}";
+  ALTER TABLE storage.vectors OWNER TO "${dbUser}";
+  ALTER TABLE auth.users OWNER TO "${dbUser}";
+  ALTER TABLE auth.sso_providers OWNER TO "${dbUser}";
+  ALTER TABLE auth.sessions OWNER TO "${dbUser}";
+  ALTER TABLE auth.access_token OWNER TO "${dbUser}";
+  ALTER TABLE auth.refresh_token OWNER TO "${dbUser}";
+`);
 
-    // Transfer ownership to the new user for full control
-    await adminPool.query(`ALTER SCHEMA auth OWNER TO "${dbUser}";`);
-    await adminPool.query(`ALTER SCHEMA vault OWNER TO "${dbUser}";`);
-    await adminPool.query(`ALTER SCHEMA storage OWNER TO "${dbUser}";`);
-    await adminPool.query(`ALTER SCHEMA realtime OWNER TO "${dbUser}";`);
-
-    await adminPool.query(`ALTER TABLE vault.secrets OWNER TO "${dbUser}";`);
-    await adminPool.query(`ALTER TABLE storage.buckets OWNER TO "${dbUser}";`);
-    await adminPool.query(`ALTER TABLE storage.objects OWNER TO "${dbUser}";`);
 
     await adminPool.end();
     console.log(`✅ Schemas and tables created, ownership transferred to "${dbUser}"`);

@@ -1,14 +1,14 @@
 'use server';
 
 import {  createProjectSchema, createSchemaScheam, inviteUsersSchema } from "@/lib/types/schemas";
-import { applyTenantGrants, createTenantDatabase } from ".";
+import { applyTenantGrants, createTenantDatabase, deleteTenantDatabase } from ".";
 import { getTenantPool } from "./tennantPool";
 import { getUser } from "../auth";
 import z from "zod";
 import { t, generateProjectPassword } from "@/lib/utils";
 import prisma from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { getProjectById } from "./cache-actions";
+import { get_institution_by_id, getProjectById } from "./cache-actions";
 import { redirect } from "next/navigation";
 
 export async function addSchema(projectId: string, form: z.infer<typeof createSchemaScheam>) {
@@ -37,71 +37,6 @@ export async function addSchema(projectId: string, form: z.infer<typeof createSc
 
 
   revalidateTag(t("schemas", projectId), "max")
-}
-
-export async function addCollaborator(form: z.infer<typeof inviteUsersSchema>, iid: string, project_id: string) {
-    const user = await getUser()
-    
-    if (!user) {
-        throw new Error("No user authenticated");
-    }
-
-    const { success, data } = inviteUsersSchema.safeParse(form)
-
-    if (!success) {
-        throw new Error("Invalid form data"); 
-    }
-
-    const invitedUser = await prisma.user.findUnique({
-        where: {
-            email: data.email
-        },
-        select: { id: true } 
-    })
-
-    if (!invitedUser) {
-        throw new Error("User not found"); 
-    }
-
-    if (invitedUser.id === user.id) throw new Error("You're the owner");
-
-
-    const inst = await prisma.institution.findUnique({
-        where: {
-            id: iid
-        },
-        include: {
-            members: {
-                select: { id: true }
-            }
-        }
-    })
-
-    if (!inst) {
-        throw new Error("Project not found");
-    }
-
-    const isAlreadyCollaborator = inst.members.some(c => c.id === invitedUser.id);
-    if (isAlreadyCollaborator) {
-        throw new Error("User is already a collaborator");
-    }
-
-    // --- The finished part ---
-    await prisma.institution.update({
-        where: {
-            id: iid
-        },
-        data: {
-            members: {
-                connect: {
-                    id: invitedUser.id,
-                }
-            }
-        }
-    });
-
-
-    revalidatePath(`/dashboard/projects/${project_id}`); 
 }
 
 export default async function createProject(
@@ -169,6 +104,9 @@ export default async function createProject(
     name: project.name,
   });
 
+  let database_name: string = '';
+  let database_user: string = '';
+
   try {
     console.log('\n🏗️  Creating tenant database...');
     const { dbName, dbUser } = await createTenantDatabase({
@@ -176,6 +114,11 @@ export default async function createProject(
       projectName: project.name,
       password,
     });
+
+    database_name = dbName
+    database_user = dbUser
+
+    
 
     console.log('✅ Tenant database created:', { dbName, dbUser });
 
@@ -210,10 +153,14 @@ export default async function createProject(
     
     console.log('🧹 Cleaning up pending project...');
     try {
-      await prisma.project.delete({
+      const result = await prisma.project.delete({
         where: { id: project.id },
       });
       console.log('✅ Pending project cleaned up');
+
+      if (database_name && database_user) {
+        await deleteTenantDatabase({ dbName: database_name, dbUser: database_user })
+      }
     } catch (cleanupError) {
       console.error('❌ Failed to clean up project:', cleanupError);
     }
@@ -240,8 +187,41 @@ export async function create_institution(
   })
   
   revalidateTag(t("user", user_id), "max")
+  revalidatePath("/proj/", "layout")
 
   redirect(`/institutions/${res.id}`)
+
+}
+
+export async function add_team_member(
+  iid: string,
+  emails: string[],
+  user_id: string
+) {
+  const inst = await get_institution_by_id(iid);
+
+  if (!inst) throw new Error("inst not found");
+
+  for (const e of emails) {
+    const u = await prisma.user.findUnique({where: {email: e}})
+    if (!u) {
+      console.log("User doesn't exist, cannot invite.")
+    } else {
+      await prisma.institution.update({
+        where: {id: iid},
+        data: {
+          members: {
+            connect: {
+              email: e
+            }
+          }
+        }
+      })
+    }
+  }
+
+  revalidateTag(t("inst", iid), "max")
+  revalidateTag(t("user", user_id), "max")
 }
 
 

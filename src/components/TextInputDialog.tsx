@@ -74,6 +74,7 @@ const TextInputDialog = (props: Props) => {
           <div className="flex flex-col gap-2">
             <Label htmlFor="name" >Name</Label>
             <Input
+              disabled={isPending}
               value={props.value}
               onKeyDown={e => {
               if (e.key === "Enter") {

@@ -1,6 +1,5 @@
 import { can_user_access_project, getUser } from '@/lib/actions/auth'
 import { redirect } from 'next/navigation'
-import InviteUsersDialog from './_components/InviteDialog'
 import { Separator } from '@/components/ui/separator'
 import { getProjectById } from '@/lib/actions/database/cache-actions'
 import { Suspense } from 'react'
@@ -36,7 +35,6 @@ const page = async ({ params }: PageProps<"/proj/[projectId]">) => {
       <div className="page-container">
         <div className="page-header">
           <h1 className="page-header-heading">Home</h1>
-          <InviteUsersDialog projectId={projectId}/>
         </div>
         <Separator />
       </div>

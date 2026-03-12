@@ -73,7 +73,6 @@ export async function getUserById(id: string) {
       include: { 
         ownedInstitutions: { 
           include: { 
-            
             _count: {
               select: {projects: true}
             }
